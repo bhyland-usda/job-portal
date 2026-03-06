@@ -12,19 +12,25 @@
   {{if .Searched}}
   <div class="profile-card">
     {{if .Results}}
-    <h2>Results></h2>
+    <h2>Results</h2>
     {{range .Results}}
     <div class="connection-item">
       <a href="/profile/{{.ID}}" class="connection-info">
         {{if .AvatarURL}}
-        <img src="{{.AvartarURL}}" class="connection-avatar" alt="">
+        <img src="{{.AvatarURL}}" class="connection-avatar" alt="">
         {{else}}
-        <div class="connection-avatar avatar-placeholder-sm">{{slice .FirstName 0 1}}{{slice .LastName 0 1}}</div>
+        <div class="connection-avatar avatar-placeholder-sm">
+          {{slice .FirstName 0 1}}{{slice .LastName 0 1}}
+        </div>
         {{end}}
         <div>
           <p class="connection-name">{{.FirstName}} {{.LastName}}</p>
-          {{if .Headline}}<p class="connection-headline">{{.Headline}}</p>
-          {{if .Location}}<p class="connection-headline">{{.Headline}}</p>
+          {{if .Headline}}
+          <p class="connection-headline">{{.Headline}}</p>
+          {{end}}
+          {{if .Location}}
+          <p class="connection-location">{{.Location}}</p>
+          {{end}}
         </div>
       </a>
       <form method="POST" action="/connections/request/{{.ID}}" class="inline">
