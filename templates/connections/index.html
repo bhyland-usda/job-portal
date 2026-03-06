@@ -1,0 +1,57 @@
+{{define "title"}}My Network{{end}}
+
+{{define "content"}}
+<div class="connections-layout">
+  {{if .Pending}}
+  <div class="profile-card">
+    <h2>Pending Invitations</h2>
+    {{range .Pending}}
+    <div class="connection-item">
+      <a href="/profile/{{.ID}}" class="connection-info">
+        {{if .AvatarURL}}
+        <img src="{{.AvatarURL}}" class="connection-avatar" alt="">
+        {{else}}
+        <div class="connection-avatar avatar-placeholder-sm">{{slice .FirstName 0 1}}{{slice .LastName 0 1}}</div>
+        {{end}}
+        <div>
+          <p class="connection-name">{{.FirstName}} {{.LastName}}</p>
+          <p class="connection-headline">{{.Headline}}</p>
+        </div>
+      </a>
+      <div class="connection-actions">
+        <form method="POST" action="/connections/accept/{{.ID}}" class="inline">
+          <button type="submit" class="btn btn-primary">Accept</button>
+        </form>
+        <form method="POST" action="/connections/reject/{{.ID}}" class="inline">
+          <button type="submit" class="btn btn-outline">Ignore</button>
+        </form>
+      </div>
+    </div>
+    {{end}}
+  </div>
+  {{end}}
+
+  <div class="profile-card">
+    <h2>Connections {{len .Accepted}}</h2>
+    {{range .Accepted}}
+    <div class="connection-item">
+      <a href="/profile/{{.ID}}" class="connection-info">
+        {{if .AvatarURL}}
+        <img src="{{.AvatarURL}}" class="connection-avatar" alt="">
+        {{else}}
+        <div class="connection-avatar avatar-placeholder-sm">{{slice .FirstName 0 1}}{{slice .LastName 0 1}}</div>
+        {{end}}
+        <div>
+          <p class="connection-name">{{.FirstName}} {{.LastName}}</p>
+          <p class="connection-headline">{{.Headline}}</p>
+        </div>
+      </a>
+    </div>
+    {{else}}
+    <p class="empty-state">No connections yet. Visit profiles and send connection requests to grow your network.</p>
+    {{end}}
+  </div>
+</div>
+{{end}}
+
+{{template "base" .}}

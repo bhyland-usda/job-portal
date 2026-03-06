@@ -1,0 +1,24 @@
+{{define "navbar"}}
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a href="/feed" class="navbar-brand">JobPortal</a>
+    {{if .UserID}}
+    <div class="navbar-links">
+      <a href="/feed">Feed</a>
+      <a href="/connections">Network</a>
+      <a href="/messages">Messages</a>
+      <a href="/profile/me">Profile</a>
+      <a href="/search">Search</a>
+      <form action="/logout" method="POST" class="inline">
+        <button type="submit" class="btn-link">Logout</button>
+      </form>
+    </div>
+    {{else}}
+    <div class="navbar-links">
+      <a href="/login">Sign In</a>
+      <a href="/register" class="btn btn-primary">Join Now</a>
+    </div>
+    {{end}}
+  </div>
+</nav>
+{{end}}

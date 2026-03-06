@@ -1,0 +1,87 @@
+{{define "title"}}{{.User.FirstName}} {{.User.LastName}}{{end}}
+
+{{define "content"}}
+<div class="profile-layout">
+  <div class="profile-card">
+    <div class="profile-header">
+      <div class="profile-avatar">
+        {{if .User.AvatarURL}}
+          <img src="{{.User.AvatarURL}}" alt="{{.User.FirstName}}">
+        {{else}}
+          <div class="avatar-placeholder">{{slice .User.FirstName 0 1}}{{slice .User.LastName 0 1}}</div>
+        {{end}}
+      </div>
+      <div class="profile-info">
+        <h1>{{.User.FirstName}} {{.User.LastName}}</h1>
+        {{if .User.Headline}}<p class="profile-headline">{{.User.Headline}}</p>{{end}}
+        {{if .User.Location}}<p class="profile-location">{{.User.Location}}</p>{{end}}
+      </div>
+      {{if .IsOwnProfile}}
+      <a href="/profile/edit" class="btn btn-outline">Edit Profile</a>
+      {{else}}
+      <form method="POST" action="/connections/request/{{.User.ID}}">
+        <button type="submit" class="btn btn-primary">Connect</button>
+      </form>
+      {{end}}
+    </div>
+  </div>
+
+  {{if .User.About}}
+  <div class="profile-card">
+    <h2>About</h2>
+    <p>{{.User.About}}</p>
+  </div>
+  {{end}}
+
+  <div class="profile-card">
+    <h2>Experience</h2>
+    {{if .IsOwnProfile}}
+    <a href="/profile/experience/add" class="btn-small">+ Add</a>
+    {{end}}
+    {{range .Experiences}}
+    <div class="profile-entry">
+      <h3>{{.Title}}</h3>
+      <p class="entry-subtitle">{{.Company}}{{if .Location}} • {{.Location}}{{end}}</p>
+      <p class="entry-date">{{.StartDate.Format "Jan 2026"}} - {{if .EndDate}}{{.EndDate.Format "Jan 2026"}}{{else}}Present{{end}}</p>
+      {{if .Description}}<p class="entry-desc">{{.Description}}</p>{{end}}
+    </div>
+    {{else}}
+    <p class="empty-state">No experience added yet.</p>
+    {{end}}
+  </div>
+
+  <div class="profile-card">
+    <h2>Education</h2>
+    {{if .IsOwnProfile}}
+    <a href="/profile/education/add" class="btn-small">+ Add</a>
+    {{end}}
+    {{range .Educations}}
+    <div class="profile-entry">
+      <h3>{{.School}}</h3>
+      <p class="entry-subtitle">{{.Degree}}{{if .FieldOfStudy}}, {{.FieldOfStudy}}{{end}}</p>
+      <p class="entry-date">{{.StartYear}} - {{if .EndYear}}{{.EndYear}}{{else}}Present{{end}}</p>
+    </div>
+    {{else}}
+    <p class="empty-state">No education added yet.</p>
+    {{end}}
+  </div>
+
+  <div class="profile-card">
+    <h2>Skills</h2>
+    {{if .IsOwnProfile}}
+    <a href="/profile/skills/edit" class="btn-small">+ Add</a>
+    {{end}}
+    {{if .Skills}}
+    <div class="skills-list">
+      {{range .Skills}}
+      <span class="skill-tag">{{.Name}}</span>
+      {{end}}
+    </div>
+    {{else}}
+    <p class="empty-state">No skills added yet.</p>
+    {{end}}
+  </div>
+</div>
+{{end}}
+
+{{template "base" .}}
