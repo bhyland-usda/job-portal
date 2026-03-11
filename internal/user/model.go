@@ -39,10 +39,11 @@ type Skill struct {
 }
 
 type ProfileData struct {
-	UserID       string
-	User         User
-	Experiences  []Experience
-	Educations   []Education
-	Skills       []Skill
-	IsOwnProfile bool
+	UserID       	 string
+	User         	 User
+	Experiences  	 []Experience
+	Educations   	 []Education
+	Skills       	 []Skill
+	IsOwnProfile 	 bool
+	ConnectionStatus string
 }

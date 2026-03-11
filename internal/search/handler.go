@@ -8,15 +8,17 @@ import(
 	"strings"
 
 	"github.com/bhyland-usda/job-portal/internal/middleware"
+	"github.com/bhyland-usda/job-portal/internal/connection"
 )
 
 type Handler struct {
 	db    *sql.DB
 	pages map[string]*template.Template
+	conn *connection.Handler
 }
 
-func NewHandler(db *sql.DB, pages map[string]*template.Template) *Handler {
-	return &Handler { db: db, pages: pages }
+func NewHandler(db *sql.DB, pages map[string]*template.Template, conn *connection.Handler) *Handler {
+	return &Handler { db: db, pages: pages, conn: conn }
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux, requireAuth func(http.Handler) http.Handler) {
@@ -24,12 +26,13 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, requireAuth func(http.Handl
 }
 
 type SearchResult struct {
-	ID        string
-	FirstName string
-	LastName  string
-	Headline  string
-	AvatarURL string
-	Location  string
+	ID        		 string
+	FirstName 		 string
+	LastName  		 string
+	Headline  		 string
+	AvatarURL 		 string
+	Location  		 string
+	ConnectionStatus string
 }
 
 type SearchPage struct {
@@ -37,6 +40,7 @@ type SearchPage struct {
 	Query    string
 	Results  []SearchResult
 	Searched bool
+	ConnectionStatus string
 }
 
 func (h *Handler) handleSearch(w http.ResponseWriter, r *http.Request) {
@@ -47,6 +51,7 @@ func (h *Handler) handleSearch(w http.ResponseWriter, r *http.Request) {
 		UserID:   userID,
 		Query:    query,
 		Searched: query != "",
+		ConnectionStatus: "none",
 	}
 
 	if query != "" {
@@ -57,6 +62,17 @@ func (h *Handler) handleSearch(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		data.Results = results
+	}
+
+	if len(data.Results) > 0 {
+		for _, result := range data.Results {
+			status, err := h.conn.GetConnectionStatus(userID, result.ID)
+			if err != nil {
+				slog.Error("failed to get connection status during search", "error", err)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+			}
+		 	result.ConnectionStatus = status
+		}
 	}
 
 	if err := h.pages["search.html"].ExecuteTemplate(w, "base", data); err != nil {

@@ -64,9 +64,9 @@ func main() {
 
  	// Handlers
  	authHandler := auth.NewHandler(db, pages, sessions)
-	userHandler := user.NewHandler(db, pages)
 	connectionHandler := connection.NewHandler(db, pages)
-	searchHandler := search.NewHandler(db, pages)
+	userHandler := user.NewHandler(db, pages, connectionHandler)
+	searchHandler := search.NewHandler(db, pages, connectionHandler)
 
  	// Router
  	mux := http.NewServeMux()
@@ -85,7 +85,7 @@ func main() {
 	userHandler.RegisterRoutes(mux, requireAuth)
 	connectionHandler.RegisterRoutes(mux, requireAuth)
 	searchHandler.RegisterRoutes(mux, requireAuth)
-	
+
 	// Protected routes (TODO)
 	mux.Handle("GET /feed", requireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		userID := middleware.GetUserID(r.Context())

@@ -67,6 +67,38 @@ func(h *Handler) showConnections(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h *Handler) GetConnectionStatus(userID, otherID string) (string, error) {
+	if userID == otherID {
+		return "self", nil
+	}
+
+	var status string
+	var requesterID string
+
+	err := h.db.QueryRow(
+		`SELECT status, requester_id FROM connections
+		 WHERE (requester_id = $1 AND addressee_id = $2)
+			OR (requester_id = $2 AND addressee_id = $1)`,
+		userID, otherID).Scan(&status, &requesterID)
+
+	if err == sql.ErrNoRows {
+		return "none", nil
+	}
+	if err != nil {
+		return "", err
+	}
+
+	if status == "accepted" {
+		return "connected", nil
+	}
+
+	if requesterID == userID {
+		return "pending_sent", nil
+	}
+
+	return "pending_received", nil
+}
+
 func (h *Handler) getPending(r *http.Request, userID string) ([]ConnectionUser, error) {
 	rows, err := h.db.QueryContext(r.Context(),
 		`SELECT u.id, u.first_name, u.last_name, u.headline, u.avatar_url

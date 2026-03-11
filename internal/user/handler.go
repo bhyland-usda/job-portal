@@ -8,15 +8,17 @@ import(
 	"strings"
 
 	"github.com/bhyland-usda/job-portal/internal/middleware"
+	"github.com/bhyland-usda/job-portal/internal/connection"
 )
 
 type Handler struct {
 	db    *sql.DB
 	pages map[string]*template.Template
+	conn  *connection.Handler
 }
 
-func NewHandler(db *sql.DB, pages map[string]*template.Template) *Handler {
-	return &Handler { db: db, pages: pages }
+func NewHandler(db *sql.DB, pages map[string]*template.Template, conn *connection.Handler) *Handler {
+	return &Handler { db: db, pages: pages, conn: conn }
 }
 
 func (h *Handler) getProfileData(r *http.Request, profileUserID string, currentUserID string) (*ProfileData, error) {
@@ -142,6 +144,15 @@ func (h *Handler) showProfile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+
+	status, err := h.conn.GetConnectionStatus(currentUserID, profileID)
+	if err != nil {
+		slog.Error("failed to load connection status", "error", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	data.ConnectionStatus = status
 
 	if err := h.pages["profile.html"].ExecuteTemplate(w, "base", data); err != nil {
 		slog.Error("failed to render profile edit", "error", err)

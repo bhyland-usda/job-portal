@@ -1,49 +1,75 @@
-{{define "title"}}Search{{end}}
-
-{{define "content"}}
+{{define "title"}}Search{{end}} {{define "content"}}
 <div class="search-layout">
-  <div class="profile-card">
-    <form method="GET" action="/search" class="search-form">
-      <input type="text" name="q" value="{{.Query}}" placeholder="Search by name, headline, or location..." class="search-input" autofocus>
-      <button type="submit" class="btn btn-primary">Search</button>
-    </form>
-  </div>
+    <div class="profile-card">
+        <form method="GET" action="/search" class="search-form">
+            <input
+                type="text"
+                name="q"
+                value="{{.Query}}"
+                placeholder="Search by name, headline, or location..."
+                class="search-input"
+                autofocus
+            />
+            <button type="submit" class="btn btn-primary">Search</button>
+        </form>
+    </div>
 
-  {{if .Searched}}
-  <div class="profile-card">
-    {{if .Results}}
-    <h2>Results</h2>
-    {{range .Results}}
-    <div class="connection-item">
-      <a href="/profile/{{.ID}}" class="connection-info">
-        {{if .AvatarURL}}
-        <img src="{{.AvatarURL}}" class="connection-avatar" alt="">
-        {{else}}
-        <div class="connection-avatar avatar-placeholder-sm">
-          {{slice .FirstName 0 1}}{{slice .LastName 0 1}}
+    {{if .Searched}}
+    <div class="profile-card">
+        {{if .Results}}
+        <h2>Results</h2>
+        {{range .Results}}
+        <div class="connection-item">
+            <a href="/profile/{{.ID}}" class="connection-info">
+                {{if .AvatarURL}}
+                <img src="{{.AvatarURL}}" class="connection-avatar" alt="" />
+                {{else}}
+                <div class="connection-avatar avatar-placeholder-sm">
+                    {{slice .FirstName 0 1}}{{slice .LastName 0 1}}
+                </div>
+                {{end}}
+                <div>
+                    <p class="connection-name">{{.FirstName}} {{.LastName}}</p>
+                    {{if .Headline}}
+                    <p class="connection-headline">{{.Headline}}</p>
+                    {{end}} {{if .Location}}
+                    <p class="connection-location">{{.Location}}</p>
+                    {{end}}
+                </div>
+            </a>
+            {{if eq .ConnectionStatus "none"}}
+            <form
+                method="POST"
+                action="/connections/request/{{.ID}}"
+                class="inline"
+            >
+                <button type="submit" class="btn btn-outline">Connect</button>
+            </form>
+            {{else if eq .ConnectionStatus "pending_sent"}}
+            <span class="btn btn-secondary">Pending</span>
+            {{else if eq .ConnectionStatus "pending_received"}}
+            <form
+                method="POST"
+                action="/connections/accept/{{.ID}}"
+                style="display: inline"
+            >
+                <button class="btn btn-primary">Accept</button>
+            </form>
+            <form
+                method="POST"
+                action="/connections/reject/{{.ID}}"
+                style="display: inline"
+            >
+                <button class="btn btn-secondary">Decline</button>
+            </form>
+            {{else if eq .ConnectionStatus "connected"}}
+            <span class="btn btn-success">Connected</span>
+            {{end}}
         </div>
+        {{end}} {{else}}
+        <p class="empty-state">No results found for "{{.Query}}"</p>
         {{end}}
-        <div>
-          <p class="connection-name">{{.FirstName}} {{.LastName}}</p>
-          {{if .Headline}}
-          <p class="connection-headline">{{.Headline}}</p>
-          {{end}}
-          {{if .Location}}
-          <p class="connection-location">{{.Location}}</p>
-          {{end}}
-        </div>
-      </a>
-      <form method="POST" action="/connections/request/{{.ID}}" class="inline">
-        <button type="submit" class="btn btn-outline">Connect</button>
-      </form>
     </div>
     {{end}}
-    {{else}}
-    <p class="empty-state">No results found for "{{.Query}}"</p>
-    {{end}}
-  </div>
-  {{end}}
 </div>
-{{end}}
-
-{{template "base" .}}
+{{end}} {{template "base" .}}
