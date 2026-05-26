@@ -1,0 +1,51 @@
+{{define "title"}}Announcements{{end}}
+
+{{define "content"}}
+<style>
+.announcement-item { padding: 16px 0; border-bottom: 1px solid #e5e7eb; }
+.announcement-item:last-child { border-bottom: none; }
+.announcement-pinned { background: #fffbeb; border-left: 3px solid #f59e0b; padding-left: 12px; }
+.announcement-meta { color: #6b7280; font-size: 13px; margin: 4px 0 8px; }
+.announcement-body { white-space: pre-wrap; }
+.announcement-badge { display: inline-block; background: #f59e0b; color: #fff; font-size: 11px;
+    font-weight: 600; padding: 2px 8px; border-radius: 9999px; margin-left: 8px; vertical-align: middle; }
+.announcement-actions { margin-top: 8px; display: flex; gap: 8px; }
+.announcement-actions form { display: inline; }
+.announcement-actions button { background: none; border: 1px solid #d1d5db; color: #374151;
+    font-size: 12px; padding: 4px 10px; border-radius: 6px; cursor: pointer; }
+.announcement-actions button:hover { background: #f3f4f6; }
+</style>
+<div class="news-layout">
+    <div class="profile-card">
+        <div class="content-header">
+            <h2>Announcements</h2>
+            {{if eq .Nav.Role "admin"}}
+            <a href="/admin/announcements/new" class="btn btn-primary">New Announcement</a>
+            {{end}}
+        </div>
+        {{if .Announcements}}
+        {{range .Announcements}}
+        <div class="announcement-item{{if .IsPinned}} announcement-pinned{{end}}">
+            <h3>{{.Title}}{{if .IsPinned}}<span class="announcement-badge">Pinned</span>{{end}}</h3>
+            <p class="announcement-meta">By {{.AuthorName}} — {{.CreatedAt.Format "Jan 2, 2006"}}</p>
+            <p class="announcement-body">{{.Body}}</p>
+            {{if eq $.Nav.Role "admin"}}
+            <div class="announcement-actions">
+                <form method="POST" action="/admin/announcements/{{.ID}}/pin">
+                    <button type="submit">{{if .IsPinned}}Unpin{{else}}Pin{{end}}</button>
+                </form>
+                <form method="POST" action="/admin/announcements/{{.ID}}/delete" onsubmit="return confirm('Delete this announcement?');">
+                    <button type="submit">Delete</button>
+                </form>
+            </div>
+            {{end}}
+        </div>
+        {{end}}
+        {{else}}
+        <p class="empty-state">No announcements yet.</p>
+        {{end}}
+    </div>
+</div>
+{{end}}
+
+{{template "base" .}}

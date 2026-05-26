@@ -1,0 +1,16 @@
+{
+  "encouraging": ["Great work!", "This is exactly what USDA needs.", "Proud of this team.", "Keep it up!"],
+  "analytical": ["Have we considered the security implications?", "What metrics are we tracking?", "Run it through compliance first."],
+  "enthusiastic": ["THIS IS AMAZING!!!", "Fastest deployment I have ever seen!", "Can we do more of this?!"],
+  "sarcastic": ["Bloody brilliant, mate.", "Oh good, more paperwork.", "I found three loopholes already."],
+  "punny": ["This web of innovation is sticky!", "With great server power comes great response-ability.", "Bug-free? That is my specialty."],
+  "elegant": ["The winds of change favor this approach.", "Nature teaches us that adaptation is key.",
+"Well considered."],
+  "bubbly": ["Oh my God this is SO cool! I mean... professionally speaking... anyway, great job!"],
+  "nerdy": ["I am calling this Project Vibe. You are welcome.", "This needs a cool name."],
+  "formal": ["Acknowledged. Proceeding per standard protocol.", "This aligns with our strategic objectives."],
+  "empathetic": ["I can sense how much effort went into this.", "This will make a real difference for people."],
+  "eager": ["Can I help? I want to learn everything about this!", "This is so cool! How does it work?"],
+  "impatient": ["Can we speed this up?", "Already done reading. What is next?", "Faster!"],
+  "action-oriented": ["Less talk, more shipping.", "When do we deploy?", "I am ready. Let us go."]
+}

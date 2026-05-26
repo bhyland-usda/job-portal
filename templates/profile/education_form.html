@@ -1,0 +1,42 @@
+{{define "title"}}{{if .Education.ID}}Edit{{else}}Add{{end}} Education{{end}}
+
+{{define "content"}}
+<div class="profile-layout">
+  <div class="profile-card">
+    <h2>{{if .Education.ID}}Edit{{else}}Add{{end}} Education</h2>
+    {{if .Error}}
+    <div class="alert alert-error">{{.Error}}</div>
+    {{end}}
+    <form method="POST">
+      <div class="form-group">
+        <label for="school">School</label>
+        <input type="text" id="school" name="school" value="{{.Education.School}}" required />
+      </div>
+      <div class="form-group">
+        <label for="degree">Degree</label>
+        <input type="text" id="degree" name="degree" value="{{.Education.Degree}}" />
+      </div>
+      <div class="form-group">
+        <label for="field_of_study">Field of Study</label>
+        <input type="text" id="field_of_study" name="field_of_study" value="{{.Education.FieldOfStudy}}" />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="start_year">Start Year</label>
+          <input type="number" id="start_year" name="start_year" value="{{if .Education.ID}}{{.Education.StartYear}}{{end}}" min="1950" max="2030" required />
+        </div>
+        <div class="form-group">
+          <label for="end_year">End Year (leave blank if current)</label>
+          <input type="number" id="end_year" name="end_year" value="{{if .Education.ID}}{{.Education.EndYear}}{{end}}" min="1950" max="2030" />
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Save</button>
+        <a href="/profile/me" class="btn btn-outline">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{{end}}
+
+{{template "base" .}}

@@ -1,0 +1,40 @@
+{{define "title"}}Record Outcome - {{.Posting.Title}}{{end}}
+
+{{define "content"}}
+<div class="posting-layout">
+  <div class="profile-card">
+    <h2>Record Outcome: {{.Posting.Title}}</h2>
+    <p class="posting-meta">
+      {{.Posting.Type}}
+      {{if .Posting.Department}}&middot; {{.Posting.Department}}{{end}}
+      {{if .Posting.Location}}&middot; {{.Posting.Location}}{{end}}
+    </p>
+    <p class="posting-meta">Recording an outcome marks this posting as closed.</p>
+
+    {{if .Error}}
+    <div class="alert alert-error" role="alert">{{.Error}}</div>
+    {{end}}
+
+    <form method="POST" action="/postings/{{.Posting.ID}}/outcome" class="posting-form">
+      <div class="form-group">
+        <label for="outcome_status">Outcome Status</label>
+        <select id="outcome_status" name="outcome_status" required>
+          <option value="completed"{{if eq .Posting.OutcomeStatus "completed"}} selected{{end}}>Completed</option>
+          <option value="partial"{{if eq .Posting.OutcomeStatus "partial"}} selected{{end}}>Partially Completed</option>
+          <option value="cancelled"{{if eq .Posting.OutcomeStatus "cancelled"}} selected{{end}}>Cancelled</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="outcome">Outcome Details</label>
+        <textarea id="outcome" name="outcome" rows="8" required placeholder="Summarize what was accomplished, deliverables, and results...">{{.Posting.Outcome}}</textarea>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Save Outcome</button>
+        <a href="/postings/{{.Posting.ID}}" class="btn btn-outline">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{{end}}
+
+{{template "base" .}}

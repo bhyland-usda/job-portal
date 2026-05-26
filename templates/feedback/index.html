@@ -1,0 +1,64 @@
+{{define "title"}}360 Feedback{{end}}
+
+{{define "content"}}
+<div class="feedback-layout">
+  <div class="profile-card">
+    <h2>360 Feedback</h2>
+
+    <div class="feed-tabs">
+      <a href="/feedback?tab=received" class="feed-tab {{if eq .Tab "received"}}active{{end}}">Received</a>
+      <a href="/feedback?tab=sent" class="feed-tab {{if eq .Tab "sent"}}active{{end}}">Sent</a>
+    </div>
+
+    {{if eq .Tab "sent"}}
+      {{if .Sent}}
+      <div class="feedback-list">
+        {{range .Sent}}
+        <div class="feedback-item">
+          <div class="feedback-header">
+            <strong>{{.Subject}}</strong>
+            <span class="application-status status-{{.Status}}">{{.Status}}</span>
+          </div>
+          <p class="posting-meta">Reviewer: <a href="/profile/{{.ReviewerID}}">{{.ReviewerName}}</a> &middot; {{.CreatedAt.Format "Jan 2, 2006"}}</p>
+          {{if and (eq .Status "completed") (ne .Feedback "")}}
+          <p class="feedback-text">{{.Feedback}}</p>
+          {{end}}
+        </div>
+        {{end}}
+      </div>
+      {{else}}
+      <p class="empty-state">You haven't sent any feedback requests yet.</p>
+      {{end}}
+    {{else}}
+      {{if .Received}}
+      <div class="feedback-list">
+        {{range .Received}}
+        <div class="feedback-item">
+          <div class="feedback-header">
+            <strong>{{.Subject}}</strong>
+            <span class="application-status status-{{.Status}}">{{.Status}}</span>
+          </div>
+          <p class="posting-meta">From: <a href="/profile/{{.RequesterID}}">{{.RequesterName}}</a> &middot; {{.CreatedAt.Format "Jan 2, 2006"}}</p>
+          {{if eq .Status "pending"}}
+          <div class="feedback-actions">
+            <a href="/feedback-respond/{{.ID}}" class="btn btn-primary btn-sm">Respond</a>
+            <form method="POST" action="/feedback-decline/{{.ID}}" class="inline-form">
+              <button type="submit" class="btn btn-secondary btn-sm">Decline</button>
+            </form>
+          </div>
+          {{end}}
+          {{if and (eq .Status "completed") (ne .Feedback "")}}
+          <p class="feedback-text">{{.Feedback}}</p>
+          {{end}}
+        </div>
+        {{end}}
+      </div>
+      {{else}}
+      <p class="empty-state">No feedback requests received.</p>
+      {{end}}
+    {{end}}
+  </div>
+</div>
+{{end}}
+
+{{template "base" .}}

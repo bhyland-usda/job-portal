@@ -1,0 +1,32 @@
+{{define "title"}}New Announcement{{end}}
+
+{{define "content"}}
+<style>
+.announcement-check { display: flex; align-items: center; gap: 8px; margin: 12px 0; }
+.announcement-check input { width: auto; }
+</style>
+<div class="news-layout">
+    <div class="profile-card">
+        <h2>New Announcement</h2>
+        {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
+        <form method="POST" action="/admin/announcements">
+            <div class="form-group">
+                <label for="title">Title</label>
+                <input type="text" id="title" name="title" required>
+            </div>
+            <div class="form-group">
+                <label for="body">Body</label>
+                <textarea id="body" name="body" rows="12" required></textarea>
+            </div>
+            <div class="announcement-check">
+                <input type="checkbox" id="pinned" name="pinned">
+                <label for="pinned">Pin this announcement</label>
+            </div>
+            <button type="submit" class="btn btn-primary">Post Announcement</button>
+        </form>
+        <a href="/announcements" class="back-link" style="display:inline-block;margin-top:16px;"><span aria-hidden="true">←</span> Back to Announcements</a>
+    </div>
+</div>
+{{end}}
+
+{{template "base" .}}

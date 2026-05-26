@@ -1,0 +1,84 @@
+{{define "title"}}My Network Graph{{end}}
+
+{{define "content"}}
+<style>
+  .network-card { background:#fff; border:1px solid #e0e0e0; border-radius:8px; padding:24px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+  .network-card h2 { margin:0 0 4px; }
+  .network-sub { color:#666; margin:0 0 16px; font-size:14px; }
+  .network-stage { width:100%; border:1px solid #eee; border-radius:8px; background:#fafbfa; }
+  .network-empty { color:#777; padding:24px 0; }
+  #network-svg .edge { stroke:#c7d6c7; stroke-width:1.5; }
+  #network-svg .node circle { fill:#4a7c4a; stroke:#fff; stroke-width:2; }
+  #network-svg .node.center circle { fill:#2e7d32; stroke:#fff; stroke-width:3; }
+  #network-svg .node text { font-size:11px; fill:#1b3a1b; text-anchor:middle; }
+  #network-svg .node.center text { font-weight:700; font-size:12px; }
+</style>
+
+<div class="network-card">
+  <h2>My Network Graph</h2>
+  <p class="network-sub">You and your {{.ConnectionCount}} accepted connection{{if ne .ConnectionCount 1}}s{{end}}, laid out around you.</p>
+
+  {{if gt .ConnectionCount 0}}
+  <svg id="network-svg" class="network-stage" viewBox="0 0 800 520" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Connection network graph"></svg>
+  {{else}}
+  <p class="network-empty">You have no accepted connections yet. Once you connect with colleagues, your network graph will appear here.</p>
+  {{end}}
+</div>
+{{end}}
+
+{{define "scripts"}}
+<script>
+(function () {
+  var svg = document.getElementById('network-svg');
+  if (!svg) return;
+
+  var graph = {{.GraphJSON}};
+  if (!graph || !graph.nodes || !graph.nodes.length) return;
+
+  var W = 800, H = 520, cx = W / 2, cy = H / 2;
+  var SVGNS = 'http://www.w3.org/2000/svg';
+
+  var center = null, others = [];
+  graph.nodes.forEach(function (n) {
+    if (n.center) { center = n; } else { others.push(n); }
+  });
+  if (!center) { center = graph.nodes[0]; }
+
+  // Radial layout: connections evenly spaced on a circle around the center.
+  var radius = Math.min(W, H) / 2 - 70;
+  var pos = {};
+  pos[center.id] = { x: cx, y: cy };
+  others.forEach(function (n, i) {
+    var angle = (2 * Math.PI * i) / others.length - Math.PI / 2;
+    pos[n.id] = { x: cx + radius * Math.cos(angle), y: cy + radius * Math.sin(angle) };
+  });
+
+  function el(name, attrs) {
+    var e = document.createElementNS(SVGNS, name);
+    for (var k in attrs) { e.setAttribute(k, attrs[k]); }
+    return e;
+  }
+
+  // Edges first so nodes render on top.
+  (graph.edges || []).forEach(function (edge) {
+    var a = pos[edge.source], b = pos[edge.target];
+    if (!a || !b) return;
+    svg.appendChild(el('line', { class: 'edge', x1: a.x, y1: a.y, x2: b.x, y2: b.y }));
+  });
+
+  // Nodes.
+  graph.nodes.forEach(function (n) {
+    var p = pos[n.id];
+    if (!p) return;
+    var g = el('g', { class: 'node' + (n.center ? ' center' : '') });
+    g.appendChild(el('circle', { cx: p.x, cy: p.y, r: n.center ? 26 : 18 }));
+    var label = el('text', { x: p.x, y: p.y + (n.center ? 44 : 34) });
+    label.textContent = n.label || '';
+    g.appendChild(label);
+    svg.appendChild(g);
+  });
+})();
+</script>
+{{end}}
+
+{{template "base" .}}

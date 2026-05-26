@@ -1,0 +1,43 @@
+{{define "title"}}Skills Gap Analysis{{end}}
+
+{{define "content"}}
+<div class="posting-layout">
+    <div class="profile-card">
+        <h2>Skills Gap Analysis</h2>
+        <p style="color:var(--text-secondary);margin-bottom:16px;">Skills demanded by active postings vs employees who have them.</p>
+        {{if .Gaps}}
+        <table class="admin-table">
+            <caption class="sr-only">Skills demanded by active postings compared with employees who have them</caption>
+            <thead>
+                <tr>
+                    <th scope="col">Skill</th>
+                    <th scope="col">Postings Demand</th>
+                    <th scope="col">Employees Have</th>
+                    <th scope="col">Gap</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Gaps}}
+                <tr>
+                    <td><strong>{{.SkillName}}</strong></td>
+                    <td>{{.DemandCount}}</td>
+                    <td>{{.SupplyCount}}</td>
+                    <td>
+                        {{if gt .GapPercent 0}}
+                        <span style="color:#d93025;font-weight:600;">{{.GapPercent}}% gap</span>
+                        {{else}}
+                        <span style="color:#1e8e3e;">Sufficient</span>
+                        {{end}}
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+        {{else}}
+        <p class="empty-state">No active postings with skill requirements.</p>
+        {{end}}
+    </div>
+</div>
+{{end}}
+
+{{template "base" .}}

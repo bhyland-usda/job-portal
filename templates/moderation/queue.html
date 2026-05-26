@@ -1,0 +1,54 @@
+{{define "title"}}Moderation Queue{{end}}
+
+{{define "content"}}
+<style>
+.moderation-layout { max-width: 1128px; margin: 0 auto; }
+.report-item { padding: 16px; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 12px; }
+.report-meta { color: #6b7280; font-size: 13px; margin: 4px 0 8px; }
+.report-type { display: inline-block; background: #ef4444; color: #fff; font-size: 11px;
+    font-weight: 600; padding: 2px 8px; border-radius: 9999px; margin-right: 8px; vertical-align: middle; }
+.report-reason { white-space: pre-wrap; background: #f9fafb; border-radius: 6px; padding: 8px 10px; margin: 8px 0; }
+.report-content-id { font-family: monospace; font-size: 12px; color: #374151; }
+.report-actions { margin-top: 10px; display: flex; gap: 8px; }
+.report-actions form { display: inline; }
+.report-actions button { background: none; border: 1px solid #d1d5db; color: #374151;
+    font-size: 13px; padding: 5px 14px; border-radius: 6px; cursor: pointer; }
+.report-actions button:hover { background: #f3f4f6; }
+.report-actions button.btn-review { border-color: #2563eb; color: #1d4ed8; }
+.report-actions button.btn-dismiss { border-color: #9ca3af; color: #6b7280; }
+</style>
+<div class="moderation-layout">
+    <div class="profile-card">
+        <h2>Moderation Queue</h2>
+        <p class="report-meta">Pending content reports submitted by members.</p>
+        {{if .Reports}}
+        <div role="list">
+        {{range .Reports}}
+        <div class="report-item" role="listitem">
+            <div>
+                <span class="report-type"><span class="sr-only">Content type: </span>{{.ContentType}}</span>
+                <span class="report-content-id"><span class="sr-only">Content ID: </span>{{.ContentID}}</span>
+            </div>
+            <p class="report-meta">Reported by {{.ReporterName}} — {{.CreatedAt.Format "Jan 2, 2006 3:04 PM"}}</p>
+            {{if .Reason}}<div class="report-reason">{{.Reason}}</div>{{else}}<p class="report-meta">No reason provided.</p>{{end}}
+            <div class="report-actions">
+                <form method="POST" action="/admin/moderation/{{.ID}}/resolve">
+                    <input type="hidden" name="action" value="reviewed" />
+                    <button type="submit" class="btn-review">Mark Reviewed</button>
+                </form>
+                <form method="POST" action="/admin/moderation/{{.ID}}/resolve">
+                    <input type="hidden" name="action" value="dismissed" />
+                    <button type="submit" class="btn-dismiss">Dismiss</button>
+                </form>
+            </div>
+        </div>
+        {{end}}
+        </div>
+        {{else}}
+        <p class="empty-state">No pending reports. The queue is clear.</p>
+        {{end}}
+    </div>
+</div>
+{{end}}
+
+{{template "base" .}}

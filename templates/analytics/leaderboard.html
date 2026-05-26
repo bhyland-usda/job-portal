@@ -1,0 +1,57 @@
+{{define "title"}}Engagement Leaderboard{{end}}
+
+{{define "content"}}
+<style>
+.lb-layout { max-width: 960px; margin: 0 auto; }
+.lb-table { width: 100%; border-collapse: collapse; }
+.lb-table th, .lb-table td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border, #eee); }
+.lb-table th { color: var(--text-secondary, #5f6368); font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
+.lb-rank { width: 48px; font-weight: 700; color: var(--text-secondary, #5f6368); }
+.lb-score { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--accent, #2e7d32); }
+.lb-filter { margin-bottom: 18px; }
+.lb-filter select { padding: 6px 10px; border: 1px solid var(--border, #ccc); border-radius: 6px; }
+.lb-top-1 .lb-rank { color: #d4af37; }
+.lb-top-2 .lb-rank { color: #9ea0a3; }
+.lb-top-3 .lb-rank { color: #cd7f32; }
+</style>
+<div class="lb-layout">
+    <div class="profile-card">
+        <h2>Engagement Leaderboard</h2>
+        <p style="color:var(--text-secondary);margin-bottom:16px;">Top contributors ranked by overall engagement (posts, comments, kudos received and accepted connections).</p>
+
+        <form method="get" class="lb-filter">
+            <label for="department">Department:</label>
+            <select id="department" name="department" onchange="this.form.submit()">
+                <option value="">All departments</option>
+                {{range .DepartmentOptions}}
+                <option value="{{.ID}}" {{if eq .ID $.SelectedDepartment}}selected{{end}}>{{.Name}}</option>
+                {{end}}
+            </select>
+            <noscript><button type="submit" class="btn btn-outline btn-sm">Filter</button></noscript>
+        </form>
+
+        {{if .Entries}}
+        <table class="lb-table">
+            <caption class="sr-only">Top contributors ranked by overall engagement</caption>
+            <thead>
+                <tr><th scope="col" class="lb-rank">#</th><th scope="col">Name</th><th scope="col">Department</th><th scope="col" style="text-align:right;">Score</th></tr>
+            </thead>
+            <tbody>
+                {{range .Entries}}
+                <tr class="lb-top-{{.Rank}}">
+                    <td class="lb-rank">{{.Rank}}</td>
+                    <td><a href="/profile/{{.UserID}}" class="title-link">{{.Name}}</a></td>
+                    <td>{{if .Department}}{{.Department}}{{else}}<span style="color:var(--text-secondary);">—</span>{{end}}</td>
+                    <td class="lb-score">{{.Score}}</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+        {{else}}
+        <p class="empty-state">No engagement data yet.</p>
+        {{end}}
+    </div>
+</div>
+{{end}}
+
+{{template "base" .}}

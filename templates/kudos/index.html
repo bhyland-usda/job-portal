@@ -1,0 +1,42 @@
+{{define "title"}}Kudos{{end}}
+
+{{define "content"}}
+<div class="kudos-layout">
+  <div class="profile-card">
+    <h2>Kudos</h2>
+
+    <div class="feed-tabs">
+      <a href="/kudos?tab=received" class="feed-tab {{if eq .Tab "received"}}active{{end}}">Received</a>
+      <a href="/kudos?tab=sent" class="feed-tab {{if eq .Tab "sent"}}active{{end}}">Sent</a>
+    </div>
+
+    {{if .Kudos}}
+    <div class="kudos-list">
+      {{range .Kudos}}
+      <div class="kudos-item">
+        <div class="kudos-info">
+          {{if eq $.Tab "received"}}
+          <p class="kudos-person">From <a href="/profile/{{.SenderID}}">{{.SenderName}}</a></p>
+          {{else}}
+          <p class="kudos-person">To <a href="/profile/{{.ReceiverID}}">{{.ReceiverName}}</a></p>
+          {{end}}
+          <p class="kudos-message">{{.Message}}</p>
+          <span class="kudos-date">{{.CreatedAt.Format "Jan 2, 2006"}}</span>
+        </div>
+      </div>
+      {{end}}
+    </div>
+    {{else}}
+    <p class="empty-state">
+      {{if eq .Tab "sent"}}
+      You haven't sent any kudos yet.
+      {{else}}
+      No kudos received yet.
+      {{end}}
+    </p>
+    {{end}}
+  </div>
+</div>
+{{end}}
+
+{{template "base" .}}

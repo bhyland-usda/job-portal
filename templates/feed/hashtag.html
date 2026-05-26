@@ -1,0 +1,39 @@
+{{define "title"}}#{{.Tag}}{{end}}
+
+{{define "content"}}
+<div class="feed-layout">
+    <h2>#{{.Tag}}</h2>
+    {{if .Posts}}
+    {{range .Posts}}
+    <div class="feed-post">
+        <div class="post-header">
+            <a href="/profile/{{.AuthorID}}" class="post-author">
+                <div class="avatar-small">
+                {{if .AuthorAvatarURL}}
+                <img src="/avatar/{{.AuthorID}}" class="avatar-small-img" alt="" />
+                {{else}}
+                {{slice .AuthorFirstName 0 1}}{{slice .AuthorLastName 0 1}}
+                {{end}}
+                </div>
+                <div class="post-author-info">
+                    <strong>{{.AuthorFirstName}} {{.AuthorLastName}}</strong>
+                    {{if .AuthorHeadline}}<span class="post-headline">{{.AuthorHeadline}}</span>{{end}}
+                </div>
+            </a>
+        </div>
+        <div class="post-content">
+            <p>{{.Content}}</p>
+        </div>
+        <div class="post-stats">
+            <span>{{.LikeCount}} likes</span>
+            <span>{{.CommentCount}} comments</span>
+        </div>
+    </div>
+    {{end}}
+    {{else}}
+    <p class="empty-state">No posts with #{{.Tag}} yet.</p>
+    {{end}}
+</div>
+{{end}}
+
+{{template "base" .}}

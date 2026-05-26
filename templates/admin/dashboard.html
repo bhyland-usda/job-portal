@@ -1,0 +1,117 @@
+{{define "title"}}Admin - Dashboard{{end}}
+
+{{define "content"}}
+<style>
+.dash-layout { max-width: 1180px; margin: 0 auto; }
+.dash-header { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+.dash-header h2 { margin: 0; }
+.dash-actions a { margin-left: 8px; }
+.dash-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.dash-card { background: var(--card-bg, #fff); border: 1px solid var(--border-color, #e0e0e0); border-radius: 8px; padding: 18px; }
+.dash-card-value { font-size: 32px; font-weight: 700; line-height: 1.1; color: var(--text-color, #1a1a1a); }
+.dash-card-label { font-size: 13px; color: var(--text-muted, #666); margin-top: 4px; text-transform: uppercase; letter-spacing: .5px; }
+.dash-card-sub { font-size: 12px; color: var(--text-muted, #888); margin-top: 6px; }
+.dash-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 760px) { .dash-columns { grid-template-columns: 1fr; } }
+.dash-panel { background: var(--card-bg, #fff); border: 1px solid var(--border-color, #e0e0e0); border-radius: 8px; padding: 18px; }
+.dash-panel h3 { margin-top: 0; margin-bottom: 12px; font-size: 16px; }
+.dash-mini-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.dash-mini-table th, .dash-mini-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border-color, #eee); }
+.dash-mini-table th { font-size: 12px; color: var(--text-muted, #888); text-transform: uppercase; letter-spacing: .5px; }
+.dash-empty { color: var(--text-muted, #888); font-style: italic; }
+.dash-role-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; background: #eef; color: #335; }
+</style>
+
+<div class="dash-layout">
+    <div class="dash-header">
+        <h2>Admin Dashboard</h2>
+        <div class="dash-actions">
+            <a href="/admin/users" class="btn btn-outline btn-sm">User Management</a>
+            <a href="/admin/audit" class="btn btn-outline btn-sm">Audit Log</a>
+            <a href="/admin/report" class="btn btn-primary btn-sm">Workforce Report</a>
+        </div>
+    </div>
+
+    <div class="dash-cards">
+        <div class="dash-card">
+            <div class="dash-card-value">{{.TotalUsers}}</div>
+            <div class="dash-card-label">Total Users</div>
+            <div class="dash-card-sub">
+                {{range .UsersByRole}}{{.Role}}: {{.Count}}&nbsp;&nbsp;{{end}}
+            </div>
+        </div>
+        <div class="dash-card">
+            <div class="dash-card-value">{{.TotalDepartments}}</div>
+            <div class="dash-card-label">Departments</div>
+        </div>
+        <div class="dash-card">
+            <div class="dash-card-value">{{.PostsThisWeek}}</div>
+            <div class="dash-card-label">Posts This Week</div>
+        </div>
+        <div class="dash-card">
+            <div class="dash-card-value">{{.NewConnectionsThisWeek}}</div>
+            <div class="dash-card-label">New Connections (7d)</div>
+        </div>
+        <div class="dash-card">
+            <div class="dash-card-value">{{.ActivePostings}}</div>
+            <div class="dash-card-label">Active Postings</div>
+        </div>
+        <div class="dash-card">
+            <div class="dash-card-value">{{.PendingApplications}}</div>
+            <div class="dash-card-label">Pending Applications</div>
+        </div>
+    </div>
+
+    <div class="dash-columns">
+        <div class="dash-panel">
+            <h3>Recent Signups</h3>
+            {{if .RecentSignups}}
+            <table class="dash-mini-table">
+                <caption class="sr-only">Recent user signups</caption>
+                <thead>
+                    <tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Role</th><th scope="col">Joined</th></tr>
+                </thead>
+                <tbody>
+                    {{range .RecentSignups}}
+                    <tr>
+                        <td><a href="/profile/{{.ID}}" class="user-link">{{.FirstName}} {{.LastName}}</a></td>
+                        <td>{{.Email}}</td>
+                        <td><span class="dash-role-badge">{{.Role}}</span></td>
+                        <td>{{.CreatedAt.Format "Jan 2, 2006"}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+            {{else}}
+            <p class="dash-empty">No signups yet.</p>
+            {{end}}
+        </div>
+
+        <div class="dash-panel">
+            <h3>Recent Audit Activity</h3>
+            {{if .RecentAudit}}
+            <table class="dash-mini-table">
+                <caption class="sr-only">Recent audit activity</caption>
+                <thead>
+                    <tr><th scope="col">Date</th><th scope="col">Actor</th><th scope="col">Action</th><th scope="col">Details</th></tr>
+                </thead>
+                <tbody>
+                    {{range .RecentAudit}}
+                    <tr>
+                        <td>{{.CreatedAt.Format "Jan 2, 3:04 PM"}}</td>
+                        <td>{{.ActorName}}</td>
+                        <td>{{.Action}}</td>
+                        <td>{{.Details}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+            {{else}}
+            <p class="dash-empty">No audit activity recorded yet.</p>
+            {{end}}
+        </div>
+    </div>
+</div>
+{{end}}
+
+{{template "base" .}}

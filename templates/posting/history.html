@@ -1,0 +1,41 @@
+{{define "title"}}My Detail History{{end}}
+
+{{define "content"}}
+<div class="posting-layout">
+  <div class="profile-card">
+    <h2>My Detail History</h2>
+    <p class="posting-meta">Details and projects you were accepted to, with their recorded outcomes.</p>
+
+    {{if .Entries}}
+    <div class="history-list">
+      {{range .Entries}}
+      <div class="history-item" style="padding:14px 0;border-bottom:1px solid #eaeef2;">
+        <div class="history-header" style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;">
+          <a href="/postings/{{.PostingID}}" class="user-link" style="font-weight:600;">{{.Title}}</a>
+          <span class="posting-type posting-type-{{.Type}}">{{.Type}}</span>
+        </div>
+        <p class="posting-meta" style="margin:4px 0;">
+          {{if .Department}}{{.Department}} &middot; {{end}}Accepted {{.AcceptedAt.Format "Jan 2, 2006"}}
+        </p>
+        {{if .HasOutcome}}
+        <div class="history-outcome" style="margin-top:6px;padding:10px 12px;border:1px solid #d0d7de;border-radius:8px;background:#f6f8fa;">
+          <span class="outcome-status outcome-status-{{.OutcomeStatus}}" style="font-weight:600;text-transform:capitalize;">{{.OutcomeStatus}}</span>
+          <p style="margin:4px 0 0;white-space:pre-wrap;">{{.Outcome}}</p>
+          {{if not .CompletedAt.IsZero}}
+          <p class="posting-meta" style="margin:4px 0 0;">Completed {{.CompletedAt.Format "Jan 2, 2006"}}</p>
+          {{end}}
+        </div>
+        {{else}}
+        <p class="posting-meta" style="margin-top:6px;">No outcome recorded yet.</p>
+        {{end}}
+      </div>
+      {{end}}
+    </div>
+    {{else}}
+    <p class="empty-state">You have not been accepted to any details yet.</p>
+    {{end}}
+  </div>
+</div>
+{{end}}
+
+{{template "base" .}}

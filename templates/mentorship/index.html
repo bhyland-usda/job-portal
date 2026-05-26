@@ -1,0 +1,78 @@
+{{define "title"}}Mentorship{{end}}
+
+{{define "content"}}
+<div class="connections-layout">
+  <div class="profile-card">
+    <h2>Mentorship</h2>
+
+    <div class="feed-tabs">
+      <a href="/mentorship?tab=active" class="feed-tab {{if eq .Tab "active"}}active{{end}}">Active Mentorships</a>
+      <a href="/mentorship?tab=find" class="feed-tab {{if eq .Tab "find"}}active{{end}}">Find a Mentor</a>
+    </div>
+
+    {{if eq .Tab "active"}}
+      {{if .Mentorships}}
+      <div class="mentorship-list">
+        {{range .Mentorships}}
+        <div class="mentorship-item">
+          <div class="mentorship-info">
+            <p class="mentorship-names">
+              <a href="/profile/{{.MentorID}}" class="user-link">{{.MentorName}}</a>
+              <span class="text-muted">&rarr;</span>
+              <a href="/profile/{{.MenteeID}}" class="user-link">{{.MenteeName}}</a>
+            </p>
+            <span class="mentorship-status status-{{.Status}}">{{.Status}}</span>
+            <span class="mentorship-date">Since {{.CreatedAt.Format "Jan 2, 2006"}}</span>
+          </div>
+          <div class="mentorship-actions">
+            {{if eq .Status "pending"}}
+              {{if eq .MentorID $.UserID}}
+              <form method="POST" action="/mentorship/{{.ID}}/accept" class="inline">
+                <button type="submit" class="btn btn-primary">Accept</button>
+              </form>
+              <form method="POST" action="/mentorship/{{.ID}}/decline" class="inline">
+                <button type="submit" class="btn btn-outline">Decline</button>
+              </form>
+              {{else}}
+              <span class="text-muted">Waiting for response</span>
+              {{end}}
+            {{else if eq .Status "active"}}
+              <form method="POST" action="/mentorship/{{.ID}}/complete" class="inline">
+                <button type="submit" class="btn btn-outline">Mark Complete</button>
+              </form>
+            {{end}}
+          </div>
+        </div>
+        {{end}}
+      </div>
+      {{else}}
+      <p class="empty-state">No active mentorships. Visit the "Find a Mentor" tab to get started.</p>
+      {{end}}
+
+    {{else}}
+      {{if .AvailableMentors}}
+      <div class="mentor-list">
+        {{range .AvailableMentors}}
+        <div class="mentor-item">
+          <a href="/profile/{{.ID}}" class="mentor-info">
+            <div>
+              <p class="connection-name">{{.FirstName}} {{.LastName}}</p>
+              <p class="connection-headline">{{.Headline}}</p>
+              <p class="mentor-skills">{{.SkillCount}} skills{{if gt .SharedSkills 0}} &middot; {{.SharedSkills}} shared with you{{end}}</p>
+            </div>
+          </a>
+          <form method="POST" action="/mentors/request/{{.ID}}" class="inline">
+            <button type="submit" class="btn btn-primary">Request Mentor</button>
+          </form>
+        </div>
+        {{end}}
+      </div>
+      {{else}}
+      <p class="empty-state">No available mentors found. Mentors are users with more experience than you.</p>
+      {{end}}
+    {{end}}
+  </div>
+</div>
+{{end}}
+
+{{template "base" .}}

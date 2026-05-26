@@ -1,0 +1,135 @@
+{{define "title"}}Active Sessions{{end}}
+
+{{define "content"}}
+<style>
+  .sessions-layout {
+    max-width: 1128px;
+    margin: 0 auto;
+  }
+  .sessions-card {
+    margin: 0;
+    background: #fff;
+    border: 1px solid #e2e5e9;
+    border-radius: 10px;
+    padding: 2rem;
+  }
+  .sessions-card h2 {
+    margin: 0 0 0.25rem;
+  }
+  .sessions-sub {
+    color: #6b7280;
+    margin: 0 0 1.5rem;
+    font-size: 0.95rem;
+  }
+  .sessions-revoked {
+    background: #e7f6ec;
+    border: 1px solid #b7e0c4;
+    color: #1f7a3d;
+    padding: 0.6rem 0.9rem;
+    border-radius: 8px;
+    margin-bottom: 1.25rem;
+    font-size: 0.9rem;
+  }
+  .session-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid #f0f1f3;
+  }
+  .session-row:last-of-type {
+    border-bottom: none;
+  }
+  .session-meta {
+    min-width: 0;
+  }
+  .session-device {
+    font-weight: 500;
+    color: #1f2933;
+    word-break: break-word;
+  }
+  .session-detail {
+    color: #6b7280;
+    font-size: 0.85rem;
+    margin-top: 0.2rem;
+  }
+  .session-current-tag {
+    display: inline-block;
+    background: #2d6a4f;
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.12rem 0.5rem;
+    border-radius: 999px;
+    margin-left: 0.5rem;
+    vertical-align: middle;
+  }
+  .session-revoke-btn {
+    background: #fff;
+    color: #b42318;
+    border: 1px solid #f0c5c0;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .session-revoke-btn:hover {
+    background: #fbeae8;
+  }
+  .session-signout-current {
+    background: #fff;
+    color: #1f2933;
+    border: 1px solid #d7dade;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .session-signout-current:hover {
+    background: #f4f5f6;
+  }
+  .sessions-empty {
+    color: #6b7280;
+    font-style: italic;
+  }
+</style>
+
+<div class="sessions-layout">
+  <div class="sessions-card">
+    <h2>Active Sessions</h2>
+    <p class="sessions-sub">These are the devices currently signed in to your account. If you don't recognize one, revoke it.</p>
+
+    {{if .Revoked}}
+    <div class="sessions-revoked">Session revoked.</div>
+    {{end}}
+
+    {{if .Sessions}}
+    {{range .Sessions}}
+    <div class="session-row">
+      <div class="session-meta">
+        <div class="session-device">
+          {{.UserAgent}}
+          {{if .IsCurrent}}<span class="session-current-tag">This device</span>{{end}}
+        </div>
+        <div class="session-detail">Signed in {{.CreatedAt}} &middot; ID {{.MaskedID}}</div>
+      </div>
+      <form method="POST" action="/settings/sessions/revoke">
+        <input type="hidden" name="session_id" value="{{.Token}}" />
+        {{if .IsCurrent}}
+        <button type="submit" class="session-signout-current">Sign out</button>
+        {{else}}
+        <button type="submit" class="session-revoke-btn">Revoke</button>
+        {{end}}
+      </form>
+    </div>
+    {{end}}
+    {{else}}
+    <p class="sessions-empty">No active sessions found.</p>
+    {{end}}
+  </div>
+</div>
+{{end}}

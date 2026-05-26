@@ -1,0 +1,129 @@
+{
+  "base_url": "http://localhost:8080",
+  "bots": [
+    {
+      "email": "clark.kent@usda.gov",
+      "password": "password123",
+      "delay_min": 15,
+      "delay_max": 30,
+      "style": "encouraging"
+    },
+    {
+      "email": "bruce.wayne@usda.gov",
+      "password": "password123",
+      "delay_min": 20,
+      "delay_max": 45,
+      "style": "analytical"
+    },
+    {
+      "email": "barry.allen@usda.gov",
+      "password": "password123",
+      "delay_min": 3,
+      "delay_max": 8,
+      "style": "enthusiastic"
+    },
+    {
+      "email": "diana.prince@usda.gov",
+      "password": "password123",
+      "delay_min": 15,
+      "delay_max": 40,
+      "style": "thoughtful"},
+    {
+      "email": "barbara.gordon@usda.gov",
+      "password": "password123",
+      "delay_min": 10,
+      "delay_max": 25,
+      "style": "technical"},
+    {
+      "email": "kara.danvers@usda.gov",
+      "password": "password123",
+      "delay_min": 10,
+      "delay_max": 20,
+      "style": "optimistic"},
+    {
+      "email": "oliver.queen@usda.gov",
+      "password": "password123",
+      "delay_min": 25,
+      "delay_max": 60,
+      "style": "political"},
+    {
+      "email": "peter.parker@usda.gov",
+      "password": "password123",
+      "delay_min": 10,
+      "delay_max": 30,
+      "style": "punny"},
+    {
+      "email": "hal.jordan@usda.gov",
+      "password": "password123",
+      "delay_min": 15,
+      "delay_max": 35,
+      "style": "confident"},
+    {
+      "email": "victor.stone@usda.gov",
+      "password": "password123",
+      "delay_min": 8,
+      "delay_max": 20,
+      "style": "precise"},
+    {
+      "email": "dick.grayson@usda.gov",
+      "password": "password123",
+      "delay_min": 12,
+      "delay_max": 30,
+      "style": "collaborative"},
+    {
+      "email": "john.constantine@usda.gov",
+      "password": "password123",
+      "delay_min": 30,
+      "delay_max": 90,
+      "style": "sarcastic"},
+    {
+      "email": "ororo.munroe@usda.gov",
+      "password": "password123",
+      "delay_min": 20,
+      "delay_max": 45,
+      "style": "elegant"},
+    {
+      "email": "felicity.smoak@usda.gov",
+      "password": "password123",
+      "delay_min": 8,
+      "delay_max": 20,
+      "style": "bubbly"},
+    {
+      "email": "cisco.ramon@usda.gov",
+      "password": "password123",
+      "delay_min": 10,
+      "delay_max": 25,
+      "style": "nerdy"},
+    {
+      "email": "scott.summers@usda.gov",
+      "password": "password123",
+      "delay_min": 20,
+      "delay_max": 40,
+      "style": "formal"},
+    {
+      "email": "jean.grey@usda.gov",
+      "password": "password123",
+      "delay_min": 15,
+      "delay_max": 35,
+      "style": "empathetic"},
+    {
+      "email": "miles.morales@usda.gov",
+      "password": "password123",
+      "delay_min": 10,
+      "delay_max": 25,
+      "style": "eager"},
+    {
+      "email": "wally.west@usda.gov",
+      "password": "password123",
+      "delay_min": 3,
+      "delay_max": 10,
+      "style": "impatient"},
+    {
+      "email": "sara.lance@usda.gov",
+      "password": "password123",
+      "delay_min": 15,
+      "delay_max": 30,
+      "style": "action-oriented"
+    }
+  ]
+}

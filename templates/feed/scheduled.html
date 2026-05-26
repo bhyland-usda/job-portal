@@ -1,0 +1,32 @@
+{{define "title"}}Scheduled Posts{{end}}
+
+{{define "content"}}
+<div class="feed-layout">
+    <div class="profile-card">
+        <h2>Scheduled Posts</h2>
+        <p class="text-muted">These posts are not yet published. They will appear in the feed at their scheduled time.</p>
+        <p style="margin-bottom:16px;"><a href="/feed" class="btn-link">&larr; Back to feed</a></p>
+
+        {{if .Posts}}
+        {{range .Posts}}
+        <div class="my-post-item">
+            <p class="my-post-content">{{.Content}}</p>
+            <div class="my-post-meta">
+                <span class="scheduled-badge">&#128337; Scheduled for {{.ScheduledAt.Format "Jan 2, 2006 3:04 PM"}}</span>
+                <span>Created {{.CreatedAt.Format "Jan 2, 2006"}}</span>
+            </div>
+            <div class="my-post-actions">
+                <form method="POST" action="/feed/{{.ID}}/delete" class="inline">
+                    <button type="submit" class="btn-link btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+        {{end}}
+        {{else}}
+        <p class="empty-state">No scheduled posts. Use "Schedule for later" in the composer to plan a post.</p>
+        {{end}}
+    </div>
+</div>
+{{end}}
+
+{{template "base" .}}

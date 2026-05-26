@@ -1,0 +1,62 @@
+{{define "title"}}Acceptable Use Policy{{end}}
+
+{{define "content"}}
+<style>
+.aup-layout { max-width: 1128px; margin: 0 auto; }
+.aup-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 32px; }
+.aup-card h2 { margin-top: 0; }
+.aup-policy { line-height: 1.6; }
+.aup-policy h3 { margin-top: 24px; margin-bottom: 8px; font-size: 1.05rem; }
+.aup-policy ul { margin: 8px 0 8px 20px; }
+.aup-policy li { margin-bottom: 6px; }
+.aup-actions { margin-top: 28px; display: flex; align-items: center; gap: 16px; }
+.aup-accepted-note { color: #2e7d32; font-weight: 600; }
+.aup-meta { color: #666; font-size: 0.9rem; }
+</style>
+<div class="aup-layout">
+    <div class="aup-card">
+        <h2>Acceptable Use Policy</h2>
+        <p class="aup-meta">All users of the USDA employee portal must read and accept this policy before continuing.</p>
+
+        <div class="aup-policy">
+            <p>This portal is a U.S. Department of Agriculture (USDA) information system provided for authorized use only. By using this system you agree to the terms below.</p>
+
+            <h3>1. Authorized Use</h3>
+            <p>This system is intended for official USDA business and approved professional networking among employees. You must access only the data and functions for which you are authorized.</p>
+
+            <h3>2. Acceptable Conduct</h3>
+            <ul>
+                <li>Keep your account credentials confidential and never share them.</li>
+                <li>Treat colleagues with respect; harassment, discrimination, and abusive content are prohibited.</li>
+                <li>Post accurate information and respect the intellectual property of others.</li>
+            </ul>
+
+            <h3>3. Prohibited Activities</h3>
+            <ul>
+                <li>Sharing classified, Personally Identifiable Information (PII), or other sensitive data outside approved channels.</li>
+                <li>Attempting to gain unauthorized access to any account, system, or data.</li>
+                <li>Using the system for commercial solicitation, partisan political activity, or unlawful purposes.</li>
+            </ul>
+
+            <h3>4. Monitoring &amp; Privacy</h3>
+            <p>Use of this system constitutes consent to monitoring, recording, and auditing. There is no expectation of privacy for activity on this system.</p>
+
+            <h3>5. Consequences</h3>
+            <p>Violations may result in loss of access, disciplinary action, and civil or criminal penalties under applicable law.</p>
+        </div>
+
+        <div class="aup-actions">
+            {{if .Accepted}}
+            <span class="aup-accepted-note">You have accepted this policy.</span>
+            <a href="/feed" class="btn btn-primary">Continue to Feed</a>
+            {{else}}
+            <form method="POST" action="/aup/accept">
+                <button type="submit" class="btn btn-primary">I Accept</button>
+            </form>
+            {{end}}
+        </div>
+    </div>
+</div>
+{{end}}
+
+{{template "base" .}}

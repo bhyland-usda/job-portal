@@ -1,0 +1,105 @@
+{{define "landing"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>USDA JobPortal</title>
+    <link rel="stylesheet" href="/static/css/landing.css?v=1">
+</head>
+<body>
+    <header class="landing-header">
+        <div class="landing-identifier">
+            <div class="landing-identifier-inner">United States Department of Agriculture</div>
+        </div>
+        <div class="landing-header-inner">
+            <a href="/" class="landing-brand">
+                <img src="/static/img/usda-logo-color.svg" alt="" class="landing-brand-logo" />
+                <div class="landing-brand-text">USDA <span>JobPortal</span></div>
+            </a>
+            <nav class="landing-nav">
+                <a href="/login" class="btn-signin">Sign In</a>
+                <a href="/register" class="btn-join">Join Now</a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="hero-content">
+            <div class="hero-tagline">U.S. Department of Agriculture</div>
+            <h1>Connect. Collaborate. <span>Grow.</span></h1>
+            <p>The internal platform for USDA employees to connect with colleagues, discover detail opportunities, and advance your career across the department.</p>
+            <div class="hero-actions">
+                <a href="/register" class="btn-join">Join Now</a>
+                <a href="/login" class="btn-signin">Sign In</a>
+            </div>
+        </div>
+        <div class="hero-graphic">
+            <div class="hero-illustration">
+                <div class="hero-card">
+                    <div class="hero-card-icon blue">&#9787;</div>
+                    <div class="hero-card-label">Colleagues</div>
+                    <div class="hero-card-value">100K+</div>
+                </div>
+                <div class="hero-card">
+                    <div class="hero-card-icon green">&#9881;</div>
+                    <div class="hero-card-label">Agencies</div>
+                    <div class="hero-card-value">29</div>
+                </div>
+                <div class="hero-card">
+                    <div class="hero-card-icon blue">&#9733;</div>
+                    <div class="hero-card-label">Postings</div>
+                    <div class="hero-card-value">Active</div>
+                </div>
+                <div class="hero-card">
+                    <div class="hero-card-icon green">&#9998;</div>
+                    <div class="hero-card-label">Articles</div>
+                    <div class="hero-card-value">Daily</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="features">
+        <div class="features-inner">
+            <div class="features-heading">
+                <h2>Built for USDA employees</h2>
+                <p>Everything you need to grow professionally within the department, all in one secure platform.</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon fc-connect">&#9787;</div>
+                    <h3>Connect with colleagues</h3>
+                    <p>Build your professional network across agencies, offices, and mission areas throughout USDA.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon fc-opportunity">&#9881;</div>
+                    <h3>Find detail opportunities</h3>
+                    <p>Browse project assignments and detail postings matched to your skills and career interests.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon fc-career">&#9650;</div>
+                    <h3>Build your career</h3>
+                    <p>Track accomplishments, earn badges, get feedback, and showcase your expertise with a full profile.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon fc-knowledge">&#9998;</div>
+                    <h3>Share knowledge</h3>
+                    <p>Write articles, participate in polls, give kudos, and exchange ideas with peers across the department.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta">
+        <h2>Ready to get started?</h2>
+        <p>Join your USDA colleagues on JobPortal and take the next step in your federal career.</p>
+        <a href="/register" class="btn-join">Create your account</a>
+    </section>
+
+    <footer class="landing-footer">
+        <p>USDA Internal Use Only</p>
+    </footer>
+</body>
+</html>
+{{end}}

@@ -1,0 +1,71 @@
+{{define "title"}}FOIA Data Search{{end}}
+
+{{define "content"}}
+<div class="foia-layout">
+    <div class="profile-card">
+        <h2>FOIA Data Search</h2>
+        <form method="GET" action="/admin/foia/search" class="posting-form">
+            <div class="form-group">
+                <label for="user">User Name</label>
+                <input type="text" id="user" name="user" value="{{.UserName}}" placeholder="Search by first or last name..." />
+            </div>
+            <div style="display:flex;gap:12px;">
+                <div class="form-group" style="flex:1;">
+                    <label for="from">Date From</label>
+                    <input type="date" id="from" name="from" value="{{.DateFrom}}" />
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label for="to">Date To</label>
+                    <input type="date" id="to" name="to" value="{{.DateTo}}" />
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="type">Content Type</label>
+                <select id="type" name="type">
+                    <option value="">All Types</option>
+                    <option value="post" {{if eq .Type "post"}}selected{{end}}>Posts</option>
+                    <option value="comment" {{if eq .Type "comment"}}selected{{end}}>Comments</option>
+                    <option value="message" {{if eq .Type "message"}}selected{{end}}>Messages</option>
+                </select>
+            </div>
+            <div style="display:flex;gap:12px;">
+                <button type="submit" class="btn btn-primary">Search</button>
+                <a href="/admin/foia/export?user={{.UserName}}&from={{.DateFrom}}&to={{.DateTo}}&type={{.Type}}" class="btn btn-outline">Export JSON</a>
+            </div>
+        </form>
+    </div>
+
+    {{if .Searched}}
+    <div class="profile-card">
+        <h3>Results ({{len .Results}})</h3>
+        {{if .Results}}
+        <table class="admin-table">
+            <caption class="sr-only">FOIA search results</caption>
+            <thead>
+                <tr>
+                    <th scope="col">Type</th>
+                    <th scope="col">Author</th>
+                    <th scope="col">Content</th>
+                    <th scope="col">Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Results}}
+                <tr>
+                    <td><span class="status-badge status-active">{{.Type}}</span></td>
+                    <td><a href="/profile/{{.AuthorID}}" class="user-link">{{.Author}}</a></td>
+                    <td>{{.Content}}</td>
+                    <td>{{.CreatedAt.Format "Jan 2, 2006 3:04 PM"}}</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+        {{else}}
+        <p class="empty-state">No results found.</p>
+        {{end}}
+    </div>
+    {{end}}
+</div>
+{{end}}
+
+{{template "base" .}}

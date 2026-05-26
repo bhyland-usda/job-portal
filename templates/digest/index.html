@@ -1,0 +1,136 @@
+{{define "title"}}Weekly Digest{{end}}
+
+{{define "content"}}
+<style>
+.digest-layout { max-width: 960px; margin: 0 auto; }
+.digest-header { margin-bottom: 20px; }
+.digest-header h2 { margin: 0 0 4px; }
+.digest-header .digest-sub { color: #5f6368; font-size: 14px; }
+.digest-section { margin-bottom: 22px; }
+.digest-section h3 {
+    display: flex; align-items: baseline; gap: 8px;
+    margin: 0 0 12px; font-size: 17px;
+}
+.digest-section h3 .digest-count {
+    font-size: 13px; font-weight: 600; color: #fff;
+    background: #2e7d32; border-radius: 12px; padding: 2px 9px;
+}
+.digest-list { list-style: none; margin: 0; padding: 0; }
+.digest-item {
+    padding: 10px 0; border-bottom: 1px solid #eceff1;
+}
+.digest-item:last-child { border-bottom: none; }
+.digest-item .digest-meta { color: #5f6368; font-size: 13px; }
+.digest-engagement { color: #2e7d32; font-weight: 600; font-size: 13px; }
+.digest-notify-card {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px; border-radius: 8px; background: #f1f8e9;
+}
+.digest-notify-card .digest-big { font-size: 28px; font-weight: 700; color: #2e7d32; }
+.empty-state { color: #9aa0a6; font-style: italic; margin: 4px 0; }
+</style>
+
+<div class="digest-layout">
+    <div class="profile-card">
+        <div class="digest-header">
+            <h2>Your Weekly Digest</h2>
+            <p class="digest-sub">A summary of your activity over the last 7 days.</p>
+        </div>
+
+        <!-- New connections -->
+        <div class="digest-section">
+            <h3>New Connections
+                {{if .Connections}}<span class="digest-count">{{len .Connections}}</span>{{end}}
+            </h3>
+            {{if .Connections}}
+            <ul class="digest-list">
+                {{range .Connections}}
+                <li class="digest-item">
+                    <a href="/profile/{{.ID}}" class="title-link">{{.Name}}</a>
+                </li>
+                {{end}}
+            </ul>
+            {{else}}
+            <p class="empty-state">No new connections this week.</p>
+            {{end}}
+        </div>
+
+        <!-- Engagement on your posts -->
+        <div class="digest-section">
+            <h3>Engagement On Your Posts
+                {{if .PostEngagement}}<span class="digest-count">{{.TotalLikes}} likes · {{.TotalComments}} comments</span>{{end}}
+            </h3>
+            {{if .PostEngagement}}
+            <ul class="digest-list">
+                {{range .PostEngagement}}
+                <li class="digest-item">
+                    <div>{{.Content}}</div>
+                    <span class="digest-engagement">{{.Likes}} likes · {{.Comments}} comments</span>
+                    <span class="digest-meta"> — {{.CreatedAt.Format "Jan 2"}}</span>
+                </li>
+                {{end}}
+            </ul>
+            {{else}}
+            <p class="empty-state">No engagement on your posts this week.</p>
+            {{end}}
+        </div>
+
+        <!-- Kudos received -->
+        <div class="digest-section">
+            <h3>Kudos Received
+                {{if .Kudos}}<span class="digest-count">{{len .Kudos}}</span>{{end}}
+            </h3>
+            {{if .Kudos}}
+            <ul class="digest-list">
+                {{range .Kudos}}
+                <li class="digest-item">
+                    <div>{{.Message}}</div>
+                    <span class="digest-meta">from {{.SenderName}} — {{.CreatedAt.Format "Jan 2"}}</span>
+                </li>
+                {{end}}
+            </ul>
+            {{else}}
+            <p class="empty-state">No kudos received this week.</p>
+            {{end}}
+        </div>
+
+        <!-- Notifications -->
+        <div class="digest-section">
+            <h3>Unread Notifications</h3>
+            {{if gt .NotificationsNew 0}}
+            <div class="digest-notify-card">
+                <span class="digest-big">{{.NotificationsNew}}</span>
+                <span>unread notification{{if ne .NotificationsNew 1}}s{{end}} from the past week.
+                    <a href="/notifications" class="title-link">View all</a>
+                </span>
+            </div>
+            {{else}}
+            <p class="empty-state">You're all caught up — no unread notifications.</p>
+            {{end}}
+        </div>
+
+        <!-- Matching postings -->
+        <div class="digest-section">
+            <h3>New Postings Matching Your Skills
+                {{if .Postings}}<span class="digest-count">{{len .Postings}}</span>{{end}}
+            </h3>
+            {{if .Postings}}
+            <ul class="digest-list">
+                {{range .Postings}}
+                <li class="digest-item">
+                    <a href="/postings/{{.ID}}" class="title-link">{{.Title}}</a>
+                    <div class="digest-meta">
+                        {{if .Department}}{{.Department}} · {{end}}matches your “{{.Skill}}” skill · {{.CreatedAt.Format "Jan 2"}}
+                    </div>
+                </li>
+                {{end}}
+            </ul>
+            {{else}}
+            <p class="empty-state">No new matching postings this week.</p>
+            {{end}}
+        </div>
+    </div>
+</div>
+{{end}}
+
+{{template "base" .}}

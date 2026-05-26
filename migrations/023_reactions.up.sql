@@ -1,0 +1,2 @@
+ALTER TABLE post_likes
+    ADD COLUMN IF NOT EXISTS reaction_type VARCHAR(20) NOT NULL DEFAULT 'like';

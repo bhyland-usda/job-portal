@@ -1,0 +1,226 @@
+{{define "profile_print"}}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{.User.FirstName}} {{.User.LastName}} - Profile</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Helvetica Neue", Arial, sans-serif;
+        color: #1a1a1a;
+        line-height: 1.45;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 40px;
+      }
+
+      .pp-header {
+        border-bottom: 2px solid #1a1a1a;
+        padding-bottom: 12px;
+        margin-bottom: 8px;
+      }
+
+      .pp-name {
+        font-size: 30px;
+        margin-bottom: 2px;
+      }
+
+      .pp-headline {
+        font-size: 16px;
+        color: #444;
+      }
+
+      .pp-meta {
+        font-size: 13px;
+        color: #666;
+        margin-top: 4px;
+      }
+
+      .pp-status {
+        display: inline-block;
+        font-size: 13px;
+        color: #444;
+        margin-top: 6px;
+      }
+
+      .pp-section {
+        margin-top: 22px;
+      }
+
+      .pp-section h2 {
+        font-size: 15px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        border-bottom: 1px solid #ccc;
+        padding-bottom: 4px;
+        margin-bottom: 10px;
+        color: #333;
+      }
+
+      .pp-entry {
+        margin-bottom: 12px;
+      }
+
+      .pp-entry-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+      }
+
+      .pp-entry-title {
+        font-weight: bold;
+      }
+
+      .pp-entry-date {
+        font-size: 13px;
+        color: #666;
+        white-space: nowrap;
+      }
+
+      .pp-entry-subtitle {
+        font-size: 14px;
+        color: #444;
+        margin-bottom: 3px;
+      }
+
+      .pp-entry-desc {
+        font-size: 13px;
+        color: #333;
+      }
+
+      .pp-about {
+        font-size: 14px;
+      }
+
+      .pp-skills {
+        font-size: 14px;
+      }
+
+      .pp-skill {
+        display: inline-block;
+        background: #eef2f7;
+        border-radius: 12px;
+        padding: 3px 10px;
+        margin: 0 6px 6px 0;
+        font-size: 13px;
+      }
+
+      .pp-controls {
+        text-align: center;
+        margin-bottom: 24px;
+      }
+
+      .pp-controls button {
+        padding: 8px 24px;
+        background: #0a66c2;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        margin: 0 8px;
+      }
+
+      .pp-controls a {
+        padding: 8px 24px;
+        color: #0a66c2;
+        text-decoration: none;
+        font-size: 14px;
+      }
+
+      @media print {
+        .pp-controls {
+          display: none;
+        }
+
+        body {
+          padding: 0;
+          max-width: none;
+        }
+
+        .pp-section {
+          page-break-inside: avoid;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="pp-controls">
+      <button onclick="window.print()">Print / Save as PDF</button>
+      <a href="/profile/{{.User.ID}}">&larr; Back to Profile</a>
+    </div>
+
+    <div class="pp-header">
+      <h1 class="pp-name">{{.User.FirstName}} {{.User.LastName}}</h1>
+      {{if .User.Headline}}<p class="pp-headline">{{.User.Headline}}</p>{{end}}
+      {{if .User.Location}}<p class="pp-meta">{{.User.Location}}</p>{{end}}
+      <span class="pp-status">{{.User.WorkStatusBadge}}{{if .User.WorkStatusUntilLabel}} (until {{.User.WorkStatusUntilLabel}}){{end}}</span>
+    </div>
+
+    {{if .User.About}}
+    <div class="pp-section">
+      <h2>About</h2>
+      <p class="pp-about">{{.User.About}}</p>
+    </div>
+    {{end}}
+
+    {{if .Experiences}}
+    <div class="pp-section">
+      <h2>Experience</h2>
+      {{range .Experiences}}
+      <div class="pp-entry">
+        <div class="pp-entry-header">
+          <span class="pp-entry-title">{{.Title}}</span>
+          <span class="pp-entry-date">
+            {{.StartDate.Format "Jan 2006"}} - {{if .EndDate}}{{.EndDate.Format "Jan 2006"}}{{else}}Present{{end}}
+          </span>
+        </div>
+        <p class="pp-entry-subtitle">
+          {{.Company}}{{if .Location}} | {{.Location}}{{end}}
+        </p>
+        {{if .Description}}
+        <p class="pp-entry-desc">{{.Description}}</p>
+        {{end}}
+      </div>
+      {{end}}
+    </div>
+    {{end}}
+
+    {{if .Educations}}
+    <div class="pp-section">
+      <h2>Education</h2>
+      {{range .Educations}}
+      <div class="pp-entry">
+        <div class="pp-entry-header">
+          <span class="pp-entry-title">{{.School}}</span>
+          <span class="pp-entry-date">
+            {{.StartYear}} - {{if .EndYear}}{{.EndYear}}{{else}}Present{{end}}
+          </span>
+        </div>
+        <p class="pp-entry-subtitle">
+          {{.Degree}}{{if .FieldOfStudy}}, {{.FieldOfStudy}}{{end}}
+        </p>
+      </div>
+      {{end}}
+    </div>
+    {{end}}
+
+    {{if .Skills}}
+    <div class="pp-section">
+      <h2>Skills</h2>
+      <p class="pp-skills">
+        {{range .Skills}}<span class="pp-skill">{{.Name}}</span>{{end}}
+      </p>
+    </div>
+    {{end}}
+  </body>
+</html>
+{{end}}

@@ -1,0 +1,25 @@
+{{define "title"}}Send Kudos to {{.ReceiverName}}{{end}}
+
+{{define "content"}}
+<div class="kudos-layout">
+  <div class="profile-card">
+    <h2>Send Kudos to {{.ReceiverName}}</h2>
+
+    {{if .Error}}
+    <div class="error-message">{{.Error}}</div>
+    {{end}}
+
+    <form method="POST" action="/kudos/send/{{.ReceiverID}}">
+      <div class="form-group">
+        <textarea name="message" rows="3" placeholder="What do you want to recognize them for?" required></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Send Kudos</button>
+        <a href="/profile/{{.ReceiverID}}" class="btn btn-outline">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{{end}}
+
+{{template "base" .}}

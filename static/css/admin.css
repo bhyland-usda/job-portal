@@ -1,0 +1,82 @@
+/* Admin */
+.admin-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.admin-layout {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 16px;
+}
+
+.admin-table th,
+.admin-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+.admin-table th {
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.admin-table td a {
+    color: var(--primary);
+    text-decoration: none;
+}
+
+.role-badge {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.role-employee {
+    background: #e8e8e8;
+    color: #555;
+}
+
+.role-manager {
+    background: var(--primary-light);
+    color: var(--primary);
+}
+
+.role-admin {
+    background: #f5e0e0;
+    color: var(--error);
+}
+
+.role-form {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.role-form select {
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+/* FOIA */
+.foia-layout { max-width: 1128px; margin: 0 auto; padding: 20px; }
+
+/* Dark mode role badges */
+.dark-mode .role-employee { background: rgba(60,60,60,0.3); color: #909090; }
+.dark-mode .role-manager { background: rgba(0,71,133,0.2); color: var(--primary); }
+.dark-mode .role-admin { background: rgba(200,50,50,0.15); color: var(--error); }

@@ -1,0 +1,38 @@
+{{define "title"}}Admin - Audit Log{{end}}
+
+{{define "content"}}
+<div class="admin-layout">
+    <div class="profile-card">
+        <h2>Audit Log</h2>
+        {{if .Entries}}
+        <table class="admin-table">
+            <caption class="sr-only">Audit log of administrative actions</caption>
+            <thead>
+                <tr>
+                    <th scope="col">Date</th>
+                    <th scope="col">Actor</th>
+                    <th scope="col">Action</th>
+                    <th scope="col">Target</th>
+                    <th scope="col">Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Entries}}
+                <tr>
+                    <td>{{.CreatedAt.Format "Jan 2, 2006 3:04 PM"}}</td>
+                    <td>{{.ActorName}}</td>
+                    <td><span class="status-badge status-active">{{.Action}}</span></td>
+                    <td>{{if .TargetName}}{{.TargetName}}{{else}}&mdash;{{end}}</td>
+                    <td>{{.Details}}</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+        {{else}}
+        <p class="empty-state">No audit entries recorded yet.</p>
+        {{end}}
+    </div>
+</div>
+{{end}}
+
+{{template "base" .}}

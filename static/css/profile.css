@@ -1,0 +1,219 @@
+/* Profile */
+.profile-layout {
+  max-width: 1128px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.profile-card {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  position: relative;
+  position: relative;
+}
+
+.profile-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  position: relative;
+}
+
+.profile-avatar,
+.profile-avatar img,
+.avatar-placeholder {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.avatar-placeholder {
+  background: var(--primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  font-weight: 600;
+}
+
+.profile-info {
+  flex: 1;
+}
+
+.profile-info h1 {
+  font-size: 24px;
+  margin-bottom: 4px;
+}
+
+.profile-headline {
+  font-size: 16px;
+  color: var(--text);
+}
+
+.profile-location {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.profile-card h2 {
+  font-size: 18px;
+  margin-bottom: 16px;
+}
+
+.profile-entry {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.profile-entry:last-child {
+  border-bottom: none;
+}
+
+.profile-entry h3 {
+  font-size: 15px;
+  margin-bottom: 2px;
+}
+
+.entry-subtitle {
+  font-size: 14px;
+  color: var(--text);
+}
+
+.entry-date {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.entry-desc {
+  font-size: 14px;
+  margin-top: 8px;
+  color: var(--text);
+}
+
+.skills-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.skill-tag {
+  background: var(--bg);
+  padding: 6px 14px;
+  border-radius: 16px;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.skills-manage-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.skill-manage-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+}
+
+.entry-actions {
+  margin-top: 8px;
+  display: flex;
+  gap: 12px;
+  position: relative;
+}
+
+.avatar-placeholder-sm {
+  width: 48px;
+  height: 48px;
+  background: var(--primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 50%;
+}
+
+.avatar-small-img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.avatar-upload {
+  text-align: center;
+  margin-top: 8px;
+}
+
+.avatar-upload label {
+  cursor: pointer;
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.avatar-upload label:hover {
+  text-decoration: underline;
+}
+
+.avatar-small {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* Skill Endorsements */
+.skill-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 4px 4px 0;
+}
+
+.endorsement-count {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.endorsed {
+  color: var(--primary) !important;
+  font-weight: 600;
+}
+
+/* Profile Completeness */
+.completeness-card { margin-bottom: 16px; }
+.completeness-card h3 { font-size: 15px; margin-bottom: 8px; }
+.completeness-bar { height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; margin-bottom: 8px; }
+.completeness-fill { height: 100%; background: var(--accent); border-radius: 4px; transition: width 0.3s; }
+.completeness-items { display: flex; flex-wrap: wrap; gap: 8px; }
+.completeness-todo { font-size: 12px; color: var(--text-secondary); background: var(--bg); padding: 4px 10px; border-radius: 12px; }
+
+/* Follow */
+.follow-btn { padding: 6px 16px; border: 1px solid var(--primary); border-radius: 20px; background: none; color: var(--primary); cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; }
+.follow-btn:hover { background: var(--primary); color: #fff; }
+.follow-btn.following { background: var(--primary); color: #fff; }
+
+/* Verified badge */
+.verified-badge { color: var(--accent); font-size: 12px; font-weight: 600; }

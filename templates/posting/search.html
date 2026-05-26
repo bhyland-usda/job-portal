@@ -1,0 +1,46 @@
+{{define "title"}}Browse Postings{{end}}
+
+{{define "content"}}
+<div class="posting-layout">
+    <div class="profile-card">
+        <h2>Browse Postings</h2>
+        <form method="GET" action="/postings/search" class="posting-search-form" role="search" aria-label="Browse postings">
+            <div class="posting-search-row">
+                <label for="posting-search-q" class="sr-only">Search postings</label>
+                <input type="text" id="posting-search-q" name="q" value="{{.Query}}" placeholder="Search by title, description, or skill..." class="search-input" />
+                <label for="posting-search-type" class="sr-only">Filter by type</label>
+                <select id="posting-search-type" name="type">
+                    <option value="">All Types</option>
+                    <option value="project" {{if eq .Type "project"}}selected{{end}}>Project</option>
+                    <option value="detail" {{if eq .Type "detail"}}selected{{end}}>Detail</option>
+                </select>
+                <button type="submit" class="btn btn-primary">Search</button>
+            </div>
+        </form>
+    </div>
+
+    {{if .Postings}}
+    {{range .Postings}}
+    <div class="posting-card">
+        <div class="posting-header">
+            <span class="posting-type posting-type-{{.Type}}">{{.Type}}</span>
+            <span class="posting-date">{{.CreatedAt.Format "Jan 2, 2006"}}</span>
+        </div>
+        <h3><a href="/postings/{{.ID}}" class="title-link">{{.Title}}</a></h3>
+        <p class="posting-author">Posted by {{.AuthorName}}</p>
+        {{if .Department}}<p class="posting-dept">{{.Department}}</p>{{end}}
+        {{if .Location}}<p class="posting-location">{{.Location}}</p>{{end}}
+        <p class="posting-desc">{{.Description}}</p>
+    </div>
+    {{end}}
+    {{else}}
+    {{if or .Query .Type}}
+    <p class="empty-state">No postings found matching your search.</p>
+    {{else}}
+    <p class="empty-state">No active postings yet.</p>
+    {{end}}
+    {{end}}
+</div>
+{{end}}
+
+{{template "base" .}}

@@ -1,0 +1,27 @@
+{{define "title"}}USDA News{{end}}
+
+{{define "content"}}
+<div class="news-layout">
+    <div class="profile-card">
+        <div class="content-header">
+            <h2>USDA News</h2>
+            {{if eq .Nav.Role "admin"}}
+            <a href="/news/create" class="btn btn-primary">Write Article</a>
+            {{end}}
+        </div>
+        {{if .Articles}}
+        {{range .Articles}}
+        <div class="news-item">
+            <h3><a href="/news/{{.ID}}" class="title-link">{{.Title}}</a></h3>
+            <p class="news-meta">By {{.AuthorName}} — {{.CreatedAt.Format "Jan 2, 2006"}}</p>
+            <p class="news-preview">{{.Content}}</p>
+        </div>
+        {{end}}
+        {{else}}
+        <p class="empty-state">No news articles yet.</p>
+        {{end}}
+    </div>
+</div>
+{{end}}
+
+{{template "base" .}}

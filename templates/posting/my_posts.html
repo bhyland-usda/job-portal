@@ -1,0 +1,68 @@
+{{define "title"}}My Posts{{end}}
+
+{{define "content"}}
+<div class="my-posts-layout">
+  <div class="profile-card">
+    <h2>My Posts</h2>
+
+    <div class="my-posts-tabs">
+      <a href="/my-posts?tab=social" class="tab {{if eq .Tab "social"}}active{{end}}">Social</a>
+      {{if or (eq .Nav.Role "manager") (eq .Nav.Role "admin")}}
+      <a href="/my-posts?tab=postings" class="tab {{if eq .Tab "postings"}}active{{end}}">Postings</a>
+      {{end}}
+    </div>
+
+    {{if eq .Tab "social"}}
+    {{if .Posts}}
+    {{range .Posts}}
+    <div class="my-post-item">
+      <p class="my-post-content">{{.Content}}</p>
+      <div class="my-post-meta">
+        <span>{{.ViewCount}} views</span>
+        <span>{{.LikeCount}} likes</span>
+        <span>{{.CommentCount}} comments</span>
+        <span>{{.CreatedAt.Format "Jan 2, 2006"}}</span>
+      </div>
+      <div class="my-post-actions">
+        <a href="/feed" class="btn-link">View in Feed</a>
+        <form method="POST" action="/feed/{{.ID}}/delete" class="inline">
+          <button type="submit" class="btn-link btn-danger">Delete</button>
+        </form>
+      </div>
+    </div>
+    {{end}}
+    {{else}}
+    <p class="empty-state">You haven't posted anything yet.</p>
+    {{end}}
+
+    {{else}}
+    {{if .Postings}}
+    {{range .Postings}}
+    <div class="my-post-item">
+      <div class="posting-header">
+        <span class="posting-type posting-type-{{.Type}}">{{.Type}}</span>
+        <span class="posting-status-{{.Status}}">{{.Status}}</span>
+      </div>
+      <h3><a href="/postings/{{.ID}}" class="title-link">{{.Title}}</a></h3>
+      <div class="my-post-meta">
+        <span>{{.MatchCount}} matched employees</span>
+        <span>{{.CreatedAt.Format "Jan 2, 2006"}}</span>
+      </div>
+      {{if eq .Status "active"}}
+      <div class="my-post-actions">
+        <form method="POST" action="/postings/{{.ID}}/close" class="inline">
+          <button type="submit" class="btn-link btn-danger">Close</button>
+        </form>
+      </div>
+      {{end}}
+    </div>
+    {{end}}
+    {{else}}
+    <p class="empty-state">You haven't created any postings yet.</p>
+    {{end}}
+    {{end}}
+  </div>
+</div>
+{{end}}
+
+{{template "base" .}}

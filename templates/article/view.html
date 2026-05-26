@@ -1,0 +1,27 @@
+{{define "title"}}{{.Article.Title}}{{end}}
+
+{{define "content"}}
+<div class="article-layout">
+    <div class="profile-card">
+        <a href="/articles" class="back-link"><span aria-hidden="true">&larr;</span> Back to Articles</a>
+        <h1 style="margin-top:12px;">{{.Article.Title}}</h1>
+        <p class="article-meta">
+            By <a href="/profile/{{.Article.AuthorID}}" class="user-link">{{.Article.AuthorName}}</a>
+            — {{.Article.CreatedAt.Format "Jan 2, 2006"}}
+        </p>
+        {{if .IsAuthor}}
+        <a href="/articles/{{.Article.ID}}/edit" class="btn btn-outline btn-sm" style="margin-bottom:16px;">Edit</a>
+        {{end}}
+        <div class="article-body">
+            {{.Article.Content}}
+        </div>
+        {{if .Bookmarked}}
+        <span class="btn-link bookmark-saved bookmark-inline bookmark-inline-spacious" title="Saved" role="status"><span aria-hidden="true">&#10003;</span> Saved</span>
+        {{else}}
+        <button type="button" class="btn-link bookmark-btn bookmark-inline bookmark-inline-spacious" data-type="article" data-id="{{.Article.ID}}" title="Save article" aria-label="Save article"><span aria-hidden="true">&#128278;</span> Save Article</button>
+        {{end}}
+    </div>
+</div>
+{{end}}
+
+{{template "base" .}}

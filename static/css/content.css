@@ -1,0 +1,282 @@
+/* News */
+.news-layout {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.news-item {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.news-item:last-child {
+  border-bottom: none;
+}
+
+.news-item h3 a {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.news-item h3 a:hover {
+  color: var(--primary);
+}
+
+.news-meta {
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin: 4px 0 8px;
+}
+
+.news-preview {
+  font-size: 14px;
+  color: var(--text-secondary);
+  max-height: 3em;
+  overflow: hidden;
+}
+
+/* Articles */
+.article-layout {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.article-item {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.article-item:last-child {
+  border-bottom: none;
+}
+
+.article-item h3 a {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.article-item h3 a:hover {
+  color: var(--primary);
+}
+
+.article-meta {
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin: 4px 0 8px;
+}
+
+.article-meta a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.article-preview {
+  font-size: 14px;
+  color: var(--text-secondary);
+  max-height: 3em;
+  overflow: hidden;
+}
+
+.article-body {
+  line-height: 1.7;
+  font-size: 16px;
+  margin-top: 20px;
+  white-space: pre-wrap;
+}
+
+/* Resumes */
+.resume-layout {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.resume-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.resume-count {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.resume-upload {
+  margin-bottom: 20px;
+  padding: 20px;
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.upload-hint {
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+.resume-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.resume-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.resume-item:last-child {
+  border-bottom: none;
+}
+
+.resume-name {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.resume-meta {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.resume-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Accomplishments */
+.accomplishment-layout {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.accomplishment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.accomplishment-filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.filter-link {
+  padding: 6px 16px;
+  border-radius: 20px;
+  text-decoration: none;
+  color: var(--text-secondary);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.filter-link:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.filter-link.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+.accomplishment-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.accomplishment-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.accomplishment-item:last-child {
+  border-bottom: none;
+}
+
+.accomplishment-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.accomplishment-info h3 {
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+
+.accomplishment-desc {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.accomplishment-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.period-badge {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.period-quarterly {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.period-yearly {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+.accomplishment-dates {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.accomplishment-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-left: 16px;
+}
+
+.accomplishment-layout select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.accomplishment-layout select:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+/* Dark mode period badges */
+.dark-mode .period-quarterly { background: rgba(0,71,133,0.2); color: var(--primary); }
+.dark-mode .period-yearly { background: rgba(0,89,65,0.2); color: var(--accent); }

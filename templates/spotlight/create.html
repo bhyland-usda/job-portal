@@ -1,0 +1,33 @@
+{{define "title"}}New Employee Spotlight{{end}}
+
+{{define "content"}}
+<div class="spotlight-layout">
+    <div class="profile-card">
+        <h2>New Employee Spotlight</h2>
+        {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
+        <form method="POST" action="/admin/spotlight">
+            <div class="form-group">
+                <label for="user_id">Employee</label>
+                <select id="user_id" name="user_id" required>
+                    <option value="">Select an employee…</option>
+                    {{range .Users}}
+                    <option value="{{.ID}}">{{.Name}}</option>
+                    {{end}}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="week_of">Week Of</label>
+                <input type="date" id="week_of" name="week_of" required>
+            </div>
+            <div class="form-group">
+                <label for="reason">Reason</label>
+                <textarea id="reason" name="reason" rows="6" placeholder="Why is this employee being recognized?"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Create Spotlight</button>
+        </form>
+        <a href="/spotlight" class="back-link" style="display:inline-block;margin-top:16px;"><span aria-hidden="true">←</span> Back to Spotlight</a>
+    </div>
+</div>
+{{end}}
+
+{{template "base" .}}

@@ -1,0 +1,37 @@
+{{define "title"}}Saved Items{{end}}
+
+{{define "content"}}
+<div class="bookmarks-layout">
+  <div class="profile-card">
+    <h2>Saved Items</h2>
+
+    <div class="feed-tabs">
+      <a href="/bookmarks?tab=all" class="feed-tab {{if eq .Tab "all"}}active{{end}}">All</a>
+      <a href="/bookmarks?tab=post" class="feed-tab {{if eq .Tab "post"}}active{{end}}">Posts</a>
+      <a href="/bookmarks?tab=posting" class="feed-tab {{if eq .Tab "posting"}}active{{end}}">Postings</a>
+      <a href="/bookmarks?tab=article" class="feed-tab {{if eq .Tab "article"}}active{{end}}">Articles</a>
+    </div>
+
+    {{if .Bookmarks}}
+    <div class="bookmark-list">
+      {{range .Bookmarks}}
+      <div class="bookmark-item">
+        <div class="bookmark-info">
+          <span class="bookmark-type-badge bookmark-type-{{.TargetType}}">{{.TargetType}}</span>
+          <a href="{{if eq .TargetType "post"}}/feed{{else if eq .TargetType "posting"}}/postings/{{.TargetID}}{{else if eq .TargetType "article"}}/articles/{{.TargetID}}{{else if eq .TargetType "profile"}}/profile/{{.TargetID}}{{end}}" class="bookmark-title">{{.Title}}</a>
+          <span class="bookmark-date">Saved {{.CreatedAt.Format "Jan 2, 2006"}}</span>
+        </div>
+        <form method="POST" action="/bookmarks/{{.ID}}/delete" class="inline">
+          <button type="submit" class="btn-link btn-danger">Remove</button>
+        </form>
+      </div>
+      {{end}}
+    </div>
+    {{else}}
+    <p class="empty-state">No saved items yet.</p>
+    {{end}}
+  </div>
+</div>
+{{end}}
+
+{{template "base" .}}

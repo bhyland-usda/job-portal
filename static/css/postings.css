@@ -1,0 +1,247 @@
+/* Postings */
+.posting-layout {
+  max-width: 1128px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.posting-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.posting-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.posting-type {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.posting-type-project {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.posting-type-detail {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+.posting-date {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.posting-card h3 a {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.posting-card h3 a:hover {
+  color: var(--primary);
+}
+
+.posting-author {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.posting-dept,
+.posting-location {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.posting-desc {
+  margin-top: 8px;
+  font-size: 14px;
+}
+
+.posting-detail-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.posting-status-closed {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #e8e8e8;
+  color: #555;
+}
+
+.posting-meta {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.posting-meta a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.posting-body {
+  margin: 16px 0;
+  line-height: 1.6;
+}
+
+.posting-skills {
+  margin: 16px 0;
+}
+
+.posting-skills h3 {
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.posting-match-count {
+  color: var(--primary);
+  font-weight: 600;
+  font-size: 14px;
+  margin: 12px 0;
+}
+
+.posting-close {
+  margin-top: 16px;
+}
+
+.posting-form .form-group {
+  margin-bottom: 16px;
+}
+
+.posting-form label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.posting-form input,
+.posting-form select,
+.posting-form textarea {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.posting-form textarea:focus,
+.posting-form input:focus,
+.posting-form select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+/* My Posts */
+.my-posts-layout {
+  max-width: 1128px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.my-posts-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.my-post-item {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.my-post-item:last-child {
+  border-bottom: none;
+}
+
+.my-post-content {
+  margin-bottom: 8px;
+}
+
+.my-post-meta {
+  display: flex;
+  gap: 16px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.my-post-actions {
+  display: flex;
+  gap: 16px;
+}
+
+.posting-status-active {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: capitalize;
+}
+
+.posting-search-form {
+  margin-bottom: 16px;
+}
+
+.posting-search-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.posting-search-row .search-input {
+  flex: 1;
+}
+
+.posting-search-row select {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.posting-status-closed {
+  color: #555;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: capitalize;
+}
+
+/* Status badges */
+.status-badge { padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; text-transform: capitalize; }
+.status-pending { background: #fef7e0; color: #b45309; }
+.status-active { background: var(--accent-light); color: var(--accent); }
+.status-completed { background: var(--primary-light); color: var(--primary); }
+.status-accepted { background: var(--accent-light); color: var(--accent); }
+.status-rejected { background: #f5e0e0; color: var(--error); }
+.status-shortlisted { background: var(--primary-light); color: var(--primary); }
+.status-declined { background: #e8e8e8; color: #555; }
+
+/* Dark mode badges */
+.dark-mode .posting-type-project { background: rgba(0,71,133,0.2); color: var(--primary); }
+.dark-mode .posting-type-detail { background: rgba(0,89,65,0.2); color: var(--accent); }
+.dark-mode .status-pending { background: rgba(180,83,9,0.15); color: #e0a030; }
+.dark-mode .status-active { background: rgba(0,89,65,0.2); color: var(--accent); }
+.dark-mode .status-completed { background: rgba(0,71,133,0.2); color: var(--primary); }
+.dark-mode .status-accepted { background: rgba(0,89,65,0.2); color: var(--accent); }
+.dark-mode .status-rejected { background: rgba(200,50,50,0.15); color: var(--error); }
+.dark-mode .status-shortlisted { background: rgba(0,71,133,0.2); color: var(--primary); }
+.dark-mode .status-declined { background: rgba(60,60,60,0.3); color: #909090; }

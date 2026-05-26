@@ -2,9 +2,212 @@
 
 {{define "content"}}
 <div class="feed-layout">
-  <h2>Welcome to your feed</h2>
-  <p>User ID: {{.UserID}}</p>
+  <div class="feed-tabs">
+    <a href="/feed?tab=social" class="feed-tab {{if eq .Tab "social"}}active{{end}}">Social</a>
+    <a href="/feed?tab=postings" class="feed-tab {{if eq .Tab "postings"}}active{{end}}">Postings</a>
+  </div>
+
+  {{if eq .Tab "social"}}
+  <div class="feed-composer">
+    <form method="POST" action="/feed" enctype="multipart/form-data">
+      <label for="composer-content" class="sr-only">Write a post</label>
+      <textarea id="composer-content" name="content" placeholder="What's on your mind?" rows="3" required></textarea>
+      <div class="composer-schedule">
+        <label for="scheduled_at" class="composer-schedule-label"><span aria-hidden="true">&#128337;</span> Schedule for later (optional)</label>
+        <input type="datetime-local" id="scheduled_at" name="scheduled_at" class="composer-schedule-input" />
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Post</button>
+        <label for="attachment" class="composer-attach" title="Attach file" aria-label="Attach file"><span aria-hidden="true">&#128206;</span></label>
+        <input type="file" id="attachment" name="attachment" hidden />
+        <a href="/feed/scheduled" class="btn-link composer-scheduled-link" title="View scheduled posts"><span aria-hidden="true">&#128197;</span> Scheduled</a>
+      </div>
+    </form>
+  </div>
+
+  {{if .Posts}}
+  {{range .Posts}}
+  <div class="feed-post" id="post-{{.ID}}">
+    <div class="post-header">
+      <a href="/profile/{{.AuthorID}}" class="post-author">
+        <div class="avatar-small">
+        {{if .AuthorAvatarURL}}
+        <img src="/avatar/{{.AuthorID}}" class="avatar-small-img" alt="" />
+        {{else}}
+        {{slice .AuthorFirstName 0 1}}{{slice .AuthorLastName 0 1}}
+        {{end}}
+        </div>
+        <div class="post-author-info">
+          <strong>{{.AuthorFirstName}} {{.AuthorLastName}}</strong>
+          {{if .AuthorHeadline}}<span class="post-headline">{{.AuthorHeadline}}</span>{{end}}
+        </div>
+      </a>
+      {{if .IsAuthor}}
+      <form method="POST" action="/profile/posts/{{.ID}}/pin" class="inline">
+        <button type="submit" class="btn-link" title="Pin to your profile">&#128204; Pin to profile</button>
+      </form>
+      <form method="POST" action="/feed/{{.ID}}/delete" class="inline">
+        <button type="submit" class="btn-link btn-danger">Delete</button>
+      </form>
+      {{end}}
+    </div>
+    <div class="post-content">
+      <p>{{if .RenderedContent}}{{.RenderedContent}}{{else}}{{.Content}}{{end}}</p>
+    </div>
+    {{if .Preview}}
+    <a class="link-preview" href="{{.Preview.URL}}" target="_blank" rel="noopener noreferrer">
+      {{if .Preview.ImageURL}}<img class="link-preview-img" src="{{.Preview.ImageURL}}" alt="" loading="lazy" />{{end}}
+      <div class="link-preview-body">
+        {{if .Preview.Title}}<div class="link-preview-title">{{.Preview.Title}}</div>{{end}}
+        {{if .Preview.Description}}<div class="link-preview-desc">{{.Preview.Description}}</div>{{end}}
+        <div class="link-preview-url">{{.Preview.URL}}</div>
+      </div>
+    </a>
+    {{end}}
+    {{if .Attachments}}
+    <div class="post-attachments">
+      {{range .Attachments}}
+      {{if eq .Category "image"}}
+      <div class="post-media{{if eq .ContentType "image/gif"}} gif-container{{end}}">
+        <img src="/feed/attachment/{{.ID}}" alt="{{.OriginalName}}" class="post-image" data-media="{{if eq .ContentType "image/gif"}}gif{{else}}image{{end}}" loading="lazy" />
+        {{if eq .ContentType "image/gif"}}<div class="gif-overlay">GIF</div>{{end}}
+      </div>
+      {{else if eq .Category "video"}}
+      <div class="post-media">
+        <video src="/feed/attachment/{{.ID}}" class="post-video" data-media="video" controls preload="metadata">
+          Your browser does not support video playback.
+        </video>
+      </div>
+      {{else}}
+      <a href="/feed/attachment/{{.ID}}" class="post-attachment-file" target="_blank">
+        <span class="attachment-icon">&#128206;</span>
+        <span class="attachment-name">{{.OriginalName}}</span>
+      </a>
+      {{end}}
+      {{end}}
+    </div>
+    {{end}}
+    <div class="post-stats">
+      <span>{{.LikeCount}} likes</span>
+      <span>
+        {{.CommentCount}} comment{{if ne .CommentCount 1}}s{{end}}
+      </span>
+    </div>
+    <div class="post-actions reaction-bar">
+      <form method="POST" action="/feed/{{.ID}}/like" class="inline">
+        <input type="hidden" name="reaction" value="like" />
+        <button type="submit" class="reaction-btn {{if eq .UserReaction "like"}}reacted{{end}}" title="Like" aria-label="Like">
+          <span class="reaction-emoji" aria-hidden="true">&#128077;</span><span class="reaction-label">Like</span>
+        </button>
+      </form>
+      <form method="POST" action="/feed/{{.ID}}/like" class="inline">
+        <input type="hidden" name="reaction" value="celebrate" />
+        <button type="submit" class="reaction-btn {{if eq .UserReaction "celebrate"}}reacted{{end}}" title="Celebrate" aria-label="Celebrate">
+          <span class="reaction-emoji" aria-hidden="true">&#127881;</span><span class="reaction-label">Celebrate</span>
+        </button>
+      </form>
+      <form method="POST" action="/feed/{{.ID}}/like" class="inline">
+        <input type="hidden" name="reaction" value="insightful" />
+        <button type="submit" class="reaction-btn {{if eq .UserReaction "insightful"}}reacted{{end}}" title="Insightful" aria-label="Insightful">
+          <span class="reaction-emoji" aria-hidden="true">&#128161;</span><span class="reaction-label">Insightful</span>
+        </button>
+      </form>
+      <form method="POST" action="/feed/{{.ID}}/like" class="inline">
+        <input type="hidden" name="reaction" value="curious" />
+        <button type="submit" class="reaction-btn {{if eq .UserReaction "curious"}}reacted{{end}}" title="Curious" aria-label="Curious">
+          <span class="reaction-emoji" aria-hidden="true">&#129300;</span><span class="reaction-label">Curious</span>
+        </button>
+      </form>
+      <span class="reaction-count" title="Total reactions">{{.LikeCount}}</span>
+      <button type="button" class="btn-link comment-toggle" aria-expanded="false" aria-controls="post-comments-{{.ID}}">Show Comments</button>
+      <details class="post-share">
+        <summary class="btn-link">Share</summary>
+        <form method="POST" action="/feed/{{.ID}}/share" class="post-share-form">
+          <label for="share-commentary-{{.ID}}" class="sr-only">Add commentary to shared post</label>
+          <textarea id="share-commentary-{{.ID}}" name="commentary" rows="2" maxlength="500" placeholder="Add commentary (optional)"></textarea>
+          <button type="submit" class="btn-small">Share post</button>
+        </form>
+      </details>
+      {{if .Bookmarked}}
+      <span class="btn-link bookmark-saved" title="Saved"><span aria-hidden="true">&#10003;</span> Saved</span>
+      {{else}}
+      <button type="button" class="btn-link bookmark-btn" data-type="post" data-id="{{.ID}}" title="Save post" aria-label="Save post"><span aria-hidden="true">&#128278;</span></button>
+      {{end}}
+      {{if not .IsAuthor}}
+      <details class="post-report">
+        <summary class="btn-link" title="Report this post"><span aria-hidden="true">&#9873;</span> Report</summary>
+        <form method="POST" action="/report" class="post-report-form">
+          <input type="hidden" name="content_type" value="post" />
+          <input type="hidden" name="content_id" value="{{.ID}}" />
+          <label for="report-reason-{{.ID}}" class="sr-only">Reason for reporting this post</label>
+          <textarea id="report-reason-{{.ID}}" name="reason" rows="2" maxlength="500" placeholder="Why are you reporting this? (optional)"></textarea>
+          <button type="submit" class="btn-small btn-danger">Submit report</button>
+        </form>
+      </details>
+      {{end}}
+    </div>
+
+    {{if .Comments}}
+    <div class="post-comments" id="post-comments-{{.ID}}">
+      {{range .Comments}}
+      <div class="comment">
+        <a href="/profile/{{.AuthorID}}" class="comment-author">
+          <strong>{{.AuthorFirstName}} {{.AuthorLastName}}</strong>
+        </a>
+        <p>{{if .RenderedContent}}{{.RenderedContent}}{{else}}{{.Content}}{{end}}</p>
+      </div>
+      {{end}}
+    </div>
+    {{end}}
+
+    <div class="comment-form">
+      <form method="POST" action="/feed/{{.ID}}/comment">
+        <label for="comment-content-{{.ID}}" class="sr-only">Write a comment</label>
+        <input type="text" id="comment-content-{{.ID}}" name="content" placeholder="Write a comment..." required />
+        <button type="submit" class="btn btn-small">Reply</button>
+      </form>
+    </div>
+  </div>
+  {{end}}
+  {{else}}
+  <p class="empty-state">No posts yet. Connect with colleagues to see their posts, or write the first one!</p>
+  {{end}}
+
+  {{else}}
+  <div class="feed-postings-header">
+    <a href="/postings/search" class="btn btn-outline">Browse All Postings</a>
+    {{if or (eq .Nav.Role "manager") (eq .Nav.Role "admin")}}
+    <a href="/postings/create" class="btn btn-primary">Create Posting</a>
+    {{end}}
+  </div>
+  
+  {{if .Postings}}
+  {{range .Postings}}
+  <div class="posting-card">
+    <div class="posting-header">
+      <span class="posting-type posting-type-{{.Type}}">{{.Type}}</span>
+      <span class="posting-date">{{.CreatedAt.Format "Jan 2, 2006"}}</span>
+    </div>
+    <h3><a href="/postings/{{.ID}}" class="title-link">{{.Title}}</a></h3>
+    <p class="posting-author">Posted by {{.AuthorName}}</p>
+    {{if .Department}}<p class="posting-dept">{{.Department}}</p>{{end}}
+    {{if .Location}}<p class="posting-location">{{.Location}}</p>{{end}}
+    <p class="posting-desc">{{.Description}}</p>
+  </div>
+  {{end}}
+  {{else}}
+  <div class="empty-state feed-postings-empty">
+    <h3>Postings</h3>
+    <p>Published detail and project opportunities from leadership will appear here.</p>
+    <p class="text-muted">Use Browse All Postings to review anything already available across the portal.</p>
+  </div>
+  {{end}}
 </div>
+{{end}}
+{{end}}
+
+{{define "scripts"}}
+<script src="/static/js/feed.js"></script>
 {{end}}
 
 {{template "base" .}}

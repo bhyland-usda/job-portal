@@ -1,0 +1,38 @@
+{{define "title"}}{{.Department.Name}}{{end}}
+
+{{define "content"}}
+<div class="connections-layout">
+  <div class="profile-card">
+    <h2>{{.Department.Name}}</h2>
+    {{if .Department.Description}}
+    <p class="dept-desc" style="margin-bottom: 12px;">{{.Department.Description}}</p>
+    {{end}}
+    {{if .Department.ParentID}}
+    <p class="dept-parent" style="margin-bottom: 16px;">Parent department: <a href="/departments/{{.Department.ParentID}}">{{.Department.ParentName}}</a></p>
+    {{end}}
+
+    <h3>Employees ({{len .Employees}})</h3>
+    {{if .Employees}}
+    {{range .Employees}}
+    <div class="connection-item">
+      <a href="/profile/{{.ID}}" class="connection-info">
+        {{if .AvatarURL}}
+        <img src="{{.AvatarURL}}" class="connection-avatar" alt="">
+        {{else}}
+        <div class="connection-avatar avatar-placeholder-sm">{{slice .FirstName 0 1}}{{slice .LastName 0 1}}</div>
+        {{end}}
+        <div>
+          <p class="connection-name">{{.FirstName}} {{.LastName}}</p>
+          <p class="connection-headline">{{.Headline}}</p>
+        </div>
+      </a>
+    </div>
+    {{end}}
+    {{else}}
+    <p class="empty-state">No employees assigned to this department.</p>
+    {{end}}
+  </div>
+</div>
+{{end}}
+
+{{template "base" .}}

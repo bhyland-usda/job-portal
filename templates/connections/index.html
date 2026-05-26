@@ -20,10 +20,10 @@
       </a>
       <div class="connection-actions">
         <form method="POST" action="/connections/accept/{{.ID}}" class="inline">
-          <button type="submit" class="btn btn-primary">Accept</button>
+          <button type="submit" class="btn btn-primary" aria-label="Accept invitation from {{.FirstName}} {{.LastName}}">Accept</button>
         </form>
         <form method="POST" action="/connections/reject/{{.ID}}" class="inline">
-          <button type="submit" class="btn btn-outline">Ignore</button>
+          <button type="submit" class="btn btn-outline" aria-label="Ignore invitation from {{.FirstName}} {{.LastName}}">Ignore</button>
         </form>
       </div>
     </div>

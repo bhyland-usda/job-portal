@@ -1,0 +1,30 @@
+{{define "title"}}Getting Started{{end}}
+
+{{define "content"}}
+<div class="posting-layout">
+    <div class="profile-card">
+        <h2>Getting Started</h2>
+        <p style="color:var(--text-secondary);margin-bottom:16px;">{{.Completed}} of {{.Total}} steps completed</p>
+        <div class="completeness-bar" style="margin-bottom:20px;">
+            <div class="completeness-fill" style="width:{{.Percent}}%"></div>
+        </div>
+        {{range .Steps}}
+        <div class="my-post-item" style="display:flex;align-items:center;gap:12px;">
+            {{if .CompletedAt}}
+            <span style="color:#1e8e3e;font-size:20px;">&#10003;</span>
+            {{else}}
+            <form method="POST" action="/onboarding/{{.ID}}/complete" class="inline">
+                <button type="submit" class="btn btn-outline btn-sm">Done</button>
+            </form>
+            {{end}}
+            <div>
+                <strong {{if .CompletedAt}}style="text-decoration:line-through;color:var(--text-secondary);"{{end}}>{{.Title}}</strong>
+                <p style="font-size:13px;color:var(--text-secondary);">{{.Description}}</p>
+            </div>
+        </div>
+        {{end}}
+    </div>
+</div>
+{{end}}
+
+{{template "base" .}}

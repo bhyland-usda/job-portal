@@ -1,0 +1,49 @@
+{{define "title"}}{{if .Experience.ID}}Edit{{else}}Add{{end}}Experience{{end}}
+
+{{define "content"}}
+<div class="profile-layout">
+      <div class="profile-card">
+          <h2>{{if .Experience.ID}}Edit{{else}}Add{{end}} Experience</h2>
+          {{if .Error}}
+          <div class="alert alert-error">{{.Error}}</div>
+          {{end}}
+          <form method="POST">
+              <div class="form-group">
+                  <label for="title">Title</label>
+                  <input type="text" id="title" name="title" value="{{.Experience.Title}}" required />
+              </div>
+              <div class="form-group">
+                  <label for="company">Company</label>
+                  <input type="text" id="company" name="company" value="{{.Experience.Company}}" required />
+              </div>
+              <div class="form-group">
+                  <label for="location">Location</label>
+                  <input type="text" id="location" name="location" value="{{.Experience.Location}}" />
+              </div>
+              <div class="form-row">
+                  <div class="form-group">
+                      <label for="start_date">Start Date</label>
+                      <input type="date" id="start_date" name="start_date"
+                          value="{{if .Experience.ID}}{{.Experience.StartDate.Format "2006-01-02"}}{{end}}" required />
+                  </div>
+                  <div class="form-group">
+                      <label for="end_date">End Date (leave blank for current)</label>
+                      <input type="date" id="end_date" name="end_date"
+                          value="{{if .Experience.EndDate}}{{.Experience.EndDate.Format "2006-01-02"}}{{end}}" />
+                  </div>
+              </div>
+              <div class="form-group">
+                  <label for="description">Description</label>
+                  <textarea id="description" name="description"
+                      rows="4">{{.Experience.Description}}</textarea>
+              </div>
+              <div class="form-actions">
+                  <button type="submit" class="btn btn-primary">Save</button>
+                  <a href="/profile/me" class="btn btn-outline">Cancel</a>
+              </div>
+          </form>
+      </div>
+  </div>
+{{end}}
+
+{{template "base" .}}

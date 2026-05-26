@@ -1,0 +1,104 @@
+{{define "title"}}Certifications{{end}}
+
+{{define "content"}}
+<style>
+    .cert-layout { max-width: 1128px; margin: 0 auto; }
+    .cert-list { list-style: none; padding: 0; margin: 0; }
+    .cert-item {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 0;
+        border-bottom: 1px solid var(--border-color, #e0e0e0);
+    }
+    .cert-item:last-child { border-bottom: none; }
+    .cert-name { font-weight: 600; margin: 0 0 2px; }
+    .cert-meta { font-size: 13px; color: var(--text-muted, #666); margin: 0; }
+    .cert-badge {
+        display: inline-block;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 2px 10px;
+        border-radius: 999px;
+        white-space: nowrap;
+    }
+    .cert-badge-active { background: #e6f4ea; color: #1e7e34; }
+    .cert-badge-soon { background: #fff4e0; color: #b06b00; }
+    .cert-badge-expired { background: #fdecea; color: #c0392b; }
+    .cert-actions { display: flex; align-items: center; gap: 12px; }
+    .cert-delete-btn {
+        background: none;
+        border: none;
+        color: #c0392b;
+        cursor: pointer;
+        font-size: 13px;
+        padding: 0;
+    }
+    .cert-delete-btn:hover { text-decoration: underline; }
+    .cert-form .form-row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .cert-form .form-row .form-group { flex: 1; min-width: 160px; }
+</style>
+<div class="cert-layout">
+    <div class="profile-card">
+        <h2>My Certifications</h2>
+        {{if .Certifications}}
+        <ul class="cert-list">
+            {{range .Certifications}}
+            <li class="cert-item">
+                <div>
+                    <p class="cert-name">{{.Name}}</p>
+                    <p class="cert-meta">
+                        {{if .Issuer}}{{.Issuer}}{{end}}
+                        {{if .IssuedOn.Valid}} · Issued {{.IssuedOn.Time.Format "Jan 2, 2006"}}{{end}}
+                        {{if .ExpiresOn.Valid}} · Expires {{.ExpiresOn.Time.Format "Jan 2, 2006"}}{{else}} · No expiry{{end}}
+                    </p>
+                </div>
+                <div class="cert-actions">
+                    {{if eq .Status "Expired"}}
+                    <span class="cert-badge cert-badge-expired">Expired</span>
+                    {{else if eq .Status "Expiring soon"}}
+                    <span class="cert-badge cert-badge-soon">Expiring soon</span>
+                    {{else}}
+                    <span class="cert-badge cert-badge-active">Active</span>
+                    {{end}}
+                    <form method="POST" action="/certifications/{{.ID}}/delete" class="inline">
+                        <button type="submit" class="cert-delete-btn" aria-label="Remove certification {{.Name}}">Remove</button>
+                    </form>
+                </div>
+            </li>
+            {{end}}
+        </ul>
+        {{else}}
+        <p class="empty-state">You have not added any certifications yet.</p>
+        {{end}}
+    </div>
+
+    <div class="profile-card" style="margin-top:24px;">
+        <h3>Add a Certification</h3>
+        <form method="POST" action="/certifications" class="cert-form">
+            <div class="form-group">
+                <label for="name">Name</label>
+                <input type="text" id="name" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="issuer">Issuer</label>
+                <input type="text" id="issuer" name="issuer">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="issued_on">Issued on</label>
+                    <input type="date" id="issued_on" name="issued_on">
+                </div>
+                <div class="form-group">
+                    <label for="expires_on">Expires on</label>
+                    <input type="date" id="expires_on" name="expires_on">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Add Certification</button>
+        </form>
+    </div>
+</div>
+{{end}}
+
+{{template "base" .}}

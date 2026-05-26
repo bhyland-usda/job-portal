@@ -1,0 +1,93 @@
+{{define "title"}}Notification Settings{{end}}
+
+{{define "content"}}
+<style>
+  .settings-layout {
+    max-width: 1128px;
+    margin: 0 auto;
+  }
+  .notif-prefs-card {
+    margin: 0;
+    background: #fff;
+    border: 1px solid #e2e5e9;
+    border-radius: 10px;
+    padding: 2rem;
+  }
+  .notif-prefs-card h2 {
+    margin: 0 0 0.25rem;
+  }
+  .notif-prefs-sub {
+    color: #6b7280;
+    margin: 0 0 1.5rem;
+    font-size: 0.95rem;
+  }
+  .notif-prefs-saved {
+    background: #e7f6ec;
+    border: 1px solid #b7e0c4;
+    color: #1f7a3d;
+    padding: 0.6rem 0.9rem;
+    border-radius: 8px;
+    margin-bottom: 1.25rem;
+    font-size: 0.9rem;
+  }
+  .notif-pref-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 0.85rem 0;
+    border-bottom: 1px solid #f0f1f3;
+  }
+  .notif-pref-row:last-of-type {
+    border-bottom: none;
+  }
+  .notif-pref-label {
+    font-weight: 500;
+    color: #1f2933;
+  }
+  .notif-pref-row input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+  }
+  .notif-prefs-actions {
+    margin-top: 1.5rem;
+  }
+  .notif-prefs-actions button {
+    background: #2d6a4f;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 0.65rem 1.4rem;
+    font-size: 0.95rem;
+    cursor: pointer;
+  }
+  .notif-prefs-actions button:hover {
+    background: #245741;
+  }
+</style>
+
+<div class="settings-layout">
+  <div class="notif-prefs-card">
+    <h2>Notification Settings</h2>
+    <p class="notif-prefs-sub">Choose which notifications you want to receive. Disabled types will be silently skipped.</p>
+
+    {{if .Saved}}
+    <div class="notif-prefs-saved">Your notification preferences have been saved.</div>
+    {{end}}
+
+    <form method="POST" action="/notifications/preferences">
+      {{range .Prefs}}
+      <div class="notif-pref-row">
+        <label class="notif-pref-label" for="pref-{{.Type}}">{{.Label}}</label>
+        <input type="checkbox" id="pref-{{.Type}}" name="{{.Type}}" value="1" {{if .Enabled}}checked{{end}} />
+      </div>
+      {{end}}
+
+      <div class="notif-prefs-actions">
+        <button type="submit">Save Preferences</button>
+      </div>
+    </form>
+  </div>
+</div>
+{{end}}

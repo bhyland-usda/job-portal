@@ -1,0 +1,133 @@
+{{define "report_base"}}<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Workforce Report</title>
+    <style>
+        :root { --ink: #1a1a1a; --muted: #555; --line: #d0d0d0; --accent: #2a5d34; }
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: var(--ink);
+            margin: 0;
+            padding: 40px;
+            background: #fff;
+            line-height: 1.45;
+        }
+        .report-wrap { max-width: 900px; margin: 0 auto; }
+        .report-head { border-bottom: 3px solid var(--accent); padding-bottom: 16px; margin-bottom: 28px; }
+        .report-head h1 { margin: 0 0 4px; font-size: 28px; color: var(--accent); }
+        .report-meta { color: var(--muted); font-size: 13px; }
+        .report-actions { margin-top: 12px; }
+        .report-actions button {
+            font: inherit; padding: 6px 14px; border: 1px solid var(--accent);
+            background: var(--accent); color: #fff; border-radius: 4px; cursor: pointer;
+        }
+        section { margin-bottom: 32px; page-break-inside: avoid; }
+        section > h2 {
+            font-size: 17px; margin: 0 0 12px; padding-bottom: 6px;
+            border-bottom: 1px solid var(--line); text-transform: uppercase; letter-spacing: .5px;
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); }
+        th { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+        td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+        .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+        .summary-card { border: 1px solid var(--line); border-radius: 6px; padding: 14px; }
+        .summary-value { font-size: 26px; font-weight: 700; }
+        .summary-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+        .report-foot { margin-top: 40px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+        .empty { color: var(--muted); font-style: italic; }
+        @media print {
+            body { padding: 0; }
+            .report-actions { display: none; }
+            section { page-break-inside: avoid; }
+            a { color: inherit; text-decoration: none; }
+        }
+        @media (max-width: 640px) {
+            .summary-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+<div class="report-wrap">
+    <header class="report-head">
+        <h1>Workforce Report</h1>
+        <div class="report-meta">USDA Job Portal &middot; Generated {{.GeneratedAt.Format "January 2, 2006 3:04 PM"}}</div>
+        <div class="report-actions">
+            <button type="button" onclick="window.print()">Print / Save as PDF</button>
+        </div>
+    </header>
+
+    <section>
+        <h2>Engagement Summary</h2>
+        <div class="summary-grid">
+            <div class="summary-card">
+                <div class="summary-value">{{.TotalUsers}}</div>
+                <div class="summary-label">Total Users</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-value">{{.UsersWithSkills}}</div>
+                <div class="summary-label">Users w/ Skills</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-value">{{.TotalPosts}}</div>
+                <div class="summary-label">Total Posts</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-value">{{.TotalConnections}}</div>
+                <div class="summary-label">Connections</div>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="hc-dept-heading">
+        <h2 id="hc-dept-heading">Headcount by Department</h2>
+        {{if .HeadcountsByDept}}
+        <table aria-labelledby="hc-dept-heading">
+            <thead><tr><th scope="col">Department</th><th scope="col" class="num">Employees</th></tr></thead>
+            <tbody>
+                {{range .HeadcountsByDept}}
+                <tr><th scope="row">{{.Name}}</th><td class="num">{{.Count}}</td></tr>
+                {{end}}
+            </tbody>
+        </table>
+        {{else}}<p class="empty">No department data available.</p>{{end}}
+    </section>
+
+    <section aria-labelledby="hc-role-heading">
+        <h2 id="hc-role-heading">Headcount by Role</h2>
+        {{if .HeadcountsByRole}}
+        <table aria-labelledby="hc-role-heading">
+            <thead><tr><th scope="col">Role</th><th scope="col" class="num">Users</th></tr></thead>
+            <tbody>
+                {{range .HeadcountsByRole}}
+                <tr><th scope="row">{{.Role}}</th><td class="num">{{.Count}}</td></tr>
+                {{end}}
+            </tbody>
+        </table>
+        {{else}}<p class="empty">No role data available.</p>{{end}}
+    </section>
+
+    <section aria-labelledby="skills-heading">
+        <h2 id="skills-heading">Skills Coverage</h2>
+        {{if .SkillsCoverage}}
+        <table aria-labelledby="skills-heading">
+            <thead><tr><th scope="col">Skill</th><th scope="col" class="num">Users</th></tr></thead>
+            <tbody>
+                {{range .SkillsCoverage}}
+                <tr><th scope="row">{{.Name}}</th><td class="num">{{.Count}}</td></tr>
+                {{end}}
+            </tbody>
+        </table>
+        {{else}}<p class="empty">No skills recorded yet.</p>{{end}}
+    </section>
+
+    <footer class="report-foot">
+        Confidential &middot; For internal USDA workforce-planning use only.
+    </footer>
+</div>
+</body>
+</html>
+{{end}}

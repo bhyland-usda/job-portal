@@ -1,0 +1,78 @@
+{{define "title"}}{{.Workspace.Name}}{{end}}
+
+{{define "content"}}
+<style>
+.wsv-layout { max-width: 1080px; margin: 0 auto; }
+.wsv-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; align-items: start; }
+@media (max-width: 640px) { .wsv-grid { grid-template-columns: 1fr; } }
+.wsv-form textarea, .wsv-form input[type=text] {
+    width: 100%; padding: 10px; border: 1px solid var(--border);
+    border-radius: var(--radius); font-family: inherit; font-size: 14px;
+    margin-bottom: 8px; resize: vertical; box-sizing: border-box;
+}
+.wsv-note { padding: 12px 0; border-bottom: 1px solid var(--border); }
+.wsv-note:last-child { border-bottom: none; }
+.wsv-member { padding: 8px 0; border-bottom: 1px solid var(--border); }
+.wsv-member:last-child { border-bottom: none; }
+.wsv-meta { font-size: 12px; color: var(--text-muted); }
+</style>
+<div class="wsv-layout">
+    <div class="profile-card" style="margin-bottom:16px;">
+        <h2>{{.Workspace.Name}}</h2>
+        {{if .Workspace.Description}}<p style="color:var(--text-muted);margin:8px 0;">{{.Workspace.Description}}</p>{{end}}
+        <span class="wsv-meta">{{.Workspace.MemberCount}} {{if eq .Workspace.MemberCount 1}}member{{else}}members{{end}}</span>
+    </div>
+
+    <div class="wsv-grid">
+        <div>
+            <div class="profile-card" style="margin-bottom:16px;">
+                <h3 style="margin-bottom:8px;">Add a Note</h3>
+                <form class="wsv-form" method="POST" action="/workspaces/{{.Workspace.ID}}/notes">
+                    <label for="wsv-note-body" class="sr-only">Note</label>
+                    <textarea id="wsv-note-body" name="body" placeholder="Share an update with the workspace..." rows="3" required></textarea>
+                    <button type="submit" class="btn btn-primary">Post Note</button>
+                </form>
+            </div>
+
+            <div class="profile-card">
+                <h3 style="margin-bottom:12px;">Notes</h3>
+                {{if .Notes}}
+                {{range .Notes}}
+                <div class="wsv-note">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                        <a href="/profile/{{.AuthorID}}" class="user-link">{{.AuthorName}}</a>
+                        <span class="wsv-meta">{{.CreatedAt.Format "Jan 2, 2006 3:04 PM"}}</span>
+                    </div>
+                    <p style="white-space:pre-wrap;">{{.Body}}</p>
+                </div>
+                {{end}}
+                {{else}}
+                <p class="empty-state">No notes yet. Start the conversation!</p>
+                {{end}}
+            </div>
+        </div>
+
+        <div>
+            <div class="profile-card" style="margin-bottom:16px;">
+                <h3 style="margin-bottom:8px;">Add a Member</h3>
+                <form class="wsv-form" method="POST" action="/workspaces/{{.Workspace.ID}}/members">
+                    <label for="wsv-member-id" class="sr-only">User ID</label>
+                    <input type="text" id="wsv-member-id" name="user_id" placeholder="User ID" required />
+                    <button type="submit" class="btn btn-primary" aria-label="Add member">Add</button>
+                </form>
+            </div>
+
+            <div class="profile-card">
+                <h3 style="margin-bottom:8px;">Members</h3>
+                {{range .Members}}
+                <div class="wsv-member">
+                    <a href="/profile/{{.UserID}}" class="user-link">{{.Name}}</a>
+                </div>
+                {{end}}
+            </div>
+        </div>
+    </div>
+</div>
+{{end}}
+
+{{template "base" .}}

@@ -1,24 +1,95 @@
 {{define "navbar"}}
-<nav class="navbar">
-  <div class="navbar-inner">
-    <a href="/feed" class="navbar-brand">JobPortal</a>
-    {{if .UserID}}
-    <div class="navbar-links">
-      <a href="/feed">Feed</a>
-      <a href="/connections">Network</a>
-      <a href="/messages">Messages</a>
-      <a href="/profile/me">Profile</a>
-      <a href="/search">Search</a>
-      <form action="/logout" method="POST" class="inline">
-        <button type="submit" class="btn-link">Logout</button>
-      </form>
+<header class="site-header">
+  <div class="site-identifier">
+    <div class="site-identifier-inner">United States Department of Agriculture</div>
+  </div>
+  <nav class="navbar" aria-label="Main navigation">
+    <div class="navbar-inner">
+      <a href="/feed" class="navbar-brand" aria-label="USDA JobPortal home">
+        <img src="/static/img/usda-logo-color.svg" alt="" class="navbar-logo navbar-logo-color" />
+        <img src="/static/img/usda-logo-white.svg" alt="" class="navbar-logo navbar-logo-white" />
+        <span class="navbar-brand-copy">
+          <span class="navbar-brand-kicker">USDA JobPortal</span>
+          <span class="navbar-brand-title">Internal career and community portal</span>
+        </span>
+      </a>
+      {{if .UserID}}
+      <div class="navbar-utility">
+        <button type="button" id="tools-toggle-btn" class="toolbar-btn toolbar-btn-primary" data-shell-toggle="drawer-toggle" aria-controls="profile-drawer" aria-expanded="false">All tools</button>
+        <details class="nav-dropdown notif-dropdown">
+          <summary class="nav-summary nav-notif" id="notif-trigger" aria-haspopup="true" aria-expanded="false">
+            <span>Notifications</span>
+            <span id="notif-badge" class="notif-badge" hidden aria-label="unread notifications"></span>
+          </summary>
+          <div class="nav-dropdown-content notif-menu" id="notif-menu" aria-labelledby="notif-trigger">
+            <div class="notif-menu-header">
+              <strong>Notifications</strong>
+              <form method="POST" action="/notifications/read-all" class="inline">
+                <button type="submit" class="btn-link" id="mark-all-read-btn">Mark all read</button>
+              </form>
+            </div>
+            <div id="notif-list" class="notif-list">
+              <p class="notif-empty">Loading...</p>
+            </div>
+          </div>
+        </details>
+        <button type="button" id="chat-toggle-btn" class="toolbar-btn" data-shell-toggle="chat-toggle" aria-controls="chat-drawer" aria-expanded="false">Messages</button>
+        <details class="nav-dropdown avatar-dropdown">
+          <summary class="avatar-trigger" aria-haspopup="true" aria-expanded="false">
+            <span class="avatar-trigger-copy">
+              <span class="avatar-trigger-label">My account</span>
+              <span class="avatar-trigger-name">{{.Nav.FirstName}}</span>
+            </span>
+            {{if .Nav.AvatarURL}}
+            <img src="{{.Nav.AvatarURL}}" alt="" class="avatar-nav-img" />
+            {{else}}
+            <span class="avatar-nav-placeholder" aria-hidden="true">{{.Nav.Initials}}</span>
+            {{end}}
+          </summary>
+          <div class="nav-dropdown-content avatar-menu" aria-label="Account">
+            <div class="avatar-menu-header">
+              <strong>{{.Nav.FirstName}} {{.Nav.LastName}}</strong>
+              <span class="avatar-menu-role">{{.Nav.Role}}</span>
+            </div>
+            <div class="avatar-menu-divider"></div>
+            <a href="/profile/me">View Profile</a>
+            <a href="/profile/edit">Edit Profile</a>
+            <a href="/notifications/preferences">Notification Settings</a>
+            <a href="/settings/sessions">Active Sessions</a>
+            <a href="/data-export">Export My Data</a>
+            <a href="/aup">Acceptable Use Policy</a>
+            <div class="avatar-menu-divider"></div>
+            <button type="button" class="avatar-menu-action" id="dark-mode-toggle">Dark Mode</button>
+            <div class="video-autoplay-setting">
+              <span>Autoplay Videos</span>
+              <label class="autoplay-switch">
+                <input type="checkbox" id="video-autoplay-toggle" />
+                <span class="autoplay-slider"></span>
+              </label>
+            </div>
+            <div class="avatar-menu-divider"></div>
+            <form action="/logout" method="POST">
+              <button type="submit" class="avatar-menu-logout">Sign Out</button>
+            </form>
+          </div>
+        </details>
+      </div>
+      {{else}}
+      <div class="navbar-links">
+        <a href="/login">Sign In</a>
+        <a href="/register" class="btn btn-primary">Join Now</a>
+      </div>
+      {{end}}
     </div>
-    {{else}}
-    <div class="navbar-links">
-      <a href="/login">Sign In</a>
-      <a href="/register" class="btn btn-primary">Join Now</a>
+    {{if .UserID}}
+    <div class="navbar-appbar" aria-label="Primary destinations">
+      <a href="/feed" class="navbar-app-link">Feed</a>
+      <a href="/search" class="navbar-app-link">Search People</a>
+      <a href="/connections" class="navbar-app-link">Network</a>
+      <a href="/postings/search" class="navbar-app-link">Opportunities</a>
+      <a href="/workspaces" class="navbar-app-link">Workspaces</a>
     </div>
     {{end}}
-  </div>
-</nav>
+  </nav>
+</header>
 {{end}}

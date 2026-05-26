@@ -1,0 +1,36 @@
+{{define "title"}}Drafts{{end}}
+
+{{define "content"}}
+<div class="feed-layout">
+    <div class="profile-card">
+        <h2>Drafts</h2>
+        <form method="POST" action="/feed/drafts" style="margin-bottom:20px;">
+            <textarea name="content" placeholder="Save a draft..." rows="3" required></textarea>
+            <button type="submit" class="btn btn-outline" style="margin-top:8px;">Save Draft</button>
+        </form>
+
+        {{if .Drafts}}
+        {{range .Drafts}}
+        <div class="my-post-item">
+            <p class="my-post-content">{{.Content}}</p>
+            <div class="my-post-meta">
+                <span>{{.CreatedAt.Format "Jan 2, 2006"}}</span>
+            </div>
+            <div class="my-post-actions">
+                <form method="POST" action="/feed/drafts/{{.ID}}/publish" class="inline">
+                    <button type="submit" class="btn-link">Publish</button>
+                </form>
+                <form method="POST" action="/feed/drafts/{{.ID}}/delete" class="inline">
+                    <button type="submit" class="btn-link btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+        {{end}}
+        {{else}}
+        <p class="empty-state">No drafts saved.</p>
+        {{end}}
+    </div>
+</div>
+{{end}}
+
+{{template "base" .}}

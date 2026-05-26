@@ -1,0 +1,2 @@
+ALTER TABLE users ADD COLUMN IF NOT EXISTS work_status VARCHAR(20) NOT NULL DEFAULT 'in_office';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS work_status_until DATE;

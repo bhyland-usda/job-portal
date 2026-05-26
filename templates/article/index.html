@@ -1,0 +1,25 @@
+{{define "title"}}Articles{{end}}
+
+{{define "content"}}
+<div class="article-layout">
+    <div class="profile-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h2>Articles</h2>
+            <a href="/articles/write" class="btn btn-primary">Write Article</a>
+        </div>
+        {{if .Articles}}
+        {{range .Articles}}
+        <div class="article-item">
+            <h3><a href="/articles/{{.ID}}" class="title-link">{{.Title}}</a></h3>
+            <p class="article-meta">By <a href="/profile/{{.AuthorID}}" class="user-link">{{.AuthorName}}</a> — {{.CreatedAt.Format "Jan 2, 2006"}}</p>
+            <p class="article-preview">{{.Content}}</p>
+        </div>
+        {{end}}
+        {{else}}
+        <p class="empty-state">No articles yet. Be the first to write one!</p>
+        {{end}}
+    </div>
+</div>
+{{end}}
+
+{{template "base" .}}

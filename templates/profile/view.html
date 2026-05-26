@@ -1,27 +1,155 @@
-{{define "title"}}{{.User.FirstName}} {{.User.LastName}}{{end}} {{define
-"content"}}
+{{define "title"}}{{.User.FirstName}} {{.User.LastName}}{{end}} 
+
+{{define "content"}}
+<style>
+    .work-status-badge {
+        display: inline-block;
+        font-size: 13px;
+        font-weight: 600;
+        padding: 2px 10px;
+        border-radius: 12px;
+        margin: 4px 0;
+        background: #eef2f7;
+        color: #33475b;
+    }
+    .work-status-telework { background: #e3f1e6; color: #1e6b3a; }
+    .work-status-tdy { background: #e6eefb; color: #1a4ea8; }
+    .work-status-leave { background: #fdeede; color: #9a5b00; }
+    .work-status-in_office { background: #eef2f7; color: #33475b; }
+    .limited-profile-notice {
+        margin: 12px 0 4px;
+        padding: 12px 16px;
+        border-radius: 8px;
+        background: #f3f4f6;
+        color: #4b5563;
+        font-size: 14px;
+    }
+</style>
 <div class="profile-layout">
+    {{if .Restricted}}
+    <div class="profile-card">
+        <div class="profile-header">
+            <div class="profile-avatar">
+                <div class="avatar-placeholder">
+                    {{slice .User.FirstName 0 1}}{{slice .User.LastName 0 1}}
+                </div>
+            </div>
+            <div class="profile-info">
+                <h1>{{.User.FirstName}} {{.User.LastName}}</h1>
+                <p class="limited-profile-notice">{{.LimitedReason}}</p>
+            </div>
+            {{if eq .ConnectionStatus "none"}}
+            <form method="POST" action="/connections/request/{{.User.ID}}">
+                <button type="submit" class="btn btn-primary">Connect</button>
+            </form>
+            {{else if eq .ConnectionStatus "pending_sent"}}
+            <span class="btn btn-secondary" disabled>Pending</span>
+            {{else if eq .ConnectionStatus "pending_received"}}
+            <form method="POST" action="/connections/accept/{{.User.ID}}" style="display: inline">
+                <button type="submit" class="btn btn-primary">Accept</button>
+            </form>
+            <form method="post" action="/connections/reject/{{.User.ID}}" style="display: inline">
+                <button type="submit" class="btn btn-secondary">Decline</button>
+            </form>
+            {{end}}
+        </div>
+    </div>
+    {{else}}
+    {{if .PinnedPosts}}
+    <div class="profile-card pinned-posts">
+        <h2>&#128204; Pinned</h2>
+        {{range .PinnedPosts}}
+        <div class="pinned-post" id="pinned-{{.ID}}">
+            <div class="pinned-post-header">
+                <a href="/profile/{{.AuthorID}}" class="post-author">
+                    <div class="avatar-small">
+                    {{if .AuthorAvatarURL}}
+                        <img src="/avatar/{{.AuthorID}}" class="avatar-small-img" alt="" />
+                    {{else}}
+                        {{slice .AuthorFirstName 0 1}}{{slice .AuthorLastName 0 1}}
+                    {{end}}
+                    </div>
+                    <strong>{{.AuthorFirstName}} {{.AuthorLastName}}</strong>
+                </a>
+                {{if $.IsOwnProfile}}
+                <form method="POST" action="/profile/posts/{{.ID}}/unpin" class="inline">
+                    <button type="submit" class="btn-link btn-danger">Unpin</button>
+                </form>
+                {{end}}
+            </div>
+            <div class="pinned-post-content">
+                <p>{{.Content}}</p>
+            </div>
+            <p class="entry-date">{{.CreatedAt.Format "Jan 2, 2006"}}</p>
+        </div>
+        {{end}}
+    </div>
+    {{end}}
+    {{if and .IsOwnProfile .Celebrations}}
+    <div class="profile-card celebrations-card">
+        <h2>&#127881; Celebrations this week</h2>
+        <ul class="celebrations-list">
+            {{range .Celebrations}}
+            <li>
+                <a href="/profile/{{.UserID}}">{{.FirstName}} {{.LastName}}</a>
+                {{if eq .Kind "birthday"}}
+                &#127874; Birthday
+                {{else}}
+                &#127881; {{.Years}} year{{if ne .Years 1}}s{{end}} at USDA
+                {{end}}
+            </li>
+            {{end}}
+        </ul>
+    </div>
+    {{end}}
+    {{if .Completeness}}{{if lt .Completeness.Score .Completeness.Total}}
+    <div class="profile-card completeness-card">
+        <h3>Profile Completeness: {{.Completeness.Score}}/{{.Completeness.Total}}</h3>
+        <div class="completeness-bar">
+            <div class="completeness-fill" style="width:{{.Completeness.Percent}}%"></div>
+        </div>
+        <div class="completeness-items">
+            {{range .Completeness.Items}}{{if not .Complete}}
+            <span class="completeness-todo">{{.Label}}</span>
+            {{end}}{{end}}
+        </div>
+    </div>
+    {{end}}{{end}}
     <div class="profile-card">
         <div class="profile-header">
             <div class="profile-avatar">
                 {{if .User.AvatarURL}}
-                <img src="{{.User.AvatarURL}}" alt="{{.User.FirstName}}" />
+                <img src="/avatar/{{.User.ID}}" alt="Profile photo of {{.User.FirstName}} {{.User.LastName}}" />
                 {{else}}
                 <div class="avatar-placeholder">
                     {{slice .User.FirstName 0 1}}{{slice .User.LastName 0 1}}
                 </div>
                 {{end}}
+                {{if .IsOwnProfile}}
+                <form method="POST" action="/profile/avatar" enctype="multipart/form-data" class="avatar-upload">
+                    <label for="avatar" class="btn-link">Change Photo</label>
+                    <input type="file" id="avatar" name="avatar" accept="image/jpeg,image/png,image/webp" hidden />
+                </form>
+                {{end}}
             </div>
             <div class="profile-info">
                 <h1>{{.User.FirstName}} {{.User.LastName}}</h1>
+                <p class="work-status-badge work-status-{{.User.WorkStatus}}">{{.User.WorkStatusBadge}}{{if .User.WorkStatusUntilLabel}} (until {{.User.WorkStatusUntilLabel}}){{end}}</p>
                 {{if .User.Headline}}
                 <p class="profile-headline">{{.User.Headline}}</p>
                 {{end}} {{if .User.Location}}
                 <p class="profile-location">{{.User.Location}}</p>
                 {{end}}
+                {{if .User.BirthdayLabel}}
+                <p class="profile-birthday">&#127874; Birthday: {{.User.BirthdayLabel}}</p>
+                {{end}}
+                {{if .User.HireDate}}
+                <p class="profile-anniversary">&#127881; At USDA since {{.User.HireYear}} ({{.User.AnniversaryYears}} year{{if ne .User.AnniversaryYears 1}}s{{end}})</p>
+                {{end}}
             </div>
             {{if .IsOwnProfile}}
-            <a href="/profile/edit" class="btn btn-outline">Edit Profile</a>
+            <a href="/profile/edit" class="btn btn-primary">Edit Profile</a>
+            <a href="/profile/{{.User.ID}}/print" class="btn btn-outline">Print / Export</a>
             {{else if eq .ConnectionStatus "none"}}
             <form method="POST" action="/connections/request/{{.User.ID}}">
                 <button type="submit" class="btn btn-primary">Connect</button>
@@ -45,9 +173,25 @@
             </form>
             {{else if eq .ConnectionStatus "connected"}}
             <span class="btn btn-success" disabled>Connected</span>
+            <button class="btn btn-outline" data-message-user="{{.User.ID}}" data-message-name="{{.User.FirstName}} {{.User.LastName}}">Message</button>
+            <a href="/profile/{{.User.ID}}/print" class="btn btn-outline">Print / Export</a>
             {{end}}
         </div>
     </div>
+
+    {{if eq .ConnectionStatus "connected"}}
+    <div class="profile-card">
+        <div style="display:flex;gap:12px;align-items:center;">
+            <a href="/kudos/send/{{.User.ID}}" class="btn btn-outline">Send Kudos</a>
+            <form method="POST" action="/follow/{{.User.ID}}" class="inline">
+                <button type="submit" class="follow-btn {{if .IsFollowing}}following{{end}}">
+                    {{if .IsFollowing}}Following{{else}}Follow{{end}}
+                </button>
+            </form>
+            <a href="/feedback-ask/{{.User.ID}}" class="btn btn-outline">Request Feedback</a>
+        </div>
+    </div>
+    {{end}}
 
     {{if .User.About}}
     <div class="profile-card">
@@ -59,19 +203,31 @@
     <div class="profile-card">
         <h2>Experience</h2>
         {{if .IsOwnProfile}}
-        <a href="/profile/experience/add" class="btn-small">+ Add</a>
-        {{end}} {{range .Experiences}}
+        <a href="/profile/experience/add" class="card-action">+ Add</a>
+        {{end}} 
+        {{range .Experiences}}
         <div class="profile-entry">
             <h3>{{.Title}}</h3>
             <p class="entry-subtitle">
                 {{.Company}}{{if .Location}} • {{.Location}}{{end}}
             </p>
             <p class="entry-date">
-                {{.StartDate.Format "Jan 2026"}} - {{if
-                .EndDate}}{{.EndDate.Format "Jan 2026"}}{{else}}Present{{end}}
+                {{.StartDate.Format "Jan 2006"}} - {{if .EndDate}}
+                    {{.EndDate.Format "Jan 2006"}}
+                {{else}}
+                    Present
+                {{end}}
             </p>
             {{if .Description}}
             <p class="entry-desc">{{.Description}}</p>
+            {{end}}
+            {{if $.IsOwnProfile}}
+            <div class="entry-actions">
+                <a href="/profile/experience/{{.ID}}/edit" class="btn-link">Edit</a>
+                <form method="POST" action="/profile/experience/{{.ID}}/delete" class="inline">
+                    <button type="submit" class="btn-link btn-danger">Delete</button>
+                </form>
+            </div>
             {{end}}
         </div>
         {{else}}
@@ -82,7 +238,7 @@
     <div class="profile-card">
         <h2>Education</h2>
         {{if .IsOwnProfile}}
-        <a href="/profile/education/add" class="btn-small">+ Add</a>
+        <a href="/profile/education/add" class="card-action">+ Add</a>
         {{end}} {{range .Educations}}
         <div class="profile-entry">
             <h3>{{.School}}</h3>
@@ -90,9 +246,16 @@
                 {{.Degree}}{{if .FieldOfStudy}}, {{.FieldOfStudy}}{{end}}
             </p>
             <p class="entry-date">
-                {{.StartYear}} - {{if
-                .EndYear}}{{.EndYear}}{{else}}Present{{end}}
+                {{.StartYear}} - {{if .EndYear}}{{.EndYear}}{{else}}Present{{end}}
             </p>
+            {{if $.IsOwnProfile}}
+            <div class="entry-actions">
+                <a href="/profile/education/{{.ID}}/edit" class="btn-link">Edit</a>
+                <form method="POST" action="/profile/education/{{.ID}}/delete" class="inline">
+                    <button type="submit" class="btn-link btn-danger">Delete</button>
+                </form>
+            </div>
+            {{end}}
         </div>
         {{else}}
         <p class="empty-state">No education added yet.</p>
@@ -102,16 +265,46 @@
     <div class="profile-card">
         <h2>Skills</h2>
         {{if .IsOwnProfile}}
-        <a href="/profile/skills/edit" class="btn-small">+ Add</a>
-        {{end}} {{if .Skills}}
+        <a href="/profile/skills/edit" class="card-action">+ Add</a>
+        {{end}} {{if .SkillViews}}
         <div class="skills-list">
-            {{range .Skills}}
-            <span class="skill-tag">{{.Name}}</span>
+            {{range .SkillViews}}
+            <div class="skill-item">
+                <span class="skill-tag">{{.Name}}</span>
+                <span class="endorsement-count">{{.EndorsementCount}}</span>
+                {{if gt .VerificationCount 0}}
+                <span class="verification-count" title="Verifications">&#10003; {{.VerificationCount}}</span>
+                {{end}}
+                {{if not $.IsOwnProfile}}
+                <form method="POST" action="/profile/skills/{{.ID}}/endorse" class="inline">
+                    <button type="submit" class="btn-link {{if .EndorsedByUser}}endorsed{{end}}">
+                        {{if .EndorsedByUser}}Endorsed{{else}}Endorse{{end}}
+                    </button>
+                </form>
+                <form method="POST" action="/profile/skills/{{.ID}}/verify" class="inline">
+                    <button type="submit" class="btn-link">Verify</button>
+                </form>
+                {{end}}
+            </div>
             {{end}}
         </div>
         {{else}}
         <p class="empty-state">No skills added yet.</p>
         {{end}}
     </div>
+    {{end}}
 </div>
-{{end}} {{template "base" .}}
+{{end}}
+
+{{define "scripts"}}
+<script>
+    var avatarInput = document.getElementById('avatar');
+    if (avatarInput) {
+        avatarInput.addEventListener('change', function() {
+            this.closest('form').submit();
+        });
+    }
+</script>
+{{end}}
+
+{{template "base" .}}

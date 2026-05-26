@@ -1,0 +1,28 @@
+{{define "title"}}Respond to Feedback Request{{end}}
+
+{{define "content"}}
+<div class="feedback-layout">
+  <div class="profile-card">
+    <h2>Respond to Feedback Request</h2>
+    <p class="posting-meta">From: <a href="/profile/{{.Request.RequesterID}}">{{.Request.RequesterName}}</a></p>
+    <p><strong>Subject:</strong> {{.Request.Subject}}</p>
+
+    {{if .Error}}
+    <div class="alert alert-error">{{.Error}}</div>
+    {{end}}
+
+    <form method="POST" action="/feedback-respond/{{.Request.ID}}" style="margin-top: 16px;">
+      <div class="form-group">
+        <label for="feedback">Your Feedback</label>
+        <textarea id="feedback" name="feedback" rows="6" required placeholder="Provide your feedback here..."></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Submit Feedback</button>
+        <a href="/feedback?tab=received" class="btn btn-outline">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{{end}}
+
+{{template "base" .}}

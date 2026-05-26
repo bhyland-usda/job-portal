@@ -1,0 +1,57 @@
+{{define "title"}}Polls{{end}}
+
+{{define "content"}}
+<div class="poll-layout">
+  <div class="poll-header">
+    <h2>Polls</h2>
+    {{if or (eq .Nav.Role "manager") (eq .Nav.Role "admin")}}
+    <a href="/polls/create" class="btn btn-primary">Create Poll</a>
+    {{end}}
+  </div>
+
+  {{if .Polls}}
+  {{range .Polls}}
+  <div class="poll-card">
+    <div class="poll-question" id="poll-question-{{.ID}}">{{.Question}}</div>
+    <div class="poll-meta">
+      <span>By {{.AuthorName}}</span>
+      <span>{{.CreatedAt.Format "Jan 2, 2006"}}</span>
+      <span>{{.TotalVotes}} vote{{if ne .TotalVotes 1}}s{{end}}</span>
+    </div>
+
+    {{if .UserVotedOptionID}}
+    <div class="poll-results" role="group" aria-labelledby="poll-question-{{.ID}}">
+      {{range .Options}}
+      <div class="poll-result-row">
+        <div class="poll-result-label">
+          <span>{{.Label}}</span>
+          <span>{{.VoteCount}} ({{.Percent}}%)</span>
+        </div>
+        <div class="poll-bar-bg" role="presentation">
+          <div class="poll-bar-fill" style="width: {{.Percent}}%"></div>
+        </div>
+      </div>
+      {{end}}
+    </div>
+    {{else}}
+    <form method="POST" action="/polls/{{.ID}}/vote" class="poll-vote-form">
+      <div role="radiogroup" aria-labelledby="poll-question-{{.ID}}">
+      {{range .Options}}
+      <label class="poll-option">
+        <input type="radio" name="option" value="{{.ID}}" required />
+        <span>{{.Label}}</span>
+      </label>
+      {{end}}
+      </div>
+      <button type="submit" class="btn btn-primary">Vote</button>
+    </form>
+    {{end}}
+  </div>
+  {{end}}
+  {{else}}
+  <p class="empty-state">No active polls right now.</p>
+  {{end}}
+</div>
+{{end}}
+
+{{template "base" .}}

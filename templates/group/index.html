@@ -1,0 +1,41 @@
+{{define "title"}}Interest Groups{{end}}
+
+{{define "content"}}
+<div class="groups-layout">
+    <div class="profile-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h2>Interest Groups</h2>
+            <a href="/groups/create" class="btn btn-primary">Create Group</a>
+        </div>
+
+        {{if .Groups}}
+        <div class="groups-list">
+            {{range .Groups}}
+            <div class="group-item" style="padding:16px 0;border-bottom:1px solid var(--border);">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                    <div>
+                        <h3 style="margin-bottom:4px;"><a href="/groups/{{.ID}}" class="title-link">{{.Name}}</a></h3>
+                        {{if .Description}}<p style="color:var(--text-muted);margin-bottom:4px;">{{.Description}}</p>{{end}}
+                        <span style="font-size:13px;color:var(--text-muted);">{{.MemberCount}} {{if eq .MemberCount 1}}member{{else}}members{{end}}</span>
+                    </div>
+                    <div>
+                        {{if .IsMember}}
+                        <span class="btn" style="background:var(--bg);color:var(--text-muted);cursor:default;">Joined</span>
+                        {{else}}
+                        <form method="POST" action="/groups/{{.ID}}/join">
+                            <button type="submit" class="btn btn-primary">Join</button>
+                        </form>
+                        {{end}}
+                    </div>
+                </div>
+            </div>
+            {{end}}
+        </div>
+        {{else}}
+        <p class="empty-state">No groups yet. Create one to get started!</p>
+        {{end}}
+    </div>
+</div>
+{{end}}
+
+{{template "base" .}}

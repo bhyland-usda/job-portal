@@ -1,0 +1,48 @@
+{{define "title"}}My Accomplishments{{end}}
+
+{{define "content"}}
+<div class="accomplishment-layout">
+  <div class="profile-card">
+    <div class="accomplishment-header">
+      <h2>My Accomplishments</h2>
+      <div class="accomplishment-header-actions">
+        <a href="/accomplishments/export" class="btn btn-outline">Export</a>
+        <a href="/accomplishments/add" class="btn btn-primary">Add Accomplishment</a>
+      </div>
+    </div>
+
+    <div class="accomplishment-filters">
+      <a href="/accomplishments" class="filter-link{{if eq .PeriodFilter ""}} active{{end}}">All</a>
+      <a href="/accomplishments?period=quarterly" class="filter-link{{if eq .PeriodFilter "quarterly"}} active{{end}}">Quarterly</a>
+      <a href="/accomplishments?period=yearly" class="filter-link{{if eq .PeriodFilter "yearly"}} active{{end}}">Yearly</a>
+    </div>
+
+    {{if .Accomplishments}}
+    <div class="accomplishment-list">
+      {{range .Accomplishments}}
+      <div class="accomplishment-item">
+        <div class="accomplishment-info">
+          <h3>{{.Title}}</h3>
+          <p class="accomplishment-desc">{{if gt (len .Description) 150}}{{slice .Description 0 150}}...{{else}}{{.Description}}{{end}}</p>
+          <div class="accomplishment-meta">
+            <span class="period-badge period-{{.PeriodType}}">{{.PeriodType}}</span>
+            <span class="accomplishment-dates">{{.PeriodStart.Format "Jan 2, 2006"}} &ndash; {{.PeriodEnd.Format "Jan 2, 2006"}}</span>
+          </div>
+        </div>
+        <div class="accomplishment-actions">
+          <a href="/accomplishments/{{.ID}}/edit" class="btn-link">Edit</a>
+          <form method="POST" action="/accomplishments/{{.ID}}/delete" class="inline">
+            <button type="submit" class="btn-link btn-danger">Delete</button>
+          </form>
+        </div>
+      </div>
+      {{end}}
+    </div>
+    {{else}}
+    <p class="empty-state">No accomplishments recorded yet. Start tracking your achievements!</p>
+    {{end}}
+  </div>
+</div>
+{{end}}
+
+{{template "base" .}}

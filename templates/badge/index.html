@@ -1,0 +1,44 @@
+{{define "title"}}Badges{{end}}
+
+{{define "content"}}
+<div class="badge-layout">
+  {{if .Earned}}
+  <div class="profile-card">
+    <h2>Earned Badges</h2>
+    <div class="badge-grid">
+      {{range .Earned}}
+      <div class="badge-item badge-earned">
+        <div class="badge-icon">{{.Badge.Icon}}</div>
+        <div class="badge-info">
+          <div class="badge-name">{{.Badge.Name}}</div>
+          <div class="badge-desc">{{.Badge.Description}}</div>
+          <div class="badge-date">Earned {{.EarnedAt.Format "Jan 2, 2006"}}</div>
+        </div>
+      </div>
+      {{end}}
+    </div>
+  </div>
+  {{end}}
+
+  <div class="profile-card">
+    <h2>{{if .Earned}}Available Badges{{else}}All Badges{{end}}</h2>
+    {{if .Available}}
+    <div class="badge-grid">
+      {{range .Available}}
+      <div class="badge-item badge-locked">
+        <div class="badge-icon">{{.Icon}}</div>
+        <div class="badge-info">
+          <div class="badge-name">{{.Name}}</div>
+          <div class="badge-desc">{{.Description}}</div>
+        </div>
+      </div>
+      {{end}}
+    </div>
+    {{else}}
+    <p class="empty-state">You have earned all available badges!</p>
+    {{end}}
+  </div>
+</div>
+{{end}}
+
+{{template "base" .}}

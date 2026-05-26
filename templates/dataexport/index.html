@@ -1,0 +1,42 @@
+{{define "title"}}Export My Data{{end}}
+
+{{define "content"}}
+<style>
+  .dataexport-layout { max-width: 960px; margin: 0 auto; }
+  .dataexport-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 24px; }
+  .dataexport-card h2 { margin-top: 0; }
+  .dataexport-card .lead { color: #555; line-height: 1.5; }
+  .dataexport-list { margin: 16px 0 24px; padding-left: 20px; color: #333; }
+  .dataexport-list li { margin-bottom: 6px; }
+  .dataexport-note { font-size: 0.9em; color: #777; margin-top: 16px; }
+  .dataexport-actions { margin-top: 20px; }
+</style>
+<div class="dataexport-layout">
+  <div class="dataexport-card">
+    <h2>Export My Data</h2>
+    <p class="lead">
+      Download a copy of the personal data this site holds about you. The export
+      is a single JSON file containing the information associated with your
+      account.
+    </p>
+    <p>The export includes:</p>
+    <ul class="dataexport-list">
+      <li><strong>Profile</strong> — your account details (name, email, headline, about, location). Your password is never included.</li>
+      <li><strong>Posts</strong> — posts you have published to the feed.</li>
+      <li><strong>Comments</strong> — comments you have left on posts.</li>
+      <li><strong>Connections</strong> — connection requests you have sent or received.</li>
+      <li><strong>Kudos</strong> — kudos you have given and received.</li>
+      <li><strong>Accomplishments</strong> — accomplishments recorded on your profile.</li>
+    </ul>
+    <div class="dataexport-actions">
+      <a href="/data-export/download" class="btn btn-primary" id="data-export-download">Download my data (JSON)</a>
+    </div>
+    <p class="dataexport-note">
+      The file is generated on demand and downloaded directly to your device. It
+      may contain sensitive information, so store it somewhere safe.
+    </p>
+  </div>
+</div>
+{{end}}
+
+{{template "base" .}}

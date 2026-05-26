@@ -1,9 +1,11 @@
 {{define "title"}}Search{{end}} {{define "content"}}
 <div class="search-layout">
     <div class="profile-card">
-        <form method="GET" action="/search" class="search-form">
+        <form method="GET" action="/search" class="search-form" role="search">
+            <label for="search-q" class="sr-only">Search people by name, headline, or location</label>
             <input
                 type="text"
+                id="search-q"
                 name="q"
                 value="{{.Query}}"
                 placeholder="Search by name, headline, or location..."

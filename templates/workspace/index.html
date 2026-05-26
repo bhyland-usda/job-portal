@@ -1,0 +1,45 @@
+{{define "title"}}Project Workspaces{{end}}
+
+{{define "content"}}
+<style>
+.ws-layout { max-width: 1080px; margin: 0 auto; }
+.ws-create textarea, .ws-create input[type=text] {
+    width: 100%; padding: 10px; border: 1px solid var(--border);
+    border-radius: var(--radius); font-family: inherit; font-size: 14px;
+    margin-bottom: 8px; resize: vertical; box-sizing: border-box;
+}
+.ws-item { padding: 16px 0; border-bottom: 1px solid var(--border); }
+.ws-item:last-child { border-bottom: none; }
+.ws-meta { font-size: 13px; color: var(--text-muted); }
+</style>
+<div class="ws-layout">
+    <div class="profile-card" style="margin-bottom:16px;">
+        <h2 style="margin-bottom:12px;">Create a Workspace</h2>
+        {{if .Error}}<p style="color:var(--danger,#c0392b);margin-bottom:8px;">{{.Error}}</p>{{end}}
+        <form class="ws-create" method="POST" action="/workspaces">
+            <label for="ws-name" class="sr-only">Workspace name</label>
+            <input type="text" id="ws-name" name="name" placeholder="Workspace name" required />
+            <label for="ws-description" class="sr-only">Workspace description</label>
+            <textarea id="ws-description" name="description" placeholder="What's this workspace for? (optional)" rows="2"></textarea>
+            <button type="submit" class="btn btn-primary">Create Workspace</button>
+        </form>
+    </div>
+
+    <div class="profile-card">
+        <h2 style="margin-bottom:12px;">My Workspaces</h2>
+        {{if .Workspaces}}
+        {{range .Workspaces}}
+        <div class="ws-item">
+            <h3 style="margin-bottom:4px;"><a href="/workspaces/{{.ID}}" class="title-link">{{.Name}}</a></h3>
+            {{if .Description}}<p style="color:var(--text-muted);margin-bottom:4px;">{{.Description}}</p>{{end}}
+            <span class="ws-meta">{{.MemberCount}} {{if eq .MemberCount 1}}member{{else}}members{{end}}</span>
+        </div>
+        {{end}}
+        {{else}}
+        <p class="empty-state">You aren't in any workspaces yet. Create one above to get started!</p>
+        {{end}}
+    </div>
+</div>
+{{end}}
+
+{{template "base" .}}

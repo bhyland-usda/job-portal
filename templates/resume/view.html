@@ -1,0 +1,189 @@
+{{define "resume_base"}}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{.FirstName}} {{.LastName}} - Resume</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Times New Roman", Georgia, serif;
+        color: #333;
+        line-height: 1.4;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 40px;
+      }
+
+      .resume-name {
+        font-size: 28px;
+        text-align: center;
+        margin-bottom: 4px;
+      }
+
+      .resume-contact {
+        text-align: center;
+        color: #555;
+        margin-bottom: 4px;
+        font-size: 14px;
+      }
+
+      .resume-section {
+        margin-top: 20px;
+      }
+
+      .resume-section h2 {
+        font-size: 16px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        border-bottom: 1px solid #333;
+        padding-bottom: 4px;
+        margin-bottom: 10px;
+      }
+
+      .resume-entry {
+        margin-bottom: 12px;
+      }
+
+      .resume-entry-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+      }
+      
+      .resume-entry-title {
+        font-weight: bold;  
+      }
+
+      .resume-entry-date {
+        font-style: italic;
+        font-size: 14px;
+      }
+
+      .resume-entry-subtitle {
+        font-style: italic;
+        margin-bottom: 4px;
+      }
+
+      .resume-entry-desc {
+        font-size: 14px;
+      }
+
+      .resume-summary {
+        font-size: 14px;
+      }
+
+      .resume-skills {
+        font-size: 14px;
+      }
+
+      .print-controls {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+
+      .print-controls button {
+        padding: 8px 24px;
+        background: #0a66c2;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        margin: 0 8px;
+      }
+
+      .print-controls a {
+        padding: 8px 24px;
+        color: #0a66c2;
+        text-decoration: none;
+        font-size: 14px;
+      }
+
+      @media print {
+        .print-controls {
+          display: none;
+        }
+
+        body {
+          padding: 0;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="print-controls">
+      <button onclick="window.print()" class="btn btn-primary">Print/Save as PDF</button>
+      <a href="/resumes" class="back-link">&larr; Back to Resumes</a>
+    </div>
+
+    <h1 class="resume-name">{{.FirstName}} {{.LastName}}</h1>
+    {{if .Headline}}<p class="resume-contact">{{.Headline}}</p>{{end}}
+    {{if .Location}}<p class="resume-contact">{{.Location}}</p>{{end}}
+
+    {{if .About}}
+    <div class="resume-section">
+      <h2>Summary</h2>
+      <p class="resume-summary">{{.About}}</p>
+    </div>
+    {{end}}
+
+    {{if .Experiences}}
+    <div class="resume-section">
+      <h2>Experience</h2>
+      {{range .Experiences}}
+      <div class="resume-entry">
+        <div class="resume-entry-header">
+          <span class="resume-entry-title">{{.Title}}</span>
+          <span class="resume-entry-date">
+            {{.StartDate.Format "Jan 2006"}}{{if .EndDate.Valid}} - {{.EndDate.Time.Format "Jan 2006"}}{{else}} - Present{{end}}
+          </span>
+        </div>
+        <p class="resume-entry-subtitle">
+          {{.Company}}{{if .Location}} | {{.Location}}{{end}}
+        </p>
+        {{if .Description}}
+        <p class="resume-entry-desc">{{.Description}}</p>
+        {{end}}
+      </div>
+      {{end}}
+    </div>
+    {{end}}
+
+    {{if .Educations}}
+    <div class="resume-section">
+      <h2>Education</h2>
+      {{range .Educations}}
+      <div class="resume-entry">
+        <div class="resume-entry-header">
+          <span class="resume-entry-title">{{.School}}</span>
+          <span class="resume-entry-date">
+            {{.StartYear}}{{if .EndYear.Valid}} - {{.EndYear.Int64}}{{else}} - Present{{end}}
+          </span>
+        </div>
+        <p class="resume-entry-subtitle">
+          {{.Degree}}{{if .FieldOfStudy}}, {{.FieldOfStudy}}{{end}}
+        </p>
+      </div>
+      {{end}}
+    </div>
+    {{end}}
+
+    {{if .Skills}}
+    <div class="resume-section">
+      <h2>Skills</h2>
+      <p class="resume-skills">
+      {{range $i, $skill := .Skills}}{{if $i}}, {{end}}{{$skill}}{{end}}
+      </p>
+    </div>
+    {{end}}
+  </body>
+</html>
+{{end}}

@@ -1,0 +1,75 @@
+{{define "title"}}Admin - User Management{{end}}
+
+{{define "content"}}
+<div class="admin-layout">
+    <div class="profile-card">
+        <h2>User Management</h2>
+        <table class="admin-table">
+            <caption class="sr-only">List of users with controls to set department, change role, and delete</caption>
+            <thead>
+                <tr>
+                    <th scope="col">Name</th>
+                    <th scope="col">Email</th>
+                    <th scope="col">Department</th>
+                    <th scope="col">Role</th>
+                    <th scope="col">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Users}}
+                <tr>
+                    <td><a href="/profile/{{.ID}}" class="user-link">{{.FirstName}} {{.LastName}}</a></td>
+                    <td>{{.Email}}</td>
+                    <td>
+                        <form method="POST" action="/admin/users/{{.ID}}/department" class="role-form">
+                            <label class="sr-only" for="department-{{.ID}}">Department for {{.FirstName}} {{.LastName}}</label>
+                            <select name="department_id" id="department-{{.ID}}" aria-label="Department for {{.FirstName}} {{.LastName}}">
+                                <option value="">— None —</option>
+                                {{$deptID := .DepartmentID}}
+                                {{range $.Departments}}
+                                <option value="{{.ID}}" {{if eq .ID $deptID}}selected{{end}}>{{.Name}}</option>
+                                {{end}}
+                            </select>
+                            <button type="submit" class="btn btn-outline btn-sm">Set</button>
+                        </form>
+                    </td>
+                    <td><span class="role-badge role-{{.Role}}">{{.Role}}</span></td>
+                    <td>
+                        <div class="admin-actions">
+                            <form method="POST" action="/admin/users/{{.ID}}/role" class="role-form">
+                                <label class="sr-only" for="role-{{.ID}}">Role for {{.FirstName}} {{.LastName}}</label>
+                                <select name="role" id="role-{{.ID}}" aria-label="Role for {{.FirstName}} {{.LastName}}">
+                                    <option value="employee" {{if eq .Role "employee"}}selected{{end}}>Employee</option>
+                                    <option value="manager" {{if eq .Role "manager"}}selected{{end}}>Manager</option>
+                                    <option value="admin" {{if eq .Role "admin"}}selected{{end}}>Admin</option>
+                                </select>
+                                <button type="submit" class="btn btn-outline btn-sm">Update</button>
+                            </form>
+                            <form method="POST" action="/admin/users/{{.ID}}/delete" class="inline" data-confirm="delete">
+                                <button type="submit" class="notif-delete-btn" title="Delete user" aria-label="Delete user {{.FirstName}} {{.LastName}}"><span aria-hidden="true">&#128465;</span></button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+</div>
+{{end}}
+
+{{define "scripts"}}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('[data-confirm="delete"]').forEach(function(form) {
+        form.addEventListener('submit', function(e) {
+            if (!confirm('Are you sure you want to permanently delete this user? This cannot be undone.')) {
+                e.preventDefault();
+            }
+        });
+    });
+});
+</script>
+{{end}}
+
+{{template "base" .}}

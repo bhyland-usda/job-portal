@@ -5,14 +5,209 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{template "title" .}} | USDA JobPortal</title>
-    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/main.css?v=7">
+    <script src="/static/js/darkmode.js"></script>
   </head>
 
   <body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
     {{template "navbar" .}}
-    <main class="container">
-      {{template "content" .}}
-    </main>
+    {{if .UserID}}
+    <input type="checkbox" id="drawer-toggle" class="drawer-toggle" />
+    <button type="button" class="drawer-scrim" data-shell-close="drawer-toggle" aria-label="Close all tools menu"></button>
+    <nav class="profile-drawer" id="profile-drawer" aria-label="All tools" aria-hidden="true" aria-labelledby="tools-drawer-title" role="dialog" tabindex="-1">
+        <div class="drawer-head">
+            <div class="drawer-head-text">
+                <span class="drawer-eyebrow">USDA JobPortal</span>
+                <h3 class="drawer-title" id="tools-drawer-title">All tools</h3>
+                <p class="drawer-lead">Grouped access to discovery, career, collaboration, and account tools.</p>
+            </div>
+            <button type="button" class="drawer-close" data-shell-close="drawer-toggle" aria-label="Close all tools menu"><span aria-hidden="true">&times;</span></button>
+        </div>
+        <div class="drawer-body">
+            <section class="drawer-section-card">
+                <span class="drawer-section-label">Connect</span>
+                <div class="drawer-links">
+                    <a href="/search" class="drawer-link">Search People</a>
+                    <a href="/connections" class="drawer-link">My Network</a>
+                    <a href="/groups" class="drawer-link">Groups</a>
+                    <a href="/workspaces" class="drawer-link">Workspaces</a>
+                    <a href="/departments" class="drawer-link">Directory</a>
+                    <a href="/orgchart" class="drawer-link">Org Chart</a>
+                </div>
+            </section>
+            <section class="drawer-section-card">
+                <span class="drawer-section-label">Discover</span>
+                <div class="drawer-links">
+                    <a href="/news" class="drawer-link">USDA News</a>
+                    <a href="/spotlight" class="drawer-link">Spotlight</a>
+                    <a href="/articles" class="drawer-link">Articles</a>
+                    <a href="/polls" class="drawer-link">Polls</a>
+                    <a href="/announcements" class="drawer-link">Announcements</a>
+                    <a href="/digest" class="drawer-link">Weekly Digest</a>
+                </div>
+            </section>
+            <section class="drawer-section-card">
+                <span class="drawer-section-label">Career</span>
+                <div class="drawer-links">
+                    <a href="/postings/search" class="drawer-link">Browse Postings</a>
+                    <a href="/postings/history" class="drawer-link">My Detail History</a>
+                    <a href="/resumes" class="drawer-link">Resumes</a>
+                    <a href="/certifications" class="drawer-link">Certifications</a>
+                    <a href="/mentorship" class="drawer-link">Mentorship</a>
+                    <a href="/analytics/learning" class="drawer-link">Learning</a>
+                </div>
+            </section>
+            <section class="drawer-section-card">
+                <span class="drawer-section-label">My work</span>
+                <div class="drawer-links">
+                    <a href="/feed" class="drawer-link">Feed</a>
+                    <a href="/my-posts" class="drawer-link">My Posts</a>
+                    <a href="/bookmarks" class="drawer-link">Saved Items</a>
+                    <a href="/feed/drafts" class="drawer-link">Drafts</a>
+                    <a href="/feedback" class="drawer-link">Feedback</a>
+                    <a href="/onboarding" class="drawer-link">Get Started</a>
+                </div>
+            </section>
+            <section class="drawer-section-card">
+                <span class="drawer-section-label">Recognition & insights</span>
+                <div class="drawer-links">
+                    <a href="/accomplishments" class="drawer-link">Accomplishments</a>
+                    <a href="/badges" class="drawer-link">Badges</a>
+                    <a href="/kudos" class="drawer-link">Kudos</a>
+                    <a href="/feed/trending" class="drawer-link">Trending</a>
+                    <a href="/analytics/leaderboard" class="drawer-link">Leaderboard</a>
+                    <a href="/insights/network" class="drawer-link">Network Graph</a>
+                </div>
+            </section>
+            <section class="drawer-section-card">
+                <span class="drawer-section-label">Settings</span>
+                <div class="drawer-links">
+                    <a href="/notifications/preferences" class="drawer-link">Notification Settings</a>
+                    <a href="/settings/sessions" class="drawer-link">Active Sessions</a>
+                    <a href="/data-export" class="drawer-link">Export My Data</a>
+                    <a href="/aup" class="drawer-link">Acceptable Use Policy</a>
+                </div>
+            </section>
+            {{if or (eq .Nav.Role "manager") (eq .Nav.Role "admin")}}
+            <section class="drawer-section-card">
+                <span class="drawer-section-label">Leadership tools</span>
+                <div class="drawer-links">
+                    <a href="/my-posts?tab=postings" class="drawer-link">My Postings</a>
+                    <a href="/analytics/skills-gap" class="drawer-link">Skills Gap Analysis</a>
+                    <a href="/analytics/workforce" class="drawer-link">Workforce Analytics</a>
+                    <a href="/insights/heatmap" class="drawer-link">Skills Heat Map</a>
+                </div>
+            </section>
+            {{end}}
+            {{if eq .Nav.Role "admin"}}
+            <section class="drawer-section-card">
+                <span class="drawer-section-label">Administration</span>
+                <div class="drawer-links">
+                    <a href="/admin/dashboard" class="drawer-link">Admin Dashboard</a>
+                    <a href="/admin/users" class="drawer-link">User Management</a>
+                    <a href="/admin/announcements/new" class="drawer-link">New Announcement</a>
+                    <a href="/admin/spotlight" class="drawer-link">Employee Spotlight</a>
+                    <a href="/admin/audit" class="drawer-link">Audit Log</a>
+                    <a href="/admin/report" class="drawer-link">Export Report</a>
+                    <a href="/admin/foia" class="drawer-link">FOIA Tool</a>
+                    <a href="/admin/orgchart" class="drawer-link">Assign Managers</a>
+                    <a href="/admin/moderation" class="drawer-link">Moderation Queue</a>
+                </div>
+            </section>
+            {{end}}
+        </div>
+    </nav>
+    <input type="checkbox" id="chat-toggle" class="drawer-toggle" />
+    <button type="button" class="chat-scrim" data-shell-close="chat-toggle" aria-label="Close messages"></button>
+    <div class="chat-drawer" id="chat-drawer" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="chat-drawer-title" tabindex="-1">
+        <button type="button" class="drawer-close" data-shell-close="chat-toggle" aria-label="Close messages"><span aria-hidden="true">&times;</span></button>
+        <div id="chat-list-view">
+            <div class="chat-list-header">
+                <strong id="chat-drawer-title">Messages</strong>
+                <button id="chat-new-btn" class="chat-new-btn">+ New</button>
+            </div>
+            <div id="chat-drawer-list">
+                <p class="chat-placeholder">Loading...</p>
+            </div>
+        </div>
+        <div id="chat-conv-view" class="chat-panel-hidden">
+            <div class="chat-panel-header">
+                <button id="chat-back-btn" class="chat-back" type="button" aria-label="Back to conversations"><span aria-hidden="true">&larr;</span></button>
+                <strong id="chat-conv-name"></strong>
+            </div>
+            <div id="chat-conv-messages" class="chat-messages" role="log" aria-live="polite" aria-label="Conversation messages"></div>
+            <div id="chat-typing" class="chat-typing-indicator" aria-live="polite">typing...</div>
+            <form id="chat-send-form" class="chat-send-form">
+                <label for="chat-send-input" class="sr-only">Type a message</label>
+                <input type="text" id="chat-send-input" class="chat-send-input" placeholder="Type a message..." />
+                <label for="chat-attach-input" class="chat-attach-btn" title="Attach file" aria-label="Attach file"><span aria-hidden="true">&#128206;</span></label>
+                <input type="file" id="chat-attach-input" hidden accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.jpg,.jpeg,.png,.gif,.webp,.mp4,.webm,.mov,.go,.py,.js,.ts,.java,.c,.cpp,.h,.rs,.rb,.sh,.sql,.yaml,.yml,.json,.xml,.toml,.ini,.cfg,.conf,.zip,.gz,.tar" />
+                <button type="submit" class="chat-send-btn">Send</button>
+            </form>
+        </div>
+    </div>
+    <div id="attachment-lightbox" class="modal-overlay attachment-lightbox-overlay">
+        <button class="lightbox-close" type="button" aria-label="Close">&times;</button>
+        <div class="lightbox-content">
+            <img class="lightbox-image" alt="" />
+            <div class="lightbox-caption"></div>
+        </div>
+    </div>
+    <div id="new-chat-modal" class="modal-overlay chat-modal" role="dialog" aria-modal="true" aria-labelledby="new-chat-title" aria-hidden="true">
+        <div class="modal-content">
+            <div class="modal-header">
+                <strong id="new-chat-title">New Conversation</strong>
+                <button id="chat-modal-close" class="modal-close" type="button" aria-label="Close new conversation dialog"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <label class="modal-label" for="chat-new-search">To:</label>
+                <div class="modal-scope">
+                    <label class="scope-option"><input type="radio" name="chat-scope" value="contacts" checked /> Connections</label>
+                    <label class="scope-option"><input type="radio" name="chat-scope" value="all" /> All Users</label>
+                </div>
+                <input type="text" id="chat-new-search" class="chat-search-input" placeholder="Search by name..." />
+                <div id="chat-new-results" class="chat-results"></div>
+                <div id="chat-new-selected" class="chat-selected-wrap"></div>
+                <label class="modal-label" for="chat-first-message">Message:</label>
+                <textarea id="chat-first-message" class="chat-search-input" rows="3" placeholder="Write your first message..."></textarea>
+            </div>
+            <div class="modal-footer">
+                <button id="chat-new-start" class="chat-start-btn">Send</button>
+            </div>
+        </div>
+    </div>
+    {{end}}
+    <div class="page-frame">
+        <main id="main-content" role="main" tabindex="-1">
+          <div class="page-content">
+            {{template "content" .}}
+          </div>
+        </main>
+        <footer class="site-footer">
+            <div class="site-footer-inner">
+                <div class="footer-brand">USDA JobPortal &middot; United States Department of Agriculture</div>
+                <nav class="footer-links" aria-label="Footer">
+                    <a href="https://ask.usda.gov" target="_blank" rel="noopener">AskUSDA</a>
+                    <a href="https://www.usda.gov/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a>
+                    <a href="https://www.usda.gov" target="_blank" rel="noopener">USDA.gov</a>
+                    <a href="https://www.usa.gov" target="_blank" rel="noopener">USA.gov</a>
+                    <a href="https://www.whitehouse.gov" target="_blank" rel="noopener">WhiteHouse.gov</a>
+                    <a href="https://www.usda.gov/ogc/office-information-affairs/foia-division" target="_blank" rel="noopener">FOIA</a>
+                    <a href="https://www.usda.gov/accessibility-statement" target="_blank" rel="noopener">Accessibility Statement</a>
+                    <a href="https://www.usda.gov/non-discrimination-statement" target="_blank" rel="noopener">Non-Discrimination Statement</a>
+                    <a href="https://www.usda.gov/information-quality-activities" target="_blank" rel="noopener">Information Quality</a>
+                    <a href="https://www.usda.gov/plain-writing" target="_blank" rel="noopener">Plain Writing</a>
+                </nav>
+            </div>
+        </footer>
+    </div>
+    <script src="/static/js/notifications.js"></script>
+    <script src="/static/js/lightbox.js"></script>
+    <script src="/static/js/shell-ui.js"></script>
+    <script src="/static/js/chat-drawer.js"></script>
+    <script src="/static/js/bookmarks.js"></script>
+    <script src="/static/js/media-controls.js"></script>
     {{block "scripts" .}}{{end}}
   </body>
 </html>

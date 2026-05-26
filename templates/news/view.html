@@ -1,0 +1,24 @@
+{{define "title"}}{{.Article.Title}}{{end}}
+
+{{define "content"}}
+<div class="news-layout">
+    <div class="profile-card">
+        <h2>{{.Article.Title}}</h2>
+        <p class="news-meta">By {{.Article.AuthorName}} — {{.Article.CreatedAt.Format "Jan 2, 2006"}}</p>
+        {{if not .Article.Published}}<p class="news-draft-badge">Draft — not published</p>{{end}}
+        <div class="news-content">{{.Article.Content}}</div>
+        {{if .IsAuthor}}
+        <form method="POST" action="/news/{{.Article.ID}}/publish" style="margin-top:16px;">
+            {{if .Article.Published}}
+            <button type="submit" class="btn btn-outline">Unpublish</button>
+            {{else}}
+            <button type="submit" class="btn btn-primary">Publish</button>
+            {{end}}
+        </form>
+        {{end}}
+        <a href="/news" class="back-link" style="display:inline-block;margin-top:16px;"><span aria-hidden="true">←</span> Back to News</a>
+    </div>
+</div>
+{{end}}
+
+{{template "base" .}}

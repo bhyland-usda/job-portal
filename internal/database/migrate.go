@@ -1,6 +1,6 @@
 package database
 
-import(
+import (
 	"database/sql"
 	"fmt"
 	"log/slog"

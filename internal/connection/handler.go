@@ -1,21 +1,24 @@
 package connection
 
-import(
+import (
 	"database/sql"
 	"html/template"
 	"log/slog"
 	"net/http"
 
+	"github.com/bhyland-usda/job-portal/internal/badge"
 	"github.com/bhyland-usda/job-portal/internal/middleware"
+	"github.com/bhyland-usda/job-portal/internal/notification"
 )
 
 type Handler struct {
-	db    *sql.DB
-	pages map[string]*template.Template
+	db     *sql.DB
+	pages  map[string]*template.Template
+	notifs *notification.Handler
 }
 
-func NewHandler(db *sql.DB, pages map[string]*template.Template) *Handler {
-	return &Handler { db: db, pages: pages }
+func NewHandler(db *sql.DB, pages map[string]*template.Template, notifs *notification.Handler) *Handler {
+	return &Handler{db: db, pages: pages, notifs: notifs}
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux, requireAuth func(http.Handler) http.Handler) {
@@ -34,12 +37,12 @@ type ConnectionUser struct {
 }
 
 type ConnectionsPage struct {
-	UserID   string
+	middleware.BaseData
 	Pending  []ConnectionUser
 	Accepted []ConnectionUser
 }
 
-func(h *Handler) showConnections(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) showConnections(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r.Context())
 
 	pending, err := h.getPending(r, userID)
@@ -56,8 +59,8 @@ func(h *Handler) showConnections(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := ConnectionsPage {
-		UserID:   userID,
+	data := ConnectionsPage{
+		BaseData: middleware.NewBaseData(r),
 		Pending:  pending,
 		Accepted: accepted,
 	}
@@ -90,6 +93,8 @@ func (h *Handler) GetConnectionStatus(userID, otherID string) (string, error) {
 
 	if status == "accepted" {
 		return "connected", nil
+	} else if status == "rejected" {
+		return "none", nil
 	}
 
 	if requesterID == userID {
@@ -118,6 +123,7 @@ func (h *Handler) getPending(r *http.Request, userID string) ([]ConnectionUser, 
 		if err := rows.Scan(&user.ID, &user.FirstName, &user.LastName, &user.Headline, &user.AvatarURL); err != nil {
 			return nil, err
 		}
+		user.AvatarURL = middleware.NormalizeAvatarURL(user.ID, user.AvatarURL)
 		users = append(users, user)
 	}
 
@@ -147,6 +153,7 @@ func (h *Handler) getAccepted(r *http.Request, userID string) ([]ConnectionUser,
 		if err := rows.Scan(&user.ID, &user.FirstName, &user.LastName, &user.Headline, &user.AvatarURL); err != nil {
 			return nil, err
 		}
+		user.AvatarURL = middleware.NormalizeAvatarURL(user.ID, user.AvatarURL)
 		users = append(users, user)
 	}
 
@@ -162,19 +169,50 @@ func (h *Handler) sendRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := h.db.ExecContext(r.Context(),
+	status, err := h.GetConnectionStatus(userID, targetID)
+	if err != nil {
+		slog.Error("failed to check connection status", "error", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	if status != "none" {
+		http.Redirect(w, r, "/profile/"+targetID, http.StatusSeeOther)
+		return
+	}
+
+	_, err = h.db.ExecContext(r.Context(),
 		`INSERT INTO connections (requester_id, addressee_id, status)
 		 VALUES ($1, $2, 'pending')
-		 ON CONFLICT (requester_id, addressee_id) DO NOTHING`,
-		 userID, targetID,
+		 ON CONFLICT (requester_id, addressee_id) DO UPDATE
+		 SET status = 'pending', updated_at = NOW()
+		 WHERE connections.status = 'rejected'`,
+		userID, targetID,
 	)
+
 	if err != nil {
 		slog.Error("failed to send connection request", "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	http.Redirect(w, r, "/profile/" + targetID, http.StatusSeeOther)
+	var firstName, lastName string
+	err = h.db.QueryRowContext(r.Context(),
+		`SELECT first_name, last_name FROM users WHERE id = $1`, userID,
+	).Scan(&firstName, &lastName)
+	if err != nil {
+		slog.Error("failed to look up sender name", "error", err)
+	} else {
+		if err := h.notifs.CreateNotification(
+			r.Context(), targetID, userID,
+			"connection_request",
+			firstName+" "+lastName+" "+"sent you a connection request",
+		); err != nil {
+			slog.Error("failed to create a notification", "error", err)
+		}
+	}
+
+	http.Redirect(w, r, "/profile/"+targetID, http.StatusSeeOther)
 }
 
 func (h *Handler) acceptRequest(w http.ResponseWriter, r *http.Request) {
@@ -184,7 +222,7 @@ func (h *Handler) acceptRequest(w http.ResponseWriter, r *http.Request) {
 	result, err := h.db.ExecContext(r.Context(),
 		`UPDATE connections SET status = 'accepted', updated_at = NOW()
 		 WHERE requester_id = $1 AND addressee_id = $2 AND status = 'pending'`,
-		 requesterID, userID,
+		requesterID, userID,
 	)
 	if err != nil {
 		slog.Error("failed to accept connection", "error", err)
@@ -198,6 +236,27 @@ func (h *Handler) acceptRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Award badges (e.g. Connector) to both parties — both gained a connection.
+	// Non-fatal: never block acceptance.
+	badge.CheckAndAward(r.Context(), h.db, userID)
+	badge.CheckAndAward(r.Context(), h.db, requesterID)
+
+	var firstName, lastName string
+	err = h.db.QueryRowContext(r.Context(),
+		`SELECT first_name, last_name FROM users WHERE id = $1`, userID,
+	).Scan(&firstName, &lastName)
+	if err != nil {
+		slog.Error("failed to look up acceptor name", "error", err)
+	} else {
+		if err := h.notifs.CreateNotification(
+			r.Context(), requesterID, userID,
+			"connection_accepted",
+			firstName+" "+lastName+" accepted your connection request",
+		); err != nil {
+			slog.Error("failed to create notification", "error", err)
+		}
+	}
+
 	http.Redirect(w, r, "/connections", http.StatusSeeOther)
 }
 
@@ -208,7 +267,7 @@ func (h *Handler) rejectRequest(w http.ResponseWriter, r *http.Request) {
 	_, err := h.db.ExecContext(r.Context(),
 		`UPDATE connections SET status = 'rejected', updated_at = NOW()
 		 WHERE requester_id = $1 AND addressee_id = $2 AND status = 'pending'`,
-		 requesterID, userID,
+		requesterID, userID,
 	)
 	if err != nil {
 		slog.Error("failed to reject connection", "error", err)

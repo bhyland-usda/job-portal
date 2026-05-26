@@ -23,9 +23,44 @@
         <label for="location">Location</label>
         <input type="text" id="location" name="location" value="{{.User.Location}}" placeholder="e.g. Washington, D.C.">
       </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="birthday">Birthday</label>
+          <input type="date" id="birthday" name="birthday" value="{{.User.BirthdayInput}}">
+        </div>
+        <div class="form-group">
+          <label for="hire_date">Hire date</label>
+          <input type="date" id="hire_date" name="hire_date" value="{{.User.HireDateInput}}">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="work_status">Work status</label>
+          <select id="work_status" name="work_status">
+            {{$current := .User.WorkStatus}}
+            {{range .WorkStatuses}}
+            <option value="{{.Value}}"{{if eq .Value $current}} selected{{end}}>{{.Label}}</option>
+            {{end}}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="work_status_until">Status until (optional)</label>
+          <input type="date" id="work_status_until" name="work_status_until" value="{{.User.WorkStatusUntilInput}}">
+        </div>
+      </div>
       <div class="form-group">
         <label for="about">About</label>
         <textarea id="about" name="about" rows="5" placeholder="Tell people about yourself...">{{.User.About}}</textarea>
+      </div>
+      <div class="form-group">
+        <label for="profile_visibility">Profile visibility</label>
+        <select id="profile_visibility" name="profile_visibility">
+          {{$visibility := .User.ProfileVisibility}}
+          {{range .Visibilities}}
+          <option value="{{.Value}}"{{if eq .Value $visibility}} selected{{end}}>{{.Label}}</option>
+          {{end}}
+        </select>
+        <p class="field-hint">Controls who can see your full profile. "Connections only" hides details from people you are not connected with; "Private" hides your profile from everyone but you (and admins).</p>
       </div>
       <div class="form-actions">
         <button type="submit" class="btn btn-primary">Save</button>

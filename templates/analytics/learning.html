@@ -1,0 +1,25 @@
+{{define "title"}}Learning Recommendations{{end}}
+
+{{define "content"}}
+<div class="posting-layout">
+    <div class="profile-card">
+        <h2>Recommended Skills to Learn</h2>
+        <p style="color:var(--text-secondary);margin-bottom:16px;">Skills in demand from active postings that you don't have yet.</p>
+        {{if .Recommendations}}
+        {{range .Recommendations}}
+        <div class="my-post-item">
+            <div>
+                <strong>{{.SkillName}}</strong>
+                <p style="color:var(--text-secondary);font-size:13px;">{{.PostingCount}} active posting{{if ne .PostingCount 1}}s{{end}} need this skill</p>
+            </div>
+            <a href="/postings/search?q={{.SkillName}}" class="btn btn-outline btn-sm">View Postings</a>
+        </div>
+        {{end}}
+        {{else}}
+        <p class="empty-state">No new skill recommendations. You're well-matched to current postings!</p>
+        {{end}}
+    </div>
+</div>
+{{end}}
+
+{{template "base" .}}

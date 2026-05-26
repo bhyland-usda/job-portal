@@ -1,0 +1,47 @@
+{{define "title"}}Employee Spotlight{{end}}
+
+{{define "content"}}
+<div class="spotlight-layout">
+    <div class="profile-card">
+        <div class="content-header">
+            <h2>Employee Spotlight</h2>
+            {{if eq .Nav.Role "admin"}}
+            <a href="/admin/spotlight" class="btn btn-primary">New Spotlight</a>
+            {{end}}
+        </div>
+        {{if .Current}}
+        <div class="spotlight-featured">
+            <div class="spotlight-featured-head">
+                {{if .Current.AvatarURL}}
+                <img src="{{.Current.AvatarURL}}" alt="" class="spotlight-avatar" />
+                {{else}}
+                <span class="spotlight-avatar-placeholder" aria-hidden="true">&#128100;</span>
+                {{end}}
+                <div>
+                    <h3 class="spotlight-name"><a href="/profile/{{.Current.UserID}}" class="title-link">{{.Current.UserName}}</a></h3>
+                    {{if .Current.Headline}}<p class="spotlight-headline">{{.Current.Headline}}</p>{{end}}
+                    <p class="spotlight-week">Week of {{.Current.WeekOf.Format "Jan 2, 2006"}}</p>
+                </div>
+            </div>
+            {{if .Current.Reason}}<p class="spotlight-reason">{{.Current.Reason}}</p>{{end}}
+        </div>
+        {{else}}
+        <p class="empty-state">No employee has been spotlighted yet.</p>
+        {{end}}
+
+        {{if .Past}}
+        <h3 class="spotlight-past-heading">Past Spotlights</h3>
+        <ul class="spotlight-past-list">
+            {{range .Past}}
+            <li class="spotlight-past-item">
+                <a href="/profile/{{.UserID}}" class="title-link">{{.UserName}}</a>
+                <span class="spotlight-week"> — Week of {{.WeekOf.Format "Jan 2, 2006"}}</span>
+            </li>
+            {{end}}
+        </ul>
+        {{end}}
+    </div>
+</div>
+{{end}}
+
+{{template "base" .}}

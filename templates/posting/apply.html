@@ -1,0 +1,32 @@
+{{define "title"}}Apply - {{.Posting.Title}}{{end}}
+
+{{define "content"}}
+<div class="posting-layout">
+  <div class="profile-card">
+    <h2>Apply to: {{.Posting.Title}}</h2>
+    <p class="posting-meta">
+      Posted by <a href="/profile/{{.Posting.AuthorID}}" class="user-link">{{.Posting.AuthorName}}</a>
+      &middot; {{.Posting.Type}}
+      {{if .Posting.Department}}&middot; {{.Posting.Department}}{{end}}
+      {{if .Posting.Location}}&middot; {{.Posting.Location}}{{end}}
+    </p>
+
+    {{if .Error}}
+    <div class="alert alert-error" role="alert">{{.Error}}</div>
+    {{end}}
+
+    <form method="POST" action="/postings/{{.Posting.ID}}/apply" class="posting-form">
+      <div class="form-group">
+        <label for="cover_letter">Cover Letter</label>
+        <textarea id="cover_letter" name="cover_letter" rows="8" required placeholder="Explain why you're a good fit for this opportunity..."></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Submit Application</button>
+        <a href="/postings/{{.Posting.ID}}" class="btn btn-outline">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{{end}}
+
+{{template "base" .}}

@@ -1,0 +1,8 @@
+README.md
+pyproject.toml
+bots.egg-info/PKG-INFO
+bots.egg-info/SOURCES.txt
+bots.egg-info/dependency_links.txt
+bots.egg-info/requires.txt
+bots.egg-info/top_level.txt
+tests/test_frontend_shell.py

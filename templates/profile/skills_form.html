@@ -1,0 +1,44 @@
+{{define "title"}}Manage Skills{{end}}
+
+{{define "content"}}
+<div class="profile-layout">
+  <div class="profile-card">
+    <h2>Manage Skills</h2>
+    {{if .Error}}
+    <div class="alert alert-error">{{.Error}}</div>
+    {{end}}
+    <form method="POST" action="/profile/skills/add" class="skill-add-form">
+      <div class="form-group">
+        <label for="name">Add a Skill</label>
+        <div class="search-form">
+          <input type="text" id="name" name="name" placeholder="e.g. Project Management" required />
+          <button type="submit" class="btn btn-primary">Add</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div class="profile-card">
+    <h2>Your Skills</h2>
+    {{if .Skills}}
+    <div class="skills-manage-list">
+      {{range .Skills}}
+      <div class="skill-manage-item">
+        <span class="skill-tag">{{.Name}}</span>
+        <form method="POST" action="/profile/skills/{{.ID}}/delete" class="inline">
+          <button type="submit" class="btn-link btn-danger">Remove</button>
+        </form>
+      </div>
+      {{end}}
+    </div>
+    {{else}}
+    <p class="empty-state">No skills added yet.</p>
+    {{end}}
+    <div class="form-actions">
+      <a href="/profile/me" class="btn btn-outline">Done</a>
+    </div>
+  </div>
+</div>
+{{end}}
+
+{{template "base" .}}

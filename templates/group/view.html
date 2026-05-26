@@ -1,0 +1,54 @@
+{{define "title"}}{{.Group.Name}}{{end}}
+
+{{define "content"}}
+<div class="group-view-layout">
+    <div class="profile-card" style="margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+            <div>
+                <h2>{{.Group.Name}}</h2>
+                {{if .Group.Description}}<p style="color:var(--text-muted);margin:8px 0;">{{.Group.Description}}</p>{{end}}
+                <span style="font-size:13px;color:var(--text-muted);">{{.Group.MemberCount}} {{if eq .Group.MemberCount 1}}member{{else}}members{{end}}</span>
+            </div>
+            <div>
+                {{if .IsMember}}
+                <form method="POST" action="/groups/{{.Group.ID}}/leave">
+                    <button type="submit" class="btn" style="background:var(--bg);color:var(--text-muted);">Leave Group</button>
+                </form>
+                {{else}}
+                <form method="POST" action="/groups/{{.Group.ID}}/join">
+                    <button type="submit" class="btn btn-primary">Join Group</button>
+                </form>
+                {{end}}
+            </div>
+        </div>
+    </div>
+
+    {{if .IsMember}}
+    <div class="profile-card" style="margin-bottom:16px;">
+        <form method="POST" action="/groups/{{.Group.ID}}/post">
+            <textarea name="content" placeholder="Share something with the group..." rows="3" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:var(--radius);resize:vertical;font-family:inherit;font-size:14px;margin-bottom:8px;"></textarea>
+            <button type="submit" class="btn btn-primary">Post</button>
+        </form>
+    </div>
+    {{end}}
+
+    <div class="profile-card">
+        <h3 style="margin-bottom:12px;">Discussion</h3>
+        {{if .Posts}}
+        {{range .Posts}}
+        <div style="padding:12px 0;border-bottom:1px solid var(--border);">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                <a href="/profile/{{.UserID}}" class="user-link">{{.AuthorName}}</a>
+                <span style="font-size:12px;color:var(--text-muted);">{{.CreatedAt.Format "Jan 2, 2006 3:04 PM"}}</span>
+            </div>
+            <p style="white-space:pre-wrap;">{{.Content}}</p>
+        </div>
+        {{end}}
+        {{else}}
+        <p class="empty-state">No posts yet.{{if .IsMember}} Start the conversation!{{end}}</p>
+        {{end}}
+    </div>
+</div>
+{{end}}
+
+{{template "base" .}}

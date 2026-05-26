@@ -1,0 +1,32 @@
+{{define "title"}}Departments{{end}}
+
+{{define "content"}}
+<div class="connections-layout">
+  <div class="profile-card">
+    <h2>Departments</h2>
+
+    {{if .Departments}}
+    <div class="dept-list">
+      {{range .Departments}}
+      <a href="/departments/{{.ID}}" class="dept-item">
+        <div class="dept-info">
+          <p class="dept-name">{{.Name}}</p>
+          {{if .Description}}
+          <p class="dept-desc">{{.Description}}</p>
+          {{end}}
+          {{if .ParentName}}
+          <p class="dept-parent">Part of {{.ParentName}}</p>
+          {{end}}
+        </div>
+        <span class="dept-count">{{.EmployeeCount}} {{if eq .EmployeeCount 1}}employee{{else}}employees{{end}}</span>
+      </a>
+      {{end}}
+    </div>
+    {{else}}
+    <p class="empty-state">No departments have been created yet.</p>
+    {{end}}
+  </div>
+</div>
+{{end}}
+
+{{template "base" .}}

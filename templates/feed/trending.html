@@ -1,0 +1,83 @@
+{{define "title"}}Trending Topics{{end}}
+
+{{define "content"}}
+<style>
+    .trending-card {
+        max-width: 960px;
+        margin: 0 auto;
+    }
+    .trending-card .trending-subtitle {
+        margin: 0 0 1rem;
+        color: #5b6b5b;
+        font-size: 0.9rem;
+    }
+    .trending-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    .trending-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        border: 1px solid #e2e8e2;
+        border-radius: 8px;
+        text-decoration: none;
+        color: inherit;
+        transition: background 0.12s ease, border-color 0.12s ease;
+    }
+    .trending-item:hover {
+        background: #f3f7f3;
+        border-color: #c9d6c9;
+    }
+    .trending-body {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+    .trending-tag {
+        display: block;
+        font-weight: 600;
+        color: #2e5e2e;
+    }
+    .trending-meta {
+        display: block;
+        font-size: 0.8rem;
+        color: #6b7b6b;
+    }
+    .trending-count {
+        flex: 0 0 auto;
+        font-size: 0.85rem;
+        color: #5b6b5b;
+        white-space: nowrap;
+    }
+    .trending-empty {
+        padding: 1.5rem;
+        text-align: center;
+        color: #6b7b6b;
+    }
+</style>
+<div class="feed-layout">
+    <div class="profile-card trending-card">
+        <h2>Trending This Week</h2>
+        <p class="trending-subtitle">Hashtags ranked by post activity and engagement over the last 7 days.</p>
+        {{if .Tags}}
+        <div class="trending-list">
+            {{range .Tags}}
+            <a href="/feed/hashtag/{{.Name}}" class="trending-item">
+                <span class="trending-body">
+                    <span class="trending-tag">#{{.Name}}</span>
+                    <span class="trending-meta">{{.Score}} interaction{{if ne .Score 1}}s{{end}}</span>
+                </span>
+                <span class="trending-count">{{.PostCount}} post{{if ne .PostCount 1}}s{{end}}</span>
+            </a>
+            {{end}}
+        </div>
+        {{else}}
+        <p class="trending-empty empty-state">No trending topics this week. Start a conversation with #hashtags!</p>
+        {{end}}
+    </div>
+</div>
+{{end}}
+
+{{template "base" .}}

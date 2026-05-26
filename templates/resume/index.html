@@ -1,0 +1,56 @@
+{{define "title"}}My Resumes{{end}}
+
+{{define "content"}}
+<div class="resume-layout">
+  <div class="profile-card">
+    <div class="resume-header">
+      <h2>My Resumes</h2>
+      <span class="resume-count">{{len .Resumes}} / 5</span>
+    </div>
+
+    {{if lt (len .Resumes) 5}}
+    <form method="POST" action="/resumes/upload" enctype="multipart/form-data" class="resume-upload">
+      <label for="resume" class="btn btn-primary">Upload Resume</label>
+      <input type="file" id="resume" name="resume" accept="application/pdf" hidden />
+      <p class="upload-hint">PDF only, max 10MB</p>
+    </form>
+    {{end}}
+    <div style="text-align: center; margin-bottom: 20px;">
+      <a href="/resumes/generate" class="btn btn-outline">Generate from Profile</a>
+    </div>
+    {{if .Resumes}}
+    <div class="resume-list">
+      {{range .Resumes}}
+      <div class="resume-item">
+        <div class="resume-info">
+          <p class="resume-name">{{.OriginalName}}</p>
+          <p class="resume-meta">{{.CreatedAt}}</p>
+        </div>
+        <div class="resume-actions">
+          <a href="/resumes/{{.ID}}/download" class="btn btn-outline btn-sm">Download</a>
+          <form method="POST" action="/resumes/{{.ID}}/delete" class="inline">
+            <button type="submit" class="btn-link btn-danger">Delete</button>
+          </form>
+        </div>
+      </div>
+      {{end}}
+    </div>
+    {{else}}
+    <p class="empty-state">No resumes uploaded yet.</p>
+    {{end}}
+  </div>
+</div>
+{{end}}
+
+{{define "scripts"}}
+<script>
+  var resumeInput = document.getElementById('resume');
+  if (resumeInput) {
+    resumeInput.addEventListener('change', function() {
+      this.closest('form').submit();
+    });
+  }
+</script>
+{{end}}
+
+{{template "base" .}}
