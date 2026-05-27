@@ -4,7 +4,47 @@ _Last updated: 2026-05-22_
 
 ## Open
 
-**None.** All previously tracked bugs are resolved (see below). File new issues here as they're found.
+- Join Now link is unstyled
+- User Acceptance Policy needs to follow correct theming
+- Admin Dashboard needs to follow correct themeing
+- Admin User Management Screen
+  - Dropdowns are hard to open (multiple clicks needed)
+  - When Set button is clicked for department, the page refreshes but the new value isn't persisted
+  - When Actions dropdown is finally opened (hard to open) clicking a value doesn't update the value to trigger the user to click the Update button
+  - Clicking update to update a user's permissions doesn't do anything.
+  - Needs a back to dashboard button.
+- Audit log catches changes, but the changes were not effective (see above bugs)
+- Audit log has entries, but Admin Dashboard doesn't show anything in the Recent Audit Activity
+- Assign Managers dropdowns are hard to open
+- Org Chart theme needs to follow correct themeing
+- Org Chart should be more of a hierarchal graph than a scrollable list
+- All tools needs to be a floating tab on the lefthand side with a hamburger menu icon and moved off of the top of the page
+- Messages needs to be a floating tab on the righthand side of the page with a Chat Bubble icon and moved off the top of the page
+- Skills Heat Map needs to follow the correct themeing
+- Workforce Analytics dashboard cards need to follow the correct themeing
+- Feed Page
+  - Clicking a emoji button refreshes the page, it should just update the button and likes.
+  - The share commentary text box is too small, height and width
+  - When share commentary box is open the Save and Report buttons have their layout disrupted.
+  - Clicking share doesn't really have a function in the first place.
+  - Saving a social post, and then clicking on it in the Saved Page just takes the user back to the feed page, not the post itself.
+  - Attaching a file when writing a new social post doesn't show anything to say it's been attached successfully. There should be the files name or a small preview.
+  - Adding a comment on a post refreshes the page, it should just add the comment and only refresh that post's comment section.
+- Notifications are not sent to the manager when someone applies to their post.
+- Too many clicks for managers to get to the applicants of their postings.
+- Change status dropdown needs to follow the correct themeing.
+- Change status does not update the status when an option is chosen from the dropdown.
+- Change status dropdown has a hard time opening (can be seen in rendering flashes on the dropdown itself), but does open on first click.
+- Record Outcome page for a posting:
+  - Dropdown is hard to open (same as other dropdowns)
+  - Clicking a selection on the Outcome Status does not update the value.
+  - When posting has been closed the Record Outcome button is still active (maybe switch it to update outcome?)
+- Postings need to have a workflow of when applicants can no longer apply without closing it.
+- Social Post drafts text box is too small and the Save Draft button should be under it on the right hand side.
+- Social Post drafts should have the same scheduling mechanism as posting right now on the Social Feed. In fact, it should be removed from the Social Feed page and placed in drafts.
+- Manager Create Post page, same issue with the dropdown as every other page, hard to open and selecting something does not update the value.
+- Create Post page dropdown has no keyboard shortcut to open it. There needs to be a keyboard workflow for EVERY page.
+- Opportunities/Browse Postings Type filter dropdown has the same issue as all the other dropdowns tested.
 
 ---
 

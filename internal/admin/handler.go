@@ -3,10 +3,13 @@ package admin
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"html/template"
 	"log/slog"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/bhyland-usda/job-portal/internal/middleware"
@@ -31,6 +34,8 @@ type AdminPage struct {
 	middleware.BaseData
 	Users       []User
 	Departments []Department
+	FlashKind   string
+	FlashText   string
 }
 
 type AuditEntry struct {
@@ -344,23 +349,59 @@ func (h *Handler) writeAudit(ctx context.Context, actorID, action, targetID, det
 	}
 }
 
+func writeAuditTx(ctx context.Context, tx *sql.Tx, actorId, action, targetID, details string) error {
+	_, err := tx.ExecContext(ctx,
+		`INSERT INTO audit_log (actor_id, action, target_id, details) VALUES ($1, $2, $3, $4)`,
+		actorId, action, targetID, details,
+	)
+
+	return err
+}
+
+func adminUsersRedirectURL(kind, text string) string {
+	query := url.Values{}
+
+	if strings.TrimSpace(kind) != "" {
+		query.Set("flash_kind", kind)
+	}
+
+	if strings.TrimSpace(text) != "" {
+		query.Set("flash_text", text)
+	}
+
+	encoded := query.Encode()
+
+	if encoded == "" {
+		return "/admin/users"
+	}
+
+	return "/admin/users?" + encoded
+}
+
+func redirectAdminUsers(w http.ResponseWriter, r *http.Request, kind, text string) {
+	http.Redirect(w, r, adminUsersRedirectURL(kind, text), http.StatusSeeOther)
+}
+
 func (h *Handler) showUsers(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.db.QueryContext(r.Context(),
 		`SELECT u.id, u.email, u.first_name, u.last_name, u.role,
-			COALESCE(u.department_id::text, ''),
-			COALESCE(d.name, '')
-		 FROM users u
-		 LEFT JOIN departments d ON d.id = u.department_id
-		 ORDER BY u.last_name, u.first_name`,
+	 COALESCE(u.department_id::text, ''),
+	 COALESCE(d.name, '')
+		FROM users u
+		LEFT JOIN departments d on d.id = u.department_id
+		ORDER BY u.last_name, u.first_name`,
 	)
+
 	if err != nil {
 		slog.Error("failed to load users", "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+
 	defer rows.Close()
 
 	var users []User
+
 	for rows.Next() {
 		var user User
 		if err := rows.Scan(&user.ID, &user.Email, &user.FirstName, &user.LastName,
@@ -371,17 +412,18 @@ func (h *Handler) showUsers(w http.ResponseWriter, r *http.Request) {
 		users = append(users, user)
 	}
 
-	// Load departments for dropdown
 	var departments []Department
 	deptRows, err := h.db.QueryContext(r.Context(),
 		`SELECT id, name FROM departments ORDER BY name`,
 	)
+
 	if err == nil {
 		defer deptRows.Close()
+
 		for deptRows.Next() {
-			var d Department
-			if err := deptRows.Scan(&d.ID, &d.Name); err == nil {
-				departments = append(departments, d)
+			var dept Department
+			if err := deptRows.Scan(&dept.ID, &dept.Name); err == nil {
+				departments = append(departments, dept)
 			}
 		}
 	}
@@ -390,6 +432,8 @@ func (h *Handler) showUsers(w http.ResponseWriter, r *http.Request) {
 		BaseData:    middleware.NewBaseData(r),
 		Users:       users,
 		Departments: departments,
+		FlashKind:   strings.TrimSpace(r.URL.Query().Get("flash_kind")),
+		FlashText:   strings.TrimSpace(r.URL.Query().Get("flash_text")),
 	}
 
 	h.pages["admin_users.html"].ExecuteTemplate(w, "base", data)
@@ -478,7 +522,7 @@ func (h *Handler) changeRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newRole := r.FormValue("role")
+	newRole := strings.TrimSpace(r.FormValue("role"))
 	validRoles := map[string]bool{
 		"employee": true,
 		"manager":  true,
@@ -486,77 +530,226 @@ func (h *Handler) changeRole(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !validRoles[newRole] {
-		http.Error(w, "Invalid role", http.StatusBadRequest)
+		redirectAdminUsers(w, r, "error", "Invalid role selection.")
 		return
 	}
 
-	// Capture the previous role so the audit detail reads "old -> new".
-	var oldRole string
-	if err := h.db.QueryRowContext(r.Context(),
-		`SELECT role FROM users WHERE id = $1`, targetID,
-	).Scan(&oldRole); err != nil {
-		oldRole = "unknown"
-	}
+	tx, err := h.db.BeginTx(r.Context(), nil)
 
-	_, err := h.db.ExecContext(r.Context(),
-		`UPDATE users SET role = $1 WHERE id = $2`,
-		newRole, targetID,
-	)
 	if err != nil {
-		slog.Error("failed to change role", "error", err)
+		slog.Error("failed to begin role change transaction", "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	slog.Info("role changed", "admin", adminID, "target", targetID, "role", newRole)
-	h.writeAudit(r.Context(), adminID, "role_change", targetID,
-		fmt.Sprintf("%s -> %s", oldRole, newRole))
+	defer tx.Rollback()
 
-	http.Redirect(w, r, "/admin/users", http.StatusSeeOther)
+	var oldRole string
+	err = tx.QueryRowContext(r.Context(),
+		`SELECT role FROM users WHERE id = $1`,
+		targetID,
+	).Scan(&oldRole)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		redirectAdminUsers(w, r, "error", "User not found.")
+		return
+	}
+
+	if err != nil {
+		slog.Error("failed to load current role", "error", err, "target", targetID)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	if oldRole == newRole {
+		redirectAdminUsers(w, r, "info", "Role was already set to "+newRole+".")
+		return
+	}
+
+	result, err := tx.ExecContext(r.Context(),
+		`UPDATE users SET role = $1 WHERE id = $2`,
+		newRole, targetID,
+	)
+
+	if err != nil {
+		slog.Error("failed to change role", "error", err, "target", targetID, "role", newRole)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	rowsAffected, err := result.RowsAffected()
+
+	if err != nil {
+		slog.Error("failed to read role update row count", "error", err, "target", targetID)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	if rowsAffected != 1 {
+		redirectAdminUsers(w, r, "error", "Role update did not affect exactly one user.")
+		return
+	}
+
+	if err := writeAuditTx(r.Context(), tx, adminID, "role_change", targetID, fmt.Sprintf("%s -> %s", oldRole, newRole)); err != nil {
+		slog.Error("failed to write role audit log", "error", err, "target", targetID)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	if err := tx.Commit(); err != nil {
+		slog.Error("failed to commit role change", "error", err, "target", targetID)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	slog.Info("role changed", "admin", adminID, "target", targetID, "from", oldRole, "to", newRole)
+	redirectAdminUsers(w, r, "success", "Role updated successfully.")
 }
 
 func (h *Handler) changeDepartment(w http.ResponseWriter, r *http.Request) {
 	adminID := middleware.GetUserID(r.Context())
 	targetID := r.PathValue("id")
 
-	r.ParseForm()
-	deptID := r.FormValue("department_id")
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
 
-	auditDetails := "removed from department"
+	deptID := strings.TrimSpace(r.FormValue("department_id"))
+
+	tx, err := h.db.BeginTx(r.Context(), nil)
+
+	if err != nil {
+		slog.Error("failed to begin department change transaction", "error", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	defer tx.Rollback()
+
+	var currentDepartmentID sql.NullString
+	var currentDepartmentName sql.NullString
+
+	err = tx.QueryRowContext(r.Context(),
+		`SELECT u.department_id::text, d.name
+		 FROM users u
+		 LEFT JOIN departments d on d.id = u.department_id
+		 WHERE u.id = $1`,
+		targetID,
+	).Scan(&currentDepartmentID, &currentDepartmentName)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		redirectAdminUsers(w, r, "error", "User not found.")
+		return
+	}
+
+	if err != nil {
+		slog.Error("failed to load current department", "error", err, "target", targetID)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	var (
+		newDeptName  string
+		auditDetails string
+		successMsg   string
+		result       sql.Result
+	)
+
 	if deptID == "" {
-		// Remove from department
-		_, err := h.db.ExecContext(r.Context(),
+		if !currentDepartmentID.Valid || strings.TrimSpace(currentDepartmentID.String) == "" {
+			redirectAdminUsers(w, r, "info", "User is already not assigned a department.")
+			return
+		}
+
+		result, err = tx.ExecContext(r.Context(),
 			`UPDATE users SET department_id = NULL WHERE id = $1`,
 			targetID,
 		)
+
 		if err != nil {
-			slog.Error("failed to remove department", "error", err)
+			slog.Error("failed to remove department", "error", err, "target", targetID)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
+
+		oldName := "department"
+
+		if currentDepartmentName.Valid && strings.TrimSpace(currentDepartmentName.String) != "" {
+			oldName = currentDepartmentName.String
+		}
+
+		auditDetails = "removed from " + oldName
+		successMsg = "Department cleared successfully."
 	} else {
-		_, err := h.db.ExecContext(r.Context(),
+		err = tx.QueryRowContext(r.Context(),
+			`SELECT name FROM departments WHERE id = $1`,
+			deptID,
+		).Scan(&newDeptName)
+
+		if errors.Is(err, sql.ErrNoRows) {
+			redirectAdminUsers(w, r, "error", "Selected department does not exist.")
+			return
+		}
+
+		if err != nil {
+			slog.Error("failed to load selected department", "error", err, "department", deptID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		if currentDepartmentID.Valid && strings.TrimSpace(currentDepartmentID.String) == deptID {
+			redirectAdminUsers(w, r, "info", "Department was already set to "+newDeptName+".")
+			return
+		}
+
+		result, err = tx.ExecContext(r.Context(),
 			`UPDATE users SET department_id = $1 WHERE id = $2`,
 			deptID, targetID,
 		)
+
 		if err != nil {
-			slog.Error("failed to change department", "error", err)
+			slog.Error("failed to change department", "error", err, "target", targetID, "department", deptID)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 
-		var deptName string
-		if err := h.db.QueryRowContext(r.Context(),
-			`SELECT name FROM departments WHERE id = $1`, deptID,
-		).Scan(&deptName); err != nil {
-			deptName = deptID
+		if currentDepartmentName.Valid && strings.TrimSpace(currentDepartmentName.String) != "" {
+			auditDetails = fmt.Sprintf("%s -> %s", currentDepartmentName.String, newDeptName)
+		} else {
+			auditDetails = "assigned to " + newDeptName
 		}
-		auditDetails = "assigned to " + deptName
+
+		successMsg = "Department updated successfully."
+	}
+
+	rowsAffected, err := result.RowsAffected()
+
+	if err != nil {
+		slog.Error("failed to read department update row count", "error", err, "target", targetID)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	if rowsAffected != 1 {
+		redirectAdminUsers(w, r, "error", "Department update did not affect exactly one user.")
+		return
+	}
+
+	if err := writeAuditTx(r.Context(), tx, adminID, "department_change", targetID, auditDetails); err != nil {
+		slog.Error("failed to write department audit log", "error", err, "target", targetID)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	if err := tx.Commit(); err != nil {
+		slog.Error("failed to commit department change", "error", err, "target", targetID)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
 	}
 
 	slog.Info("department changed", "admin", adminID, "target", targetID, "department", deptID)
-	h.writeAudit(r.Context(), adminID, "department_change", targetID, auditDetails)
-	http.Redirect(w, r, "/admin/users", http.StatusSeeOther)
+	redirectAdminUsers(w, r, "success", successMsg)
 }
 
 func (h *Handler) deleteUser(w http.ResponseWriter, r *http.Request) {

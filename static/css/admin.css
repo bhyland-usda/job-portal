@@ -1,4 +1,33 @@
 /* Admin */
+.admin-users-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+
+.admin-users-header h2 {
+    margin-bottom: 4px;
+}
+
+.admin-users-subtitle {
+    margin: 0;
+    color: var(--text-muted, #666);
+}
+
+.admin-users-table {
+    margin-top: 16px;
+}
+
+.admin-inline-form {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
 .admin-actions {
     display: flex;
     align-items: center;
@@ -74,9 +103,24 @@
 }
 
 /* FOIA */
-.foia-layout { max-width: 1128px; margin: 0 auto; padding: 20px; }
+.foia-layout {
+    max-width: 1128px;
+    margin: 0 auto;
+    padding: 20px;
+}
 
 /* Dark mode role badges */
-.dark-mode .role-employee { background: rgba(60,60,60,0.3); color: #909090; }
-.dark-mode .role-manager { background: rgba(0,71,133,0.2); color: var(--primary); }
-.dark-mode .role-admin { background: rgba(200,50,50,0.15); color: var(--error); }
+.dark-mode .role-employee {
+    background: rgba(60, 60, 60, 0.3);
+    color: #909090;
+}
+
+.dark-mode .role-manager {
+    background: rgba(0, 71, 133, 0.2);
+    color: var(--primary);
+}
+
+.dark-mode .role-admin {
+    background: rgba(200, 50, 50, 0.15);
+    color: var(--error);
+}
