@@ -10,11 +10,22 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 )
+
+func repoRoot(t *testing.T) string {
+	t.Helper()
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatalf("resolve source path: runtime.Caller failed")
+	}
+	return filepath.Clean(filepath.Join(filepath.Dir(filename), "..", "..", ".."))
+}
 
 type fixtureServer struct {
 	baseURL string
@@ -37,8 +48,11 @@ func startFixtureServer(t *testing.T) *fixtureServer {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cmd := exec.CommandContext(ctx, "go", "run", "./cmd/bots/testserver")
-	cmd.Dir = "/home/bryan/Projects/go/job_portal"
+	cmd.Dir = repoRoot(t)
 	cmd.Env = append(os.Environ(), "PORT="+strconv.Itoa(port))
+	var startupOutput strings.Builder
+	cmd.Stdout = &startupOutput
+	cmd.Stderr = &startupOutput
 
 	if err := cmd.Start(); err != nil {
 		cancel()
@@ -51,7 +65,7 @@ func startFixtureServer(t *testing.T) *fixtureServer {
 		if time.Now().After(deadline) {
 			cancel()
 			_ = cmd.Wait()
-			t.Fatalf("server did not start in time")
+			t.Fatalf("server did not start in time\n%s", startupOutput.String())
 		}
 		resp, err := http.Get(baseURL + "/health")
 		if err == nil {
@@ -80,7 +94,23 @@ func startFixtureServer(t *testing.T) *fixtureServer {
 
 func (s *fixtureServer) close() {
 	s.cancel()
-	_ = s.cmd.Wait()
+	done := make(chan error, 1)
+	go func() {
+		done <- s.cmd.Wait()
+	}()
+
+	select {
+	case <-done:
+		return
+	case <-time.After(2 * time.Second):
+		if s.cmd.Process != nil {
+			_ = s.cmd.Process.Kill()
+		}
+		select {
+		case <-done:
+		case <-time.After(2 * time.Second):
+		}
+	}
 }
 
 func (s *fixtureServer) get(t *testing.T, path string) (*http.Response, string) {

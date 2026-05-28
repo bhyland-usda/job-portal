@@ -1,0 +1,51 @@
+.zed/
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment and local config
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Logs and runtime artifacts
+*.log
+*.out
+*.err
+
+# Go build/test artifacts
+bin/
+dist/
+cover.out
+coverage.out
+*.test
+
+# Python cache/build artifacts
+__pycache__/
+*.py[cod]
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.venv/
+venv/
+env/
+build/
+site/
+*.egg-info/
+
+# Dependency/tool caches
+.cache/
+.idea/
+
+# Test and temp outputs
+tmp/
+temp/
