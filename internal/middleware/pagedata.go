@@ -14,15 +14,17 @@ import "net/http"
 //
 // Template accesses: .Nav.FirstName, .Nav.Role, .Nav.AvatarURL, .UserID
 type BaseData struct {
-	UserID string
-	Nav    UserInfo
+	UserID    string
+	Nav       UserInfo
+	CSRFToken string
 }
 
 // NewBaseData creates a BaseData from the request context.
 func NewBaseData(r *http.Request) BaseData {
 	info := GetUserInfo(r.Context())
 	return BaseData{
-		UserID: info.ID,
-		Nav:    info,
+		UserID:    info.ID,
+		Nav:       info,
+		CSRFToken: GetCSRFToken(r.Context()),
 	}
 }

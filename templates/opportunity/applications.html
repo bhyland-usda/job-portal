@@ -1,0 +1,99 @@
+{{define "title"}}Applications - {{.Posting.Title}}{{end}}
+
+{{define "content"}}
+<div class="posting-layout">
+  <div class="profile-card">
+    <h2>Applications for Opportunity: {{.Posting.Title}}</h2>
+    <p class="posting-meta">
+      {{.Posting.Type}} &middot; {{.Posting.Status}}
+      {{if .Posting.Department}}&middot; {{.Posting.Department}}{{end}}
+    </p>
+
+    <div class="form-actions" style="margin: 12px 0 18px;">
+      <a href="/opportunities/{{.Posting.ID}}" class="btn btn-outline">Back to Opportunity</a>
+      {{if eq .Posting.Status "active"}}
+      <form method="POST" action="/opportunities/{{.Posting.ID}}/close" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+        <button type="submit" class="btn btn-secondary">Close Opportunity</button>
+      </form>
+      <a href="/opportunities/{{.Posting.ID}}/edit" class="btn btn-secondary">Edit Opportunity</a>
+      {{end}}
+    </div>
+
+    {{if .Applications}}
+    <div class="applications-list">
+      {{range .Applications}}
+      <div class="application-item">
+        <div class="application-header">
+          <a href="/profile/{{.ApplicantID}}" class="user-link">{{.ApplicantName}}</a>
+          <span class="application-status status-{{.Status}}">{{.Status}}</span>
+        </div>
+
+        <div class="application-answer-block">
+          <h3 class="application-answer-title">Why should you be selected?</h3>
+          {{if .SelectionWhy}}
+          <p class="application-answer">{{.SelectionWhy}}</p>
+          {{else}}
+          <p class="application-answer">{{.CoverLetter}}</p>
+          {{end}}
+        </div>
+
+        <div class="application-answer-block">
+          <h3 class="application-answer-title">Given what you know about the project, how would you tackle the issue?</h3>
+          {{if .ProjectTackleApproach}}
+          <p class="application-answer">{{.ProjectTackleApproach}}</p>
+          {{else}}
+          <p class="application-answer application-answer-empty">No response provided (legacy application).</p>
+          {{end}}
+        </div>
+
+        <div class="application-footer">
+          <span class="posting-meta">Applied {{.CreatedAt.Format "Jan 2, 2006"}}</span>
+
+          {{ if ne .Status "accepted"}}{{if ne .Status "rejected"}}
+          <form method="POST" action="/opportunities/applications/{{.ID}}/status" class="inline-form" data-dirty-form>
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" />
+            <label for="app-status-{{.ID}}" class="sr-only">Change application status for {{.ApplicantName}}</label>
+            <select id="app-status-{{.ID}}" name="status" data-initial-value="{{.Status}}">
+              <option value="" {{if eq .Status "pending"}}selected{{end}}>Change status...</option>
+              <option value="shortlisted" {{if eq .Status "shortlisted"}}selected{{end}}>Shortlist</option>
+              <option value="accepted">Accept</option>
+              <option value="rejected">Reject</option>
+            </select>
+            <button type="submit" class="btn btn-outline btn-sm" data-submit-btn disabled>Update</button>
+          </form>
+          {{end}}{{end}}
+        </div>
+      </div>
+      {{end}}
+    </div>
+    {{else}}
+    <p class="empty-state">No applicants yet.</p>
+    {{end}}
+  </div>
+</div>
+{{end}}
+
+{{define "scripts"}}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('[data-dirty-form]').forEach(function(form) {
+    var select = form.querySelector('select');
+    var submit = form.querySelector('[data-submit-btn]');
+    if (!select || !submit) return;
+
+    function syncDirtyState() {
+      var initial = select.getAttribute('data-initial-value') || '';
+      var current = select.value || '';
+      submit.disabled = (initial === current) || (current === '');
+    }
+
+    select.addEventListener('change', syncDirtyState);
+    select.addEventListener('input', syncDirtyState);
+    syncDirtyState();
+  });
+});
+</script>
+{{end}}
+
+{{template "base" .}}

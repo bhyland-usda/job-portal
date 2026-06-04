@@ -1,0 +1,98 @@
+{{define "title"}}Edit Opportunity{{end}}
+
+{{define "content"}}
+<div class="posting-layout">
+    <div class="profile-card">
+        <h2>Edit Opportunity</h2>
+
+        {{if .Error}}
+        <div class="alert alert-error" role="alert">{{.Error}}</div>
+        {{end}}
+
+        <form method="POST" action="/opportunities/{{.Posting.ID}}/edit" class="posting-form" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+
+            <div class="form-group">
+                <label for="title">Opportunity Title</label>
+                <input type="text" id="title" name="title" required value="{{.Posting.Title}}" />
+            </div>
+
+            <div class="form-group">
+                <label for="type">Opportunity Type</label>
+                <select id="type" name="type" required>
+                    <option value="">Select type...</option>
+                    <option value="project" {{if eq .Posting.Type "project"}}selected{{end}}>Project</option>
+                    <option value="detail" {{if eq .Posting.Type "detail"}}selected{{end}}>Detail</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="department">Department</label>
+                <input type="text" id="department" name="department" value="{{.Posting.Department}}" />
+            </div>
+
+            <div class="form-group">
+                <label for="location">Location Details</label>
+                <input type="text" id="location" name="location" value="{{.Posting.Location}}" />
+            </div>
+
+            <div class="form-group">
+                <label for="location_type">Location Type</label>
+                <select id="location_type" name="location_type" required>
+                    <option value="">Select location type...</option>
+                    <option value="remote" {{if eq .Posting.LocationType "remote"}}selected{{end}}>Remote</option>
+                    <option value="hybrid" {{if eq .Posting.LocationType "hybrid"}}selected{{end}}>Hybrid</option>
+                    <option value="onsite" {{if eq .Posting.LocationType "onsite"}}selected{{end}}>On-site</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="start_date">Start Date</label>
+                <input type="date" id="start_date" name="start_date" required {{if .Posting.HasStartDate}}value="{{.Posting.StartDate.Format "2006-01-02"}}"{{end}} />
+            </div>
+
+            <div class="form-group">
+                <label for="duration_days">Duration (in days)</label>
+                <input type="number" id="duration_days" name="duration_days" min="1" step="1" required {{if .Posting.HasDurationDays}}value="{{.Posting.DurationDays}}"{{end}} />
+            </div>
+
+            <div class="form-group">
+                <label for="application_close_date">Application Close Date</label>
+                <input type="date" id="application_close_date" name="application_close_date" required {{if .Posting.HasApplicationCloseDate}}value="{{.Posting.ApplicationCloseDate.Format "2006-01-02"}}"{{end}} />
+            </div>
+
+            <div class="form-group">
+                <label for="number_of_people">Number of People</label>
+                <input type="number" id="number_of_people" name="number_of_people" min="1" step="1" required {{if .Posting.HasNumberOfPeople}}value="{{.Posting.NumberOfPeople}}"{{end}} />
+            </div>
+
+            <div class="form-group">
+                <label for="reporting_manager_name">Reporting Manager Name</label>
+                <input type="text" id="reporting_manager_name" name="reporting_manager_name" required value="{{.Posting.ReportingManagerName}}" />
+            </div>
+
+            <div class="form-group">
+                <label for="reporting_manager_email">Reporting Manager Email</label>
+                <input type="email" id="reporting_manager_email" name="reporting_manager_email" required value="{{.Posting.ReportingManagerEmail}}" />
+            </div>
+
+            <div class="form-group">
+                <label for="description">Opportunity Description</label>
+                <textarea id="description" name="description" rows="6" required>{{.Posting.Description}}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="learning_outcomes">What the Applicant Will Learn From This Experience</label>
+                <textarea id="learning_outcomes" name="learning_outcomes" rows="5" required>{{.Posting.LearningOutcomes}}</textarea>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Save Opportunity</button>
+                <a href="/opportunities/{{.Posting.ID}}" class="btn btn-outline">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{{end}}
+
+{{template "base" .}}

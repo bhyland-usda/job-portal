@@ -2,6 +2,8 @@ package messaging
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -130,6 +132,46 @@ func TestAddMemberInsertsForParticipant(t *testing.T) {
 
 	if rec.Code != 200 {
 		t.Fatalf("expected 200, got %d; body=%s", rec.Code, rec.Body.String())
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("unmet expectations: %v", err)
+	}
+}
+
+func TestStartGroupConversationParticipantInsertFailure(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("sqlmock: %v", err)
+	}
+	defer db.Close()
+
+	const me, u1, convID = "user-a", "user-b", "conv-1"
+
+	mock.ExpectQuery(`SELECT cp1\.conversation_id`).
+		WithArgs(me, u1).
+		WillReturnError(sql.ErrNoRows)
+
+	mock.ExpectBegin()
+	mock.ExpectQuery(`INSERT INTO conversations`).
+		WithArgs("user-a-user-b", nil).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(convID))
+	// Current user insert fails -> should return 500 and rollback.
+	mock.ExpectExec(`INSERT INTO conversation_participants`).
+		WithArgs(convID, me).
+		WillReturnError(errors.New("insert failed"))
+	mock.ExpectRollback()
+
+	h := &Handler{db: db}
+	body := "user_ids=" + u1
+	req := httptest.NewRequest("POST", "/messages/start", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, me))
+	rec := httptest.NewRecorder()
+
+	h.startGroupConversation(rec, req)
+
+	if rec.Code != 500 {
+		t.Fatalf("expected 500, got %d; body=%s", rec.Code, rec.Body.String())
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("unmet expectations: %v", err)

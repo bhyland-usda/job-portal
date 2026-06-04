@@ -39,19 +39,27 @@ class BrowserHarness(unittest.TestCase):
     def setUpClass(cls):
         cls.headed = env_flag("PLAYWRIGHT_HEADED")
         cls.slow_mo = env_int("PLAYWRIGHT_SLOWMO_MS", 0)
-        cls.port = free_port()
-        env = os.environ.copy()
-        env["PORT"] = str(cls.port)
-        cls.server = subprocess.Popen(
-            ["go", "run", "./cmd/bots/testserver"],
-            cwd=ROOT,
-            env=env,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-        )
-        cls.base_url = f"http://127.0.0.1:{cls.port}"
-        cls._wait_for_server()
+        live_base_url = (os.getenv("PLAYWRIGHT_BASE_URL") or "").strip().rstrip("/")
+        cls.live_mode = bool(live_base_url)
+        cls.server = None
+        if live_base_url:
+            cls.base_url = live_base_url
+            cls.reset_state = env_flag("PLAYWRIGHT_RESET_STATE", default=False)
+        else:
+            cls.port = free_port()
+            env = os.environ.copy()
+            env["PORT"] = str(cls.port)
+            cls.server = subprocess.Popen(
+                ["go", "run", "./cmd/bots/testserver"],
+                cwd=ROOT,
+                env=env,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+            cls.base_url = f"http://127.0.0.1:{cls.port}"
+            cls._wait_for_server()
+            cls.reset_state = env_flag("PLAYWRIGHT_RESET_STATE", default=True)
 
         cls.playwright = sync_playwright().start()
         launch_args = []
@@ -68,14 +76,15 @@ class BrowserHarness(unittest.TestCase):
         cls.browser.close()
         cls.playwright.stop()
 
-        cls.server.terminate()
-        try:
-            cls.server.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            cls.server.kill()
-            cls.server.wait(timeout=10)
-        if cls.server.stdout:
-            cls.server.stdout.close()
+        if cls.server is not None:
+            cls.server.terminate()
+            try:
+                cls.server.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                cls.server.kill()
+                cls.server.wait(timeout=10)
+            if cls.server.stdout:
+                cls.server.stdout.close()
 
     @classmethod
     def _wait_for_server(cls):
@@ -97,8 +106,9 @@ class BrowserHarness(unittest.TestCase):
         raise RuntimeError(f"timed out waiting for test server ({last_error})\n{output}")
 
     def setUp(self):
-        reset = requests.post(f"{self.base_url}/__reset", timeout=5)
-        reset.raise_for_status()
+        if self.reset_state:
+            reset = requests.post(f"{self.base_url}/__reset", timeout=5)
+            reset.raise_for_status()
         self.mobile_browser = None
         if self.headed:
             self.context = self.browser.new_context(no_viewport=True)
@@ -107,14 +117,71 @@ class BrowserHarness(unittest.TestCase):
         self.page = self.context.new_page()
         self.console_errors = []
         self.page_errors = []
+        self._live_login_done = False
         self._attach_page_listeners()
 
+    def _live_login_credentials(self) -> tuple[str, str]:
+        email = (os.getenv("PLAYWRIGHT_LOGIN_EMAIL") or "").strip()
+        password = os.getenv("PLAYWRIGHT_LOGIN_PASSWORD") or ""
+        if self.live_mode and (not email or not password):
+            self.fail(
+                "live-mode login requires PLAYWRIGHT_LOGIN_EMAIL and PLAYWRIGHT_LOGIN_PASSWORD"
+            )
+        if not email:
+            email = "maria.garcia@usda.gov"
+        if not password:
+            password = "password123"
+        return email, password
+
+    def _perform_live_login(self):
+        email, password = self._live_login_credentials()
+
+        self.page.fill('input[name="email"]', email)
+        self.page.fill('input[name="password"]', password)
+        with self.page.expect_navigation(wait_until="domcontentloaded"):
+            self.page.click('button[type="submit"]')
+
+        if urlparse(self.page.url).path == "/login":
+            self.fail(
+                "live-mode login failed; set PLAYWRIGHT_LOGIN_EMAIL and PLAYWRIGHT_LOGIN_PASSWORD "
+                "for your running environment"
+            )
+        self._live_login_done = True
+
     def _attach_page_listeners(self):
-        self.page.on(
-            "console",
-            lambda msg: self.console_errors.append(msg.text) if msg.type == "error" else None,
-        )
+        self.page.on("console", self._handle_console_message)
         self.page.on("pageerror", lambda err: self.page_errors.append(str(err)))
+
+    def _handle_console_message(self, msg):
+        if msg.type != "error":
+            return
+
+        text = msg.text or ""
+        location = getattr(msg, "location", None) or {}
+        location_url = (location.get("url") or "").lower()
+        lower_text = text.lower()
+
+        # Live environments frequently omit favicon/manifest assets; treat those 404s as non-functional noise.
+        if self.live_mode and "failed to load resource" in lower_text and "404" in lower_text:
+            if (
+                "favicon" in location_url
+                or "apple-touch-icon" in location_url
+                or "manifest" in location_url
+            ):
+                return
+
+        if self.live_mode and "failed to load resource" in lower_text and "403" in lower_text:
+            if "/login" in location_url:
+                return
+
+        if self.live_mode and "eventsource" in lower_text and "text/event-stream" in lower_text and "text/html" in lower_text:
+            if "/login" in location_url:
+                return
+
+        if location_url:
+            self.console_errors.append(f"{text} @ {location_url}")
+            return
+        self.console_errors.append(text)
 
     def tearDown(self):
         self.page.close()
@@ -136,9 +203,18 @@ class BrowserHarness(unittest.TestCase):
             )
 
         if path != "/login" and current_path == "/login":
-            self.skipTest(
-                f"fixture route {path} redirected to /login; expected authenticated fixture for {note}"
-            )
+            if self.live_mode:
+                if not self._live_login_done:
+                    self._perform_live_login()
+                    response = self.page.goto(f"{self.base_url}{path}", wait_until="domcontentloaded")
+                    status = response.status if response else None
+                    current_path = urlparse(self.page.url).path
+                if current_path == "/login":
+                    self.fail(f"live route {path} still redirects to /login after login; expected {note}")
+            else:
+                self.skipTest(
+                    f"fixture route {path} redirected to /login; expected authenticated fixture for {note}"
+                )
 
         self.assertIsNotNone(response, f"expected a response when opening {path}")
         self.assertLess(response.status, 400, f"expected successful response for {path}")

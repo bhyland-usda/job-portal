@@ -4,8 +4,11 @@
 @import url('messaging.css?v=7');
 @import url('connections.css?v=6');
 @import url('notifications.css?v=6');
-@import url('postings.css?v=6');
+@import url('opportunities.css?v=6');
 @import url('admin.css?v=6');
 @import url('content.css?v=6');
 @import url('social.css?v=6');
 @import url('community.css?v=6');
+@import url('orgchart.css?v=1');
+@import url('analytics.css?v=1');
+@import url('insights.css?v=1');

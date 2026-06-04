@@ -3,9 +3,12 @@ package feed
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"html"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -110,11 +113,69 @@ func parseOGMetadata(htmlStr string) LinkPreview {
 
 // previewClient is used to fetch remote pages with a short timeout so a slow or
 // hostile server can never block post creation.
-var previewClient = &http.Client{Timeout: 5 * time.Second}
+var previewClient = &http.Client{
+	Timeout: 5 * time.Second,
+	CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	},
+}
+
+var lookupIP = net.LookupIP
+
+func isPrivateOrLocalIP(ip net.IP) bool {
+	return ip.IsLoopback() ||
+		ip.IsPrivate() ||
+		ip.IsLinkLocalUnicast() ||
+		ip.IsLinkLocalMulticast() ||
+		ip.IsMulticast() ||
+		ip.IsUnspecified()
+}
+
+func validatePreviewURL(raw string) error {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return err
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return fmt.Errorf("unsupported scheme")
+	}
+	host := strings.ToLower(strings.TrimSpace(u.Hostname()))
+	if host == "" {
+		return fmt.Errorf("missing host")
+	}
+	if host == "localhost" || strings.HasSuffix(host, ".localhost") {
+		return fmt.Errorf("blocked host")
+	}
+
+	if ip := net.ParseIP(host); ip != nil {
+		if isPrivateOrLocalIP(ip) {
+			return fmt.Errorf("blocked ip")
+		}
+		return nil
+	}
+
+	ips, err := lookupIP(host)
+	if err != nil {
+		return err
+	}
+	if len(ips) == 0 {
+		return fmt.Errorf("host resolution failed")
+	}
+	for _, ip := range ips {
+		if isPrivateOrLocalIP(ip) {
+			return fmt.Errorf("blocked ip")
+		}
+	}
+	return nil
+}
 
 // fetchAndCachePreview fetches Open Graph metadata for url and upserts it into
 // link_previews. Failures are non-fatal: callers ignore the returned error.
 func fetchAndCachePreview(ctx context.Context, db *sql.DB, url string) error {
+	if err := validatePreviewURL(url); err != nil {
+		return err
+	}
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return err

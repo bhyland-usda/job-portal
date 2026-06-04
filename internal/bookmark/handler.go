@@ -161,11 +161,8 @@ func (h *Handler) handleAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	referer := r.Header.Get("Referer")
-	if referer == "" {
-		referer = "/bookmarks"
-	}
-	http.Redirect(w, r, referer, http.StatusSeeOther)
+	dest := middleware.SafeRedirectTarget(r.Header.Get("Referer"), "/bookmarks")
+	http.Redirect(w, r, dest, http.StatusSeeOther)
 }
 
 func (h *Handler) handleDelete(w http.ResponseWriter, r *http.Request) {

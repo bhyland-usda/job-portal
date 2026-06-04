@@ -186,9 +186,10 @@ func (h *Handler) showDashboard(w http.ResponseWriter, r *http.Request) {
 
 	// Recent audit entries.
 	auditRows, err := h.db.QueryContext(ctx,
-		`SELECT a.id, a.action, COALESCE(a.details, ''), a.created_at,
-			COALESCE(CONCAT(actor.first_name, ' ', actor.last_name), 'System'),
-			COALESCE(CONCAT(target.first_name, ' ', target.last_name), '')
+		`SELECT a.id, a.action,
+			COALESCE(NULLIF(TRIM(a.details), ''), '(no details)'), a.created_at,
+			COALESCE(NULLIF(TRIM(CONCAT(actor.first_name, ' ', actor.last_name)), ''), 'System'),
+			COALESCE(NULLIF(TRIM(CONCAT(target.first_name, ' ', target.last_name)), ''), 'Unknown user')
 		 FROM audit_log a
 		 LEFT JOIN users actor ON actor.id = a.actor_id
 		 LEFT JOIN users target ON target.id = a.target_id
@@ -441,9 +442,10 @@ func (h *Handler) showUsers(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) showAudit(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.db.QueryContext(r.Context(),
-		`SELECT a.id, a.action, COALESCE(a.details, ''), a.created_at,
-			COALESCE(CONCAT(actor.first_name, ' ', actor.last_name), 'System'),
-			COALESCE(CONCAT(target.first_name, ' ', target.last_name), '')
+		`SELECT a.id, a.action,
+			COALESCE(NULLIF(TRIM(a.details), ''), '(no details)'), a.created_at,
+			COALESCE(NULLIF(TRIM(CONCAT(actor.first_name, ' ', actor.last_name)), ''), 'System'),
+			COALESCE(NULLIF(TRIM(CONCAT(target.first_name, ' ', target.last_name)), ''), 'Unknown user')
 		 FROM audit_log a
 		 LEFT JOIN users actor ON actor.id = a.actor_id
 		 LEFT JOIN users target ON target.id = a.target_id
@@ -761,27 +763,48 @@ func (h *Handler) deleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Capture identity before the row is gone so the audit detail is meaningful.
-	var deletedName, deletedEmail string
-	if err := h.db.QueryRowContext(r.Context(),
-		`SELECT CONCAT(first_name, ' ', last_name), email FROM users WHERE id = $1`,
-		targetID,
-	).Scan(&deletedName, &deletedEmail); err != nil {
-		deletedName = "unknown"
+	tx, err := h.db.BeginTx(r.Context(), nil)
+
+	if err != nil {
+		slog.Error("failed to begin delete user transaction", "error", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
 	}
 
-	_, err := h.db.ExecContext(r.Context(),
-		`DELETE FROM users WHERE id = $1`,
+	defer tx.Rollback()
+
+	var deletedName, deletedEmail string
+	err = tx.QueryRowContext(r.Context(),
+		`DELETE FROM users WHERE id = $1 RETURNING
+			COALESCE(CONCAT(first_name, ' ', last_name), 'unknown'),
+			COALESCE(email, '')`,
 		targetID,
-	)
+	).Scan(&deletedName, &deletedEmail)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		redirectAdminUsers(w, r, "error", "User not found.")
+		return
+	}
+
 	if err != nil {
-		slog.Error("failed to delete user", "error", err)
+		slog.Error("failed to delete user", "error", err, "target", targetID)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	if err := writeAuditTx(r.Context(), tx, adminID, "user_delete", targetID,
+		fmt.Sprintf("deleted %s (%s)", deletedName, deletedEmail)); err != nil {
+		slog.Error("failed to write delete audit log", "error", err, "target", targetID)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	if err := tx.Commit(); err != nil {
+		slog.Error("failed to commit user delete", "error", err, "target", targetID)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	slog.Info("user deleted", "admin", adminID, "target", targetID)
-	h.writeAudit(r.Context(), adminID, "user_delete", targetID,
-		fmt.Sprintf("deleted %s (%s)", deletedName, deletedEmail))
-	http.Redirect(w, r, "/admin/users", http.StatusSeeOther)
+	redirectAdminUsers(w, r, "success", "User deleted successfully.")
 }

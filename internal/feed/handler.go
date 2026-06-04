@@ -1,6 +1,7 @@
 package feed
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
@@ -15,10 +16,12 @@ import (
 	"github.com/bhyland-usda/job-portal/internal/badge"
 	"github.com/bhyland-usda/job-portal/internal/middleware"
 	"github.com/bhyland-usda/job-portal/internal/notification"
-	"github.com/bhyland-usda/job-portal/internal/posting"
+	"github.com/bhyland-usda/job-portal/internal/opportunity"
+	"github.com/yuin/goldmark"
 )
 
 var hashtagRegex = regexp.MustCompile(`#(\w+)`)
+var richMarkdownPrefix = "[[RICH_MARKDOWN]]\n"
 
 // handleMentionRegex matches @handle tokens where a handle is an email
 // local-part (e.g. @clark.kent for clark.kent@usda.gov).
@@ -46,9 +49,10 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, requireAuth func(http.Handl
 	mux.Handle("GET /feed/hashtag/{tag}", requireAuth(http.HandlerFunc(h.showHashtagFeed)))
 	mux.Handle("GET /feed/attachment/{id}", requireAuth(http.HandlerFunc(h.serveAttachment)))
 	mux.Handle("GET /feed/trending", requireAuth(http.HandlerFunc(h.showTrending)))
-	mux.Handle("GET /feed/scheduled", requireAuth(http.HandlerFunc(h.showScheduled)))
+	mux.Handle("GET /feed/scheduled", requireAuth(http.HandlerFunc(h.redirectScheduledToDrafts)))
 	mux.Handle("GET /feed/drafts", requireAuth(http.HandlerFunc(h.showDrafts)))
 	mux.Handle("POST /feed/drafts", requireAuth(http.HandlerFunc(h.saveDraft)))
+	mux.Handle("POST /feed/drafts/schedule", requireAuth(http.HandlerFunc(h.scheduleDraftPost)))
 	mux.Handle("POST /feed/drafts/{id}/publish", requireAuth(http.HandlerFunc(h.publishDraft)))
 	mux.Handle("POST /feed/drafts/{id}/delete", requireAuth(http.HandlerFunc(h.deleteDraft)))
 }
@@ -100,7 +104,7 @@ type FeedPage struct {
 	middleware.BaseData
 	Posts    []Post
 	Tab      string
-	Postings []posting.Posting
+	Postings []opportunity.Posting
 }
 
 func (h *Handler) streamFeed(w http.ResponseWriter, r *http.Request) {
@@ -148,7 +152,7 @@ func (h *Handler) showFeed(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var posts []Post
-	var matchedPostings []posting.Posting
+	var matchedPostings []opportunity.Posting
 	var err error
 
 	if tab == "social" {
@@ -168,7 +172,7 @@ func (h *Handler) showFeed(w http.ResponseWriter, r *http.Request) {
 			posts[i].Comments = comments
 		}
 	} else if tab == "postings" {
-		matchedPostings, err = posting.GetMatchedPostings(h.db, r.Context(), userID)
+		matchedPostings, err = opportunity.GetMatchedPostings(h.db, r.Context(), userID)
 		if err != nil {
 			slog.Error("failed to load postings", "error", err)
 		}
@@ -303,7 +307,7 @@ func (h *Handler) getSocialFeed(r *http.Request, userID string) ([]Post, error) 
 	// Linkify content (@mentions + URLs) and attach any cached link preview.
 	for i := range posts {
 		posts[i].RenderedContent = h.renderContent(r.Context(), posts[i].Content)
-		if firstURL := extractFirstURL(posts[i].Content); firstURL != "" {
+		if firstURL := extractFirstURL(contentForProcessing(posts[i].Content)); firstURL != "" {
 			posts[i].Preview = loadPreview(r.Context(), h.db, firstURL)
 		}
 	}
@@ -389,6 +393,13 @@ func (h *Handler) processMentions(ctx context.Context, content, authorID string)
 // (when the handle resolves to a user) and bare http(s) URLs to anchors. The
 // returned value is safe HTML.
 func (h *Handler) renderContent(ctx context.Context, content string) template.HTML {
+	if markdown, ok := decodeRichMarkdown(content); ok {
+		var rendered bytes.Buffer
+		if err := goldmark.Convert([]byte(markdown), &rendered); err == nil {
+			return template.HTML(rendered.String())
+		}
+	}
+
 	// Escape first so user content can never inject markup; we then splice in
 	// our own (trusted) anchor tags.
 	escaped := template.HTMLEscapeString(content)
@@ -412,6 +423,29 @@ func (h *Handler) renderContent(ctx context.Context, content string) template.HT
 	})
 
 	return template.HTML(escaped)
+}
+
+func decodeRichMarkdown(content string) (string, bool) {
+	if strings.HasPrefix(content, richMarkdownPrefix) {
+		return strings.TrimPrefix(content, richMarkdownPrefix), true
+	}
+	return "", false
+}
+
+func encodeRichMarkdown(content string, format string) string {
+	if format == "rich_markdown" {
+		return richMarkdownPrefix + content
+	}
+	return content
+}
+
+func contentForProcessing(content string) string {
+	if markdown, ok := decodeRichMarkdown(content); ok {
+		// Lightweight normalization so mention/URL helpers can inspect source text.
+		replacer := strings.NewReplacer("**", "", "*", "", "`", "", "[", "", "]", "", "(", " ", ")", "")
+		return replacer.Replace(markdown)
+	}
+	return content
 }
 
 func (h *Handler) createPost(w http.ResponseWriter, r *http.Request) {
@@ -511,13 +545,30 @@ func (h *Handler) createPost(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) serveAttachment(w http.ResponseWriter, r *http.Request) {
 	attachID := r.PathValue("id")
+	userID := middleware.GetUserID(r.Context())
+	if userID == "" {
+		http.NotFound(w, r)
+		return
+	}
 
 	var data []byte
 	var contentType, originalName, fileCategory string
 	err := h.db.QueryRowContext(r.Context(),
-		`SELECT file_data, content_type, original_name, COALESCE(file_category, 'image')
-                 FROM post_attachments WHERE id = $1`,
-		attachID,
+		`SELECT pa.file_data, pa.content_type, pa.original_name, COALESCE(pa.file_category, 'image')
+                 FROM post_attachments pa
+                 JOIN posts p ON p.id = pa.post_id
+                 WHERE pa.id = $1
+                   AND (p.user_id = $2
+                     OR p.user_id IN (
+                       SELECT CASE
+                         WHEN c.requester_id = $2 THEN c.addressee_id
+                         ELSE c.requester_id
+                       END
+                       FROM connections c
+                       WHERE (c.requester_id = $2 OR c.addressee_id = $2)
+                         AND c.status = 'accepted'
+                     ))`,
+		attachID, userID,
 	).Scan(&data, &contentType, &originalName, &fileCategory)
 	if err != nil {
 		http.NotFound(w, r)
@@ -775,62 +826,33 @@ func (h *Handler) showTrending(w http.ResponseWriter, r *http.Request) {
 }
 
 type ScheduledPost struct {
-	ID          string
-	Content     string
-	CreatedAt   time.Time
-	ScheduledAt time.Time
-}
-
-type ScheduledPage struct {
-	middleware.BaseData
-	Posts []ScheduledPost
-}
-
-func (h *Handler) showScheduled(w http.ResponseWriter, r *http.Request) {
-	userID := middleware.GetUserID(r.Context())
-	rows, err := h.db.QueryContext(r.Context(),
-		`SELECT id, content, created_at, scheduled_at
-                 FROM posts
-                 WHERE user_id = $1 AND scheduled_at IS NOT NULL AND scheduled_at > now()
-                 ORDER BY scheduled_at ASC`,
-		userID,
-	)
-	if err != nil {
-		slog.Error("failed to load scheduled posts", "error", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-	defer rows.Close()
-
-	var posts []ScheduledPost
-	for rows.Next() {
-		var p ScheduledPost
-		if err := rows.Scan(&p.ID, &p.Content, &p.CreatedAt, &p.ScheduledAt); err != nil {
-			continue
-		}
-		posts = append(posts, p)
-	}
-
-	data := ScheduledPage{BaseData: middleware.NewBaseData(r), Posts: posts}
-	if err := h.pages["feed_scheduled.html"].ExecuteTemplate(w, "base", data); err != nil {
-		slog.Error("failed to render scheduled posts", "error", err)
-	}
+	ID              string
+	Content         string
+	RenderedContent template.HTML
+	CreatedAt       time.Time
+	ScheduledAt     time.Time
 }
 
 type Draft struct {
-	ID        string
-	Content   string
-	CreatedAt time.Time
+	ID              string
+	Content         string
+	RenderedContent template.HTML
+	CreatedAt       time.Time
 }
 
 type DraftsPage struct {
 	middleware.BaseData
-	Drafts []Draft
+	Drafts         []Draft
+	ScheduledPosts []ScheduledPost
+}
+
+func (h *Handler) redirectScheduledToDrafts(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "/feed/drafts", http.StatusSeeOther)
 }
 
 func (h *Handler) showDrafts(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r.Context())
-	rows, err := h.db.QueryContext(r.Context(),
+	draftRows, err := h.db.QueryContext(r.Context(),
 		`SELECT id, content, created_at FROM post_drafts WHERE user_id = $1 ORDER BY updated_at DESC`,
 		userID,
 	)
@@ -839,24 +861,51 @@ func (h *Handler) showDrafts(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	defer rows.Close()
+	defer draftRows.Close()
 
 	var drafts []Draft
-	for rows.Next() {
+	for draftRows.Next() {
 		var d Draft
-		if err := rows.Scan(&d.ID, &d.Content, &d.CreatedAt); err != nil {
+		if err := draftRows.Scan(&d.ID, &d.Content, &d.CreatedAt); err != nil {
 			continue
 		}
+		d.RenderedContent = h.renderContent(r.Context(), d.Content)
 		drafts = append(drafts, d)
 	}
-	data := DraftsPage{BaseData: middleware.NewBaseData(r), Drafts: drafts}
+
+	scheduledRows, err := h.db.QueryContext(r.Context(),
+		`SELECT id, content, created_at, scheduled_at
+                 FROM posts
+                 WHERE user_id = $1 AND scheduled_at IS NOT NULL AND scheduled_at > now()
+                 ORDER BY scheduled_at ASC`,
+		userID,
+	)
+	if err != nil {
+		slog.Error("failed to load scheduled posts for drafts", "error", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer scheduledRows.Close()
+
+	var scheduledPosts []ScheduledPost
+	for scheduledRows.Next() {
+		var p ScheduledPost
+		if err := scheduledRows.Scan(&p.ID, &p.Content, &p.CreatedAt, &p.ScheduledAt); err != nil {
+			continue
+		}
+		p.RenderedContent = h.renderContent(r.Context(), p.Content)
+		scheduledPosts = append(scheduledPosts, p)
+	}
+
+	data := DraftsPage{BaseData: middleware.NewBaseData(r), Drafts: drafts, ScheduledPosts: scheduledPosts}
 	h.pages["drafts.html"].ExecuteTemplate(w, "base", data)
 }
 
 func (h *Handler) saveDraft(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r.Context())
 	r.ParseForm()
-	content := strings.TrimSpace(r.FormValue("content"))
+	rawContent := strings.TrimSpace(r.FormValue("content"))
+	content := encodeRichMarkdown(rawContent, strings.TrimSpace(r.FormValue("content_format")))
 	if content == "" {
 		http.Redirect(w, r, "/feed/drafts", http.StatusSeeOther)
 		return
@@ -865,6 +914,40 @@ func (h *Handler) saveDraft(w http.ResponseWriter, r *http.Request) {
 		`INSERT INTO post_drafts (user_id, content) VALUES ($1, $2)`,
 		userID, content,
 	)
+	http.Redirect(w, r, "/feed/drafts", http.StatusSeeOther)
+}
+
+func (h *Handler) scheduleDraftPost(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r.Context())
+	if err := r.ParseForm(); err != nil {
+		http.Redirect(w, r, "/feed/drafts", http.StatusSeeOther)
+		return
+	}
+
+	content := strings.TrimSpace(r.FormValue("content"))
+	content = encodeRichMarkdown(content, strings.TrimSpace(r.FormValue("content_format")))
+	if content == "" {
+		http.Redirect(w, r, "/feed/drafts", http.StatusSeeOther)
+		return
+	}
+
+	rawScheduledAt := strings.TrimSpace(r.FormValue("scheduled_at"))
+	scheduledAt, err := time.ParseInLocation("2006-01-02T15:04", rawScheduledAt, time.Local)
+	if err != nil || !scheduledAt.After(time.Now()) {
+		http.Redirect(w, r, "/feed/drafts", http.StatusSeeOther)
+		return
+	}
+
+	_, err = h.db.ExecContext(r.Context(),
+		`INSERT INTO posts (user_id, content, scheduled_at) VALUES ($1, $2, $3)`,
+		userID, content, scheduledAt,
+	)
+	if err != nil {
+		slog.Error("failed to schedule post from drafts", "error", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
 	http.Redirect(w, r, "/feed/drafts", http.StatusSeeOther)
 }
 

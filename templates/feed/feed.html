@@ -10,17 +10,13 @@
   {{if eq .Tab "social"}}
   <div class="feed-composer">
     <form method="POST" action="/feed" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
       <label for="composer-content" class="sr-only">Write a post</label>
       <textarea id="composer-content" name="content" placeholder="What's on your mind?" rows="3" required></textarea>
-      <div class="composer-schedule">
-        <label for="scheduled_at" class="composer-schedule-label"><span aria-hidden="true">&#128337;</span> Schedule for later (optional)</label>
-        <input type="datetime-local" id="scheduled_at" name="scheduled_at" class="composer-schedule-input" />
-      </div>
       <div class="form-actions">
         <button type="submit" class="btn btn-primary">Post</button>
         <label for="attachment" class="composer-attach" title="Attach file" aria-label="Attach file"><span aria-hidden="true">&#128206;</span></label>
         <input type="file" id="attachment" name="attachment" hidden />
-        <a href="/feed/scheduled" class="btn-link composer-scheduled-link" title="View scheduled posts"><span aria-hidden="true">&#128197;</span> Scheduled</a>
       </div>
     </form>
   </div>
@@ -97,25 +93,25 @@
       <form method="POST" action="/feed/{{.ID}}/like" class="inline">
         <input type="hidden" name="reaction" value="like" />
         <button type="submit" class="reaction-btn {{if eq .UserReaction "like"}}reacted{{end}}" title="Like" aria-label="Like">
-          <span class="reaction-emoji" aria-hidden="true">&#128077;</span><span class="reaction-label">Like</span>
+          <span class="reaction-emoji" aria-hidden="true">&#128077;</span>
         </button>
       </form>
       <form method="POST" action="/feed/{{.ID}}/like" class="inline">
         <input type="hidden" name="reaction" value="celebrate" />
         <button type="submit" class="reaction-btn {{if eq .UserReaction "celebrate"}}reacted{{end}}" title="Celebrate" aria-label="Celebrate">
-          <span class="reaction-emoji" aria-hidden="true">&#127881;</span><span class="reaction-label">Celebrate</span>
+          <span class="reaction-emoji" aria-hidden="true">&#127881;</span>
         </button>
       </form>
       <form method="POST" action="/feed/{{.ID}}/like" class="inline">
         <input type="hidden" name="reaction" value="insightful" />
         <button type="submit" class="reaction-btn {{if eq .UserReaction "insightful"}}reacted{{end}}" title="Insightful" aria-label="Insightful">
-          <span class="reaction-emoji" aria-hidden="true">&#128161;</span><span class="reaction-label">Insightful</span>
+          <span class="reaction-emoji" aria-hidden="true">&#128161;</span>
         </button>
       </form>
       <form method="POST" action="/feed/{{.ID}}/like" class="inline">
         <input type="hidden" name="reaction" value="curious" />
         <button type="submit" class="reaction-btn {{if eq .UserReaction "curious"}}reacted{{end}}" title="Curious" aria-label="Curious">
-          <span class="reaction-emoji" aria-hidden="true">&#129300;</span><span class="reaction-label">Curious</span>
+          <span class="reaction-emoji" aria-hidden="true">&#129300;</span>
         </button>
       </form>
       <span class="reaction-count" title="Total reactions">{{.LikeCount}}</span>
@@ -175,9 +171,9 @@
 
   {{else}}
   <div class="feed-postings-header">
-    <a href="/postings/search" class="btn btn-outline">Browse All Postings</a>
+    <a href="/opportunities/search" class="btn btn-outline">Browse All Opportunities</a>
     {{if or (eq .Nav.Role "manager") (eq .Nav.Role "admin")}}
-    <a href="/postings/create" class="btn btn-primary">Create Posting</a>
+    <a href="/opportunities/create" class="btn btn-primary">Create Opportunity</a>
     {{end}}
   </div>
   
@@ -188,7 +184,7 @@
       <span class="posting-type posting-type-{{.Type}}">{{.Type}}</span>
       <span class="posting-date">{{.CreatedAt.Format "Jan 2, 2006"}}</span>
     </div>
-    <h3><a href="/postings/{{.ID}}" class="title-link">{{.Title}}</a></h3>
+    <h3><a href="/opportunities/{{.ID}}" class="title-link">{{.Title}}</a></h3>
     <p class="posting-author">Posted by {{.AuthorName}}</p>
     {{if .Department}}<p class="posting-dept">{{.Department}}</p>{{end}}
     {{if .Location}}<p class="posting-location">{{.Location}}</p>{{end}}

@@ -1,6 +1,9 @@
 package feed
 
-import "testing"
+import (
+	"net"
+	"testing"
+)
 
 // TestParseOGMetadata verifies extraction of title, description, and image from
 // an HTML head containing Open Graph and standard tags. This needs no network.
@@ -81,6 +84,40 @@ func TestExtractFirstURL(t *testing.T) {
 	for _, tt := range tests {
 		if got := extractFirstURL(tt.input); got != tt.want {
 			t.Errorf("extractFirstURL(%q) = %q, want %q", tt.input, got, tt.want)
+		}
+	}
+}
+
+func TestValidatePreviewURL(t *testing.T) {
+	origLookup := lookupIP
+	defer func() { lookupIP = origLookup }()
+
+	lookupIP = func(host string) ([]net.IP, error) {
+		switch host {
+		case "example.com":
+			return []net.IP{net.ParseIP("93.184.216.34")}, nil
+		case "internal.local":
+			return []net.IP{net.ParseIP("127.0.0.1")}, nil
+		default:
+			return []net.IP{net.ParseIP("93.184.216.34")}, nil
+		}
+	}
+
+	tests := []struct {
+		name    string
+		url     string
+		wantErr bool
+	}{
+		{name: "public http", url: "http://example.com/page", wantErr: false},
+		{name: "localhost blocked", url: "http://localhost:8080/login", wantErr: true},
+		{name: "loopback ip blocked", url: "http://127.0.0.1/admin", wantErr: true},
+		{name: "non-http blocked", url: "file:///etc/passwd", wantErr: true},
+	}
+
+	for _, tt := range tests {
+		err := validatePreviewURL(tt.url)
+		if (err != nil) != tt.wantErr {
+			t.Errorf("%s: validatePreviewURL(%q) err=%v, wantErr=%v", tt.name, tt.url, err, tt.wantErr)
 		}
 	}
 }

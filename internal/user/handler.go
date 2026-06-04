@@ -998,6 +998,11 @@ func (h *Handler) handleAvatarUpload(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) ServeAvatar(w http.ResponseWriter, r *http.Request) {
+	if middleware.GetUserID(r.Context()) == "" {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	profileID := r.PathValue("id")
 
 	var data []byte
@@ -1088,10 +1093,7 @@ func (h *Handler) handleUnpinPost(w http.ResponseWriter, r *http.Request) {
 // redirectBack returns the user to the referring page, falling back to their
 // own profile when no referer is present.
 func (h *Handler) redirectBack(w http.ResponseWriter, r *http.Request, userID string) {
-	dest := r.Referer()
-	if dest == "" {
-		dest = "/profile/" + userID
-	}
+	dest := middleware.SafeRedirectTarget(r.Referer(), "/profile/"+userID)
 	http.Redirect(w, r, dest, http.StatusSeeOther)
 }
 

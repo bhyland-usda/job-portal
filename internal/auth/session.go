@@ -5,9 +5,11 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -44,6 +46,30 @@ type redisStore interface {
 type SessionManager struct {
 	redis  redisStore
 	secret string
+}
+
+func secureCookieForRequest(r *http.Request) bool {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("SECURE_COOKIES")))
+	if v == "true" || v == "1" || v == "yes" {
+		return true
+	}
+	if v == "false" || v == "0" || v == "no" {
+		return false
+	}
+
+	host := r.Host
+	if host == "" && r.URL != nil {
+		host = r.URL.Host
+	}
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	}
+	host = strings.Trim(strings.ToLower(strings.TrimSpace(host)), "[]")
+	if host == "localhost" || host == "127.0.0.1" || host == "::1" {
+		return false
+	}
+
+	return true
 }
 
 func NewSessionManager(redisClient *redis.Client, secret string) *SessionManager {
@@ -107,7 +133,7 @@ func (sm *SessionManager) Create(w http.ResponseWriter, r *http.Request, userID 
 		Value:    token,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   os.Getenv("SECURE_COOKIES") == "true",
+		Secure:   secureCookieForRequest(r),
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   int(sessionTTL.Seconds()),
 	})
@@ -163,7 +189,7 @@ func (sm *SessionManager) Destroy(w http.ResponseWriter, r *http.Request) {
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   os.Getenv("SECURE_COOKIES") == "true",
+		Secure:   secureCookieForRequest(r),
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   -1,
 	})

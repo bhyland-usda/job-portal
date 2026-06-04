@@ -12,7 +12,7 @@
                 <strong>{{.SkillName}}</strong>
                 <p style="color:var(--text-secondary);font-size:13px;">{{.PostingCount}} active posting{{if ne .PostingCount 1}}s{{end}} need this skill</p>
             </div>
-            <a href="/postings/search?q={{.SkillName}}" class="btn btn-outline btn-sm">View Postings</a>
+            <a href="/opportunities/search?q={{.SkillName}}" class="btn btn-outline btn-sm">View Opportunities</a>
         </div>
         {{end}}
         {{else}}

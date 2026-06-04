@@ -1,0 +1,132 @@
+{{define "title"}}{{.Posting.Title}}{{end}}
+
+{{define "content"}}
+<div class="posting-layout">
+  <div class="profile-card">
+    <div class="posting-detail-header">
+      <span class="posting-type posting-type-{{.Posting.Type}}">{{.Posting.Type}}</span>
+      {{if eq .Posting.Status "closed"}}
+      <span class="posting-status-closed">Closed</span>
+      {{end}}
+    </div>
+    <h2>{{.Posting.Title}}</h2>
+    <p class="posting-meta">
+      Posted by <a href="/profile/{{.Posting.AuthorID}}" class="user-link">{{.Posting.AuthorName}}</a>
+      on {{.Posting.CreatedAt.Format "Jan 2, 2006"}}
+    </p>
+    {{if .Posting.Department}}<p class="posting-meta">Department: {{.Posting.Department}}</p>{{end}}
+    {{if .Posting.Location}}<p class="posting-meta">Location Details: {{.Posting.Location}}</p>{{end}}
+
+    <div class="posting-meta-grid">
+      {{if .Posting.LocationType}}
+      <p class="posting-meta"><strong>Location Type:</strong> {{.Posting.LocationType}}</p>
+      {{end}}
+      {{if .Posting.HasStartDate}}
+      <p class="posting-meta"><strong>Start Date:</strong> {{.Posting.StartDate.Format "Jan 2, 2006"}}</p>
+      {{end}}
+      {{if .Posting.HasDurationDays}}
+      <p class="posting-meta"><strong>Duration:</strong> {{.Posting.DurationDays}} days</p>
+      {{end}}
+      {{if .Posting.HasApplicationCloseDate}}
+      <p class="posting-meta"><strong>Application Close Date:</strong> {{.Posting.ApplicationCloseDate.Format "Jan 2, 2006"}}</p>
+      {{end}}
+      {{if .Posting.HasNumberOfPeople}}
+      <p class="posting-meta"><strong>Number of People:</strong> {{.Posting.NumberOfPeople}}</p>
+      {{end}}
+      {{if .Posting.HasReportingManagerName}}
+      <p class="posting-meta"><strong>Reporting Manager Name:</strong> {{.Posting.ReportingManagerName}}</p>
+      {{end}}
+      {{if .Posting.HasReportingManagerEmail}}
+      <p class="posting-meta">
+        <strong>Reporting Manager Email:</strong> <a href="mailto:{{.Posting.ReportingManagerEmail}}">{{.Posting.ReportingManagerEmail}}</a>
+      </p>
+      {{end}}
+    </div>
+
+    <div class="posting-body">
+      <h3>Opportunity Description</h3>
+      <p>{{.Posting.Description}}</p>
+    </div>
+
+    {{if .Posting.LearningOutcomes}}
+    <div class="posting-learning">
+      <h3>What you will learn from this experience</h3>
+      <p>{{.Posting.LearningOutcomes}}</p>
+    </div>
+    {{end}}
+
+    {{if .Posting.Skills}}
+    <div class="posting-skills">
+      <h3>Required Skills</h3>
+      <div class="skills-list">
+        {{range .Posting.Skills}}
+        <span class="skill-tag">{{.}}</span>
+        {{end}}
+      </div>
+    </div>
+    {{end}}
+
+    {{if .Posting.Attachments}}
+    <div class="posting-attachments">
+      <h3>Attachments</h3>
+      {{range .Posting.Attachments}}
+      {{if eq .Category "image"}}
+      <div class="post-media{{if eq .ContentType "image/gif"}} gif-container{{end}}">
+        <img src="/posting-attachments/{{.ID}}" alt="{{.OriginalName}}" class="post-image" data-media="{{if eq .ContentType "image/gif"}}gif{{else}}image{{end}}" loading="lazy" />
+        {{if eq .ContentType "image/gif"}}<div class="gif-overlay">GIF</div>{{end}}
+      </div>
+      {{else}}
+      <a href="/posting-attachments/{{.ID}}" class="post-attachment-file" target="_blank">
+        <span class="attachment-icon" aria-hidden="true">&#128206;</span>
+        <span class="attachment-name">{{.OriginalName}}</span>
+      </a>
+      {{end}}
+      {{end}}
+    </div>
+    {{end}}
+
+    {{if .Posting.HasOutcome}}
+    <div class="posting-outcome">
+      <h3>Recorded Outcome
+        <span class="outcome-status outcome-status-{{.Posting.OutcomeStatus}}">{{.Posting.OutcomeStatus}}</span>
+      </h3>
+      <p>{{.Posting.Outcome}}</p>
+      {{if not .Posting.CompletedAt.IsZero}}
+      <p class="posting-meta">Completed {{.Posting.CompletedAt.Format "Jan 2, 2006"}}</p>
+      {{end}}
+    </div>
+    {{end}}
+
+    {{if .Posting.MatchCount}}
+    <p class="posting-match-count">{{.Posting.MatchCount}} employee{{if gt .Posting.MatchCount 1}}s{{end}} match this opportunity's skills</p>
+    {{end}}
+
+    {{if .Bookmarked}}
+    <span class="btn-link bookmark-saved bookmark-inline" title="Saved"><span aria-hidden="true">&#10003;</span> Saved</span>
+    {{else}}
+    <button type="button" class="btn-link bookmark-btn bookmark-inline" data-type="posting" data-id="{{.Posting.ID}}" title="Save opportunity" aria-label="Save opportunity"><span aria-hidden="true">&#128278;</span> Save Opportunity</button>
+    {{end}}
+
+    {{if eq .UserID .Posting.AuthorID}}
+    <div class="posting-actions">
+      <a href="/opportunities/{{.Posting.ID}}/applications" class="btn btn-primary">View Applications</a>
+      <a href="/opportunities/{{.Posting.ID}}/edit" class="btn btn-secondary">Edit Opportunity</a>
+      <a href="/opportunities/{{.Posting.ID}}/outcome" class="btn btn-secondary">{{if .Posting.HasOutcome}}Update Outcome{{else}}Record Outcome{{end}}</a>
+      {{if eq .Posting.Status "active"}}
+      <form method="POST" action="/opportunities/{{.Posting.ID}}/close" class="posting-close">
+        <button type="submit" class="btn btn-secondary">Close Opportunity</button>
+      </form>
+      {{end}}
+    </div>
+    {{else}}
+    {{if eq .Posting.Status "active"}}
+    <form method="GET" action="/opportunities/{{.Posting.ID}}/apply" class="posting-apply">
+      <button type="submit" class="btn btn-primary">Apply</button>
+    </form>
+    {{end}}
+    {{end}}
+  </div>
+</div>
+{{end}}
+
+{{template "base" .}}

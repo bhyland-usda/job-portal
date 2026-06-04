@@ -15,7 +15,7 @@
       </a>
       {{if .UserID}}
       <div class="navbar-utility">
-        <button type="button" id="tools-toggle-btn" class="toolbar-btn toolbar-btn-primary" data-shell-toggle="drawer-toggle" aria-controls="profile-drawer" aria-expanded="false">All tools</button>
+        <button type="button" id="tools-toggle-btn" class="toolbar-btn toolbar-btn-primary shell-fab shell-fab-left" data-shell-toggle="drawer-toggle" aria-controls="profile-drawer" aria-expanded="false" aria-label="Open all tools menu"><span aria-hidden="true">☰</span></button>
         <details class="nav-dropdown notif-dropdown">
           <summary class="nav-summary nav-notif" id="notif-trigger" aria-haspopup="true" aria-expanded="false">
             <span>Notifications</span>
@@ -33,7 +33,7 @@
             </div>
           </div>
         </details>
-        <button type="button" id="chat-toggle-btn" class="toolbar-btn" data-shell-toggle="chat-toggle" aria-controls="chat-drawer" aria-expanded="false">Messages</button>
+        <button type="button" id="chat-toggle-btn" class="toolbar-btn shell-fab shell-fab-right" data-shell-toggle="chat-toggle" aria-controls="chat-drawer" aria-expanded="false" aria-label="Open messages"><span aria-hidden="true">💬</span></button>
         <details class="nav-dropdown avatar-dropdown">
           <summary class="avatar-trigger" aria-haspopup="true" aria-expanded="false">
             <span class="avatar-trigger-copy">
@@ -86,7 +86,7 @@
       <a href="/feed" class="navbar-app-link">Feed</a>
       <a href="/search" class="navbar-app-link">Search People</a>
       <a href="/connections" class="navbar-app-link">Network</a>
-      <a href="/postings/search" class="navbar-app-link">Opportunities</a>
+      <a href="/opportunities/search" class="navbar-app-link">Opportunities</a>
       <a href="/workspaces" class="navbar-app-link">Workspaces</a>
     </div>
     {{end}}

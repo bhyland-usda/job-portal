@@ -20,7 +20,6 @@
             <div class="drawer-head-text">
                 <span class="drawer-eyebrow">USDA JobPortal</span>
                 <h3 class="drawer-title" id="tools-drawer-title">All tools</h3>
-                <p class="drawer-lead">Grouped access to discovery, career, collaboration, and account tools.</p>
             </div>
             <button type="button" class="drawer-close" data-shell-close="drawer-toggle" aria-label="Close all tools menu"><span aria-hidden="true">&times;</span></button>
         </div>
@@ -50,8 +49,8 @@
             <section class="drawer-section-card">
                 <span class="drawer-section-label">Career</span>
                 <div class="drawer-links">
-                    <a href="/postings/search" class="drawer-link">Browse Postings</a>
-                    <a href="/postings/history" class="drawer-link">My Detail History</a>
+                    <a href="/opportunities/search" class="drawer-link">Browse Opportunities</a>
+                    <a href="/opportunities/history" class="drawer-link">My Detail History</a>
                     <a href="/resumes" class="drawer-link">Resumes</a>
                     <a href="/certifications" class="drawer-link">Certifications</a>
                     <a href="/mentorship" class="drawer-link">Mentorship</a>
@@ -207,6 +206,7 @@
     <script src="/static/js/shell-ui.js"></script>
     <script src="/static/js/chat-drawer.js"></script>
     <script src="/static/js/bookmarks.js"></script>
+        <script src="/static/js/csrf.js"></script>
     <script src="/static/js/media-controls.js"></script>
     {{block "scripts" .}}{{end}}
   </body>

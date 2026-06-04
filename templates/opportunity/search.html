@@ -1,12 +1,12 @@
-{{define "title"}}Browse Postings{{end}}
+{{define "title"}}Browse Opportunities{{end}}
 
 {{define "content"}}
 <div class="posting-layout">
     <div class="profile-card">
-        <h2>Browse Postings</h2>
-        <form method="GET" action="/postings/search" class="posting-search-form" role="search" aria-label="Browse postings">
+        <h2>Browse Opportunities</h2>
+        <form method="GET" action="/opportunities/search" class="posting-search-form" role="search" aria-label="Browse opportunities">
             <div class="posting-search-row">
-                <label for="posting-search-q" class="sr-only">Search postings</label>
+            <label for="posting-search-q" class="sr-only">Search opportunities</label>
                 <input type="text" id="posting-search-q" name="q" value="{{.Query}}" placeholder="Search by title, description, or skill..." class="search-input" />
                 <label for="posting-search-type" class="sr-only">Filter by type</label>
                 <select id="posting-search-type" name="type">
@@ -26,7 +26,7 @@
             <span class="posting-type posting-type-{{.Type}}">{{.Type}}</span>
             <span class="posting-date">{{.CreatedAt.Format "Jan 2, 2006"}}</span>
         </div>
-        <h3><a href="/postings/{{.ID}}" class="title-link">{{.Title}}</a></h3>
+        <h3><a href="/opportunities/{{.ID}}" class="title-link">{{.Title}}</a></h3>
         <p class="posting-author">Posted by {{.AuthorName}}</p>
         {{if .Department}}<p class="posting-dept">{{.Department}}</p>{{end}}
         {{if .Location}}<p class="posting-location">{{.Location}}</p>{{end}}
@@ -35,9 +35,9 @@
     {{end}}
     {{else}}
     {{if or .Query .Type}}
-    <p class="empty-state">No postings found matching your search.</p>
+    <p class="empty-state">No opportunities found matching your search.</p>
     {{else}}
-    <p class="empty-state">No active postings yet.</p>
+    <p class="empty-state">No active opportunities yet.</p>
     {{end}}
     {{end}}
 </div>

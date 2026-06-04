@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>404 | Page Not Found</title>
+  <style>
+    :root { --bg:#f7f9fb; --card:#ffffff; --ink:#18242d; --muted:#50616f; --line:#dbe3e9; --accent:#005ea2; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: "Source Sans Pro", "Segoe UI", Arial, sans-serif; background:linear-gradient(160deg,#e8f2f8,#f7f9fb 45%); color:var(--ink); }
+    main { min-height:100vh; display:grid; place-items:center; padding:24px; }
+    .card { width:min(760px, 100%); background:var(--card); border:1px solid var(--line); border-radius:16px; padding:28px; box-shadow:0 12px 32px rgba(12,38,57,0.1); }
+    .code { font-size:12px; letter-spacing:0.12em; text-transform:uppercase; color:var(--accent); font-weight:700; }
+    h1 { margin:8px 0 10px; font-size:34px; }
+    p { margin:0 0 10px; color:var(--muted); }
+    .path { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background:#f1f6f9; padding:8px 10px; border-radius:8px; color:#3b4f60; }
+    .actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:18px; }
+    a { text-decoration:none; border-radius:10px; padding:10px 14px; border:1px solid var(--line); color:var(--ink); font-weight:600; }
+    a.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="card" aria-live="polite">
+      <div class="code">Error 404</div>
+      <h1>Page not found</h1>
+      <p>The page you requested does not exist or may have moved.</p>
+      <div class="actions">
+        <a class="primary" href="/feed">Go to feed</a>
+        <a href="/search">Search people</a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

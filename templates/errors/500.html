@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>500 | Server Error</title>
+  <style>
+    :root { --bg:#f4f6f9; --card:#ffffff; --ink:#1a2229; --muted:#53626f; --line:#d9e1e8; --accent:#005ea2; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: "Source Sans Pro", "Segoe UI", Arial, sans-serif; background:radial-gradient(circle at 20% 10%, #e5f0f7, var(--bg)); color:var(--ink); }
+    main { min-height:100vh; display:grid; place-items:center; padding:24px; }
+    .card { width:min(760px, 100%); background:var(--card); border:1px solid var(--line); border-radius:16px; padding:28px; box-shadow:0 14px 36px rgba(12,38,57,0.11); }
+    .code { font-size:12px; letter-spacing:0.12em; text-transform:uppercase; color:var(--accent); font-weight:700; }
+    h1 { margin:8px 0 10px; font-size:34px; }
+    p { margin:0 0 10px; color:var(--muted); }
+    .path { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background:#edf3f7; padding:8px 10px; border-radius:8px; color:#415566; }
+    .actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:18px; }
+    a { text-decoration:none; border-radius:10px; padding:10px 14px; border:1px solid var(--line); color:var(--ink); font-weight:600; }
+    a.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="card" aria-live="polite">
+      <div class="code">Error 500</div>
+      <h1>Server error</h1>
+      <p>Something went wrong while processing your request.</p>
+      <p>Please refresh the page or try again in a moment.</p>
+      <div class="actions">
+        <a class="primary" href="/feed">Return to feed</a>
+        <a href="javascript:location.reload()">Retry</a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

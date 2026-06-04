@@ -329,7 +329,7 @@ func (h *Handler) getRecent(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r.Context())
 
 	rows, err := h.db.QueryContext(r.Context(),
-		`SELECT n.id, u.first_name, u.last_name, u.avatar_url,
+		`SELECT n.id, n.sender_id, u.first_name, u.last_name, u.avatar_url,
 			n.message, n.read, n.created_at
 		 FROM notifications n
 		 JOIN users u ON u.id = n.sender_id
@@ -348,10 +348,11 @@ func (h *Handler) getRecent(w http.ResponseWriter, r *http.Request) {
 	now := time.Now()
 	for rows.Next() {
 		var n recentNotif
+		var senderID string
 		var firstName, lastName string
 		var avatarURL sql.NullString
 		var createdAt time.Time
-		if err := rows.Scan(&n.ID, &firstName, &lastName, &avatarURL,
+		if err := rows.Scan(&n.ID, &senderID, &firstName, &lastName, &avatarURL,
 			&n.Message, &n.Read, &createdAt); err != nil {
 			continue
 		}
@@ -359,7 +360,7 @@ func (h *Handler) getRecent(w http.ResponseWriter, r *http.Request) {
 			n.SenderInitials = string(firstName[0]) + string(lastName[0])
 		}
 		if avatarURL.Valid && avatarURL.String != "" {
-			n.SenderAvatarURL = "/avatar/" + avatarURL.String
+			n.SenderAvatarURL = middleware.NormalizeAvatarURL(senderID, avatarURL.String)
 		}
 		n.ClickURL = "/notifications/" + n.ID + "/click"
 

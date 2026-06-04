@@ -1,4 +1,4 @@
-package posting
+package opportunity
 
 import (
 	"bytes"
@@ -27,10 +27,45 @@ func testPages() map[string]*template.Template {
 		))
 	}
 	return map[string]*template.Template{
-		"posting_view.html":    mk("posting/view.html"),
-		"posting_outcome.html": mk("posting/outcome.html"),
-		"posting_history.html": mk("posting/history.html"),
+		"posting_view.html":    mk("opportunity/view.html"),
+		"posting_outcome.html": mk("opportunity/outcome.html"),
+		"posting_history.html": mk("opportunity/history.html"),
+		"posting_edit.html":    mk("opportunity/edit.html"),
 	}
+}
+
+func expectLoadPostingQuery(mock sqlmock.Sqlmock, postingID, authorID string) {
+	mock.ExpectQuery(`SELECT p.id, p.author_id,`).
+		WithArgs(postingID).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "author_id", "author_name", "title", "description", "type",
+			"location", "department", "status", "created_at",
+			"outcome", "outcome_status", "completed_at",
+			"start_date", "duration_days", "reporting_manager_name", "reporting_manager_email",
+			"location_type", "application_close_date", "number_of_people", "learning_outcomes",
+		}).AddRow(
+			postingID,
+			authorID,
+			"Author User",
+			"Existing Opportunity",
+			"Existing description",
+			"project",
+			"Remote",
+			"OCIO",
+			"active",
+			time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+			nil,
+			nil,
+			nil,
+			time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC),
+			90,
+			"Manager Name",
+			"manager@example.gov",
+			"remote",
+			time.Date(2026, 5, 20, 0, 0, 0, 0, time.UTC),
+			2,
+			"Learn outcomes",
+		))
 }
 
 // renderView parses the real posting view template and renders only its
@@ -39,7 +74,7 @@ func testPages() map[string]*template.Template {
 // running server or database.
 func renderView(t *testing.T, data PostingPage) string {
 	t.Helper()
-	tmpl, err := template.ParseFiles("../../templates/posting/view.html")
+	tmpl, err := template.ParseFiles("../../templates/opportunity/view.html")
 	if err != nil {
 		t.Fatalf("parse view.html: %v", err)
 	}
@@ -65,7 +100,7 @@ func TestViewerSeesApplyButton(t *testing.T) {
 
 	html := renderView(t, data)
 
-	applyPath := "/postings/posting-1/apply"
+	applyPath := "/opportunities/posting-1/apply"
 	if !strings.Contains(html, applyPath) {
 		t.Errorf("expected apply control targeting %q for non-author viewer, got:\n%s", applyPath, html)
 	}
@@ -85,7 +120,7 @@ func TestAuthorDoesNotSeeApplyButton(t *testing.T) {
 
 	html := renderView(t, data)
 
-	if strings.Contains(html, "/postings/posting-1/apply") {
+	if strings.Contains(html, "/opportunities/posting-1/apply") {
 		t.Errorf("author should not see an apply control, got:\n%s", html)
 	}
 }
@@ -104,7 +139,7 @@ func TestApplyHiddenWhenClosed(t *testing.T) {
 
 	html := renderView(t, data)
 
-	if strings.Contains(html, "/postings/posting-1/apply") {
+	if strings.Contains(html, "/opportunities/posting-1/apply") {
 		t.Errorf("closed posting should not show an apply control, got:\n%s", html)
 	}
 }
@@ -123,7 +158,7 @@ func TestAuthorSeesViewApplications(t *testing.T) {
 
 	html := renderView(t, data)
 
-	appsPath := "/postings/posting-1/applications"
+	appsPath := "/opportunities/posting-1/applications"
 	if !strings.Contains(html, appsPath) {
 		t.Errorf("expected author to see View Applications link %q, got:\n%s", appsPath, html)
 	}
@@ -143,7 +178,7 @@ func TestViewerDoesNotSeeViewApplications(t *testing.T) {
 
 	html := renderView(t, data)
 
-	if strings.Contains(html, "/postings/posting-1/applications") {
+	if strings.Contains(html, "/opportunities/posting-1/applications") {
 		t.Errorf("non-author should not see View Applications link, got:\n%s", html)
 	}
 }
@@ -189,7 +224,7 @@ func TestAuthorSeesRecordOutcomeLink(t *testing.T) {
 
 	html := renderView(t, data)
 
-	if !strings.Contains(html, "/postings/posting-1/outcome") {
+	if !strings.Contains(html, "/opportunities/posting-1/outcome") {
 		t.Errorf("expected author to see record-outcome link, got:\n%s", html)
 	}
 }
@@ -208,7 +243,7 @@ func TestViewerDoesNotSeeRecordOutcomeLink(t *testing.T) {
 
 	html := renderView(t, data)
 
-	if strings.Contains(html, "/postings/posting-1/outcome") {
+	if strings.Contains(html, "/opportunities/posting-1/outcome") {
 		t.Errorf("non-author should not see record-outcome link, got:\n%s", html)
 	}
 }
@@ -239,7 +274,7 @@ func TestHandleOutcomeSavesAndCloses(t *testing.T) {
 	form.Set("outcome", "Wrapped up successfully")
 	form.Set("outcome_status", "completed")
 
-	req := httptest.NewRequest("POST", "/postings/posting-1/outcome", strings.NewReader(form.Encode()))
+	req := httptest.NewRequest("POST", "/opportunities/posting-1/outcome", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.SetPathValue("id", "posting-1")
 	req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, "author-9"))
@@ -250,8 +285,8 @@ func TestHandleOutcomeSavesAndCloses(t *testing.T) {
 	if rec.Code != 303 {
 		t.Fatalf("expected 303 redirect, got %d; body=%s", rec.Code, rec.Body.String())
 	}
-	if loc := rec.Header().Get("Location"); loc != "/postings/posting-1" {
-		t.Errorf("expected redirect to /postings/posting-1, got %q", loc)
+	if loc := rec.Header().Get("Location"); loc != "/opportunities/posting-1" {
+		t.Errorf("expected redirect to /opportunities/posting-1, got %q", loc)
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("unmet expectations: %v", err)
@@ -281,7 +316,7 @@ func TestHandleOutcomeForbiddenForNonAuthor(t *testing.T) {
 	form.Set("outcome", "Sneaky")
 	form.Set("outcome_status", "completed")
 
-	req := httptest.NewRequest("POST", "/postings/posting-1/outcome", strings.NewReader(form.Encode()))
+	req := httptest.NewRequest("POST", "/opportunities/posting-1/outcome", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.SetPathValue("id", "posting-1")
 	req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, "intruder-1"))
@@ -321,7 +356,7 @@ func TestShowHistoryListsAcceptedPostings(t *testing.T) {
 
 	h := NewHandler(db, testPages())
 
-	req := httptest.NewRequest("GET", "/postings/history", nil)
+	req := httptest.NewRequest("GET", "/opportunities/history", nil)
 	req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, "user-7"))
 	rec := httptest.NewRecorder()
 
@@ -336,6 +371,141 @@ func TestShowHistoryListsAcceptedPostings(t *testing.T) {
 	}
 	if !strings.Contains(body, "Migrated everything") {
 		t.Errorf("expected recorded outcome in history, got:\n%s", body)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("unmet expectations: %v", err)
+	}
+}
+
+func TestHandleEditRejectsInvalidOpportunityType(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("failed to create mock db: %v", err)
+	}
+	defer db.Close()
+
+	expectLoadPostingQuery(mock, "posting-1", "author-9")
+
+	h := NewHandler(db, testPages())
+
+	form := url.Values{}
+	form.Set("title", "Updated Opportunity")
+	form.Set("description", "Updated description")
+	form.Set("type", "internship")
+	form.Set("location", "Remote")
+	form.Set("department", "OCIO")
+	form.Set("start_date", "2026-06-01")
+	form.Set("duration_days", "60")
+	form.Set("reporting_manager_name", "Manager Name")
+	form.Set("reporting_manager_email", "manager@example.gov")
+	form.Set("location_type", "remote")
+	form.Set("application_close_date", "2026-05-15")
+	form.Set("number_of_people", "2")
+	form.Set("learning_outcomes", "Learned outcomes")
+
+	req := httptest.NewRequest("POST", "/opportunities/posting-1/edit", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.SetPathValue("id", "posting-1")
+	req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, "author-9"))
+	rec := httptest.NewRecorder()
+
+	h.handleEdit(rec, req)
+
+	if rec.Code != 200 {
+		t.Fatalf("expected 200 response for validation error, got %d; body=%s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "Opportunity type must be project or detail") {
+		t.Errorf("expected invalid type message, got:\n%s", rec.Body.String())
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("unmet expectations: %v", err)
+	}
+}
+
+func TestHandleEditRejectsInvalidLocationType(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("failed to create mock db: %v", err)
+	}
+	defer db.Close()
+
+	expectLoadPostingQuery(mock, "posting-1", "author-9")
+
+	h := NewHandler(db, testPages())
+
+	form := url.Values{}
+	form.Set("title", "Updated Opportunity")
+	form.Set("description", "Updated description")
+	form.Set("type", "project")
+	form.Set("location", "Remote")
+	form.Set("department", "OCIO")
+	form.Set("start_date", "2026-06-01")
+	form.Set("duration_days", "60")
+	form.Set("reporting_manager_name", "Manager Name")
+	form.Set("reporting_manager_email", "manager@example.gov")
+	form.Set("location_type", "office")
+	form.Set("application_close_date", "2026-05-15")
+	form.Set("number_of_people", "2")
+	form.Set("learning_outcomes", "Learned outcomes")
+
+	req := httptest.NewRequest("POST", "/opportunities/posting-1/edit", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.SetPathValue("id", "posting-1")
+	req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, "author-9"))
+	rec := httptest.NewRecorder()
+
+	h.handleEdit(rec, req)
+
+	if rec.Code != 200 {
+		t.Fatalf("expected 200 response for validation error, got %d; body=%s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "Location type must be remote, hybrid, or onsite") {
+		t.Errorf("expected invalid location type message, got:\n%s", rec.Body.String())
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("unmet expectations: %v", err)
+	}
+}
+
+func TestHandleEditRejectsCloseDateAfterStartDate(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("failed to create mock db: %v", err)
+	}
+	defer db.Close()
+
+	expectLoadPostingQuery(mock, "posting-1", "author-9")
+
+	h := NewHandler(db, testPages())
+
+	form := url.Values{}
+	form.Set("title", "Updated Opportunity")
+	form.Set("description", "Updated description")
+	form.Set("type", "project")
+	form.Set("location", "Remote")
+	form.Set("department", "OCIO")
+	form.Set("start_date", "2026-06-01")
+	form.Set("duration_days", "60")
+	form.Set("reporting_manager_name", "Manager Name")
+	form.Set("reporting_manager_email", "manager@example.gov")
+	form.Set("location_type", "remote")
+	form.Set("application_close_date", "2026-06-15")
+	form.Set("number_of_people", "2")
+	form.Set("learning_outcomes", "Learned outcomes")
+
+	req := httptest.NewRequest("POST", "/opportunities/posting-1/edit", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.SetPathValue("id", "posting-1")
+	req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, "author-9"))
+	rec := httptest.NewRecorder()
+
+	h.handleEdit(rec, req)
+
+	if rec.Code != 200 {
+		t.Fatalf("expected 200 response for validation error, got %d; body=%s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "Application close date cannot be after start date") {
+		t.Errorf("expected close date ordering message, got:\n%s", rec.Body.String())
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("unmet expectations: %v", err)

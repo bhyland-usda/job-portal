@@ -9,6 +9,13 @@ document.addEventListener('DOMContentLoaded', function () {
     var header = document.querySelector('.site-header');
     var height = header ? header.offsetHeight : 0;
     document.documentElement.style.setProperty('--app-header-height', height + 'px');
+
+    var main = document.getElementById('main-content');
+    var scrollbarWidth = 0;
+    if (main) {
+      scrollbarWidth = Math.max(0, main.offsetWidth - main.clientWidth);
+    }
+    document.documentElement.style.setProperty('--app-scrollbar-width', scrollbarWidth + 'px');
   }
 
   syncShellOffset();

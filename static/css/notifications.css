@@ -67,23 +67,37 @@
     background: var(--bg-highlight);
 }
 
-.notif-avatar {
+.notif-item .notif-avatar {
     width: 36px;
     height: 36px;
     border-radius: 50%;
     background: var(--primary);
-    color: #fff;
+    color: #fff !important;
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
+    padding: 0;
+    text-decoration: none;
     font-size: 12px;
+    line-height: 1;
     font-weight: 700;
     flex-shrink: 0;
+    border: 1px solid transparent;
+    transition: box-shadow 0.15s, border-color 0.15s;
 }
 
-.notif-avatar img {
+.notif-item .notif-avatar:hover {
+    background: var(--primary);
+    border-color: rgba(255, 255, 255, 0.32);
+    box-shadow: 0 0 0 2px rgba(0, 71, 133, 0.22);
+    color: #fff !important;
+}
+
+.notif-item .notif-avatar img {
     width: 36px;
     height: 36px;
+    display: block;
     border-radius: 50%;
     object-fit: cover;
 }

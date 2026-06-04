@@ -47,6 +47,8 @@ document.addEventListener('DOMContentLoaded', function () {
     checkbox.checked = open;
     toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
     panel.setAttribute('aria-hidden', open ? 'false' : 'true');
+    document.body.classList.toggle('chat-open', !!(getCheckbox('chat-toggle') && getCheckbox('chat-toggle').checked));
+    document.body.classList.toggle('drawer-open', !!(getCheckbox('drawer-toggle') && getCheckbox('drawer-toggle').checked));
 
     if (open) {
       window.requestAnimationFrame(function () {
@@ -156,6 +158,9 @@ document.addEventListener('DOMContentLoaded', function () {
     open: function (id) { setPanelState(id, true); },
     close: function (id) { setPanelState(id, false); }
   };
+
+  document.body.classList.toggle('chat-open', !!(getCheckbox('chat-toggle') && getCheckbox('chat-toggle').checked));
+  document.body.classList.toggle('drawer-open', !!(getCheckbox('drawer-toggle') && getCheckbox('drawer-toggle').checked));
 
   window.shellDialogs = {
     openModal: function (modal, focusTarget) {

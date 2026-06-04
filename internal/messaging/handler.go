@@ -310,18 +310,24 @@ func (h *Handler) startGroupConversation(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Add current user
-	tx.ExecContext(r.Context(),
+	if _, err := tx.ExecContext(r.Context(),
 		`INSERT INTO conversation_participants (conversation_id, user_id) VALUES ($1, $2)`,
 		convID, userID,
-	)
+	); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
 	// Add selected users
 	for _, uid := range userIDs {
 		if uid != userID {
-			tx.ExecContext(r.Context(),
+			if _, err := tx.ExecContext(r.Context(),
 				`INSERT INTO conversation_participants (conversation_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
 				convID, uid,
-			)
+			); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
 		}
 	}
 
@@ -528,7 +534,11 @@ func (h *Handler) chatSend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.ParseMultipartForm(100 << 20)
+	r.Body = http.MaxBytesReader(w, r.Body, 100<<20)
+	if err := r.ParseMultipartForm(100 << 20); err != nil {
+		http.Error(w, "Invalid form data", http.StatusBadRequest)
+		return
+	}
 	content := strings.TrimSpace(r.FormValue("content"))
 	file, header, fileErr := r.FormFile("attachment")
 
@@ -662,11 +672,8 @@ func (h *Handler) togglePinContact(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	referer := r.Header.Get("Referer")
-	if referer == "" {
-		referer = "/messages"
-	}
-	http.Redirect(w, r, referer, http.StatusSeeOther)
+	dest := middleware.SafeRedirectTarget(r.Header.Get("Referer"), "/messages")
+	http.Redirect(w, r, dest, http.StatusSeeOther)
 }
 
 func (h *Handler) handleTyping(w http.ResponseWriter, r *http.Request) {

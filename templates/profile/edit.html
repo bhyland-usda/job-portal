@@ -4,6 +4,37 @@
 <div class="profile-layout">
   <div class="profile-card">
     <h1>Edit Profile</h1>
+    <section class="profile-section-divider" aria-labelledby="profile-content-title">
+      <h2 id="profile-content-title">Profile content</h2>
+      <p class="field-hint">Manage your experience, education, and skills from these pages.</p>
+      <div class="form-actions">
+        <a href="/profile/experience/add" class="btn btn-outline">Manage Experience</a>
+        <a href="/profile/education/add" class="btn btn-outline">Manage Education</a>
+        <a href="/profile/skills/edit" class="btn btn-outline">Manage Skills</a>
+      </div>
+    </section>
+    <section class="profile-photo-editor" aria-labelledby="profile-photo-title">
+      <h2 id="profile-photo-title">Profile photo</h2>
+      <div class="profile-photo-row">
+        <div class="profile-avatar">
+          {{if .User.AvatarURL}}
+          <img src="/avatar/{{.User.ID}}" alt="Profile photo of {{.User.FirstName}} {{.User.LastName}}" />
+          {{else}}
+          <div class="avatar-placeholder">{{slice .User.FirstName 0 1}}{{slice .User.LastName 0 1}}</div>
+          {{end}}
+        </div>
+        <form method="POST" action="/profile/avatar" enctype="multipart/form-data" class="avatar-upload avatar-upload-edit">
+          <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+          <input type="file" id="avatar-edit-input" name="avatar" accept="image/jpeg,image/png,image/webp" hidden />
+          <div class="avatar-upload-actions">
+            <label for="avatar-edit-input" class="btn btn-outline">Choose photo</label>
+            <button type="submit" class="btn btn-primary">Upload</button>
+          </div>
+          <p class="field-hint">JPG, PNG, or WebP. Up to 5MB.</p>
+          <p class="field-hint">Your photo appears in notifications, posts, and profile surfaces.</p>
+        </form>
+      </div>
+    </section>
     <form method="POST" action="/profile/edit">
       <div class="form-row">
         <div class="form-group">
@@ -64,7 +95,7 @@
       </div>
       <div class="form-actions">
         <button type="submit" class="btn btn-primary">Save</button>
-        <a href="/profile/me" class="btn btn-outline">Cancel</a>
+        <a href="/profile/me" class="btn btn-outline">Back to Profile</a>
       </div>
     </form>
   </div>

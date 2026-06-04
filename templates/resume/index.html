@@ -10,6 +10,7 @@
 
     {{if lt (len .Resumes) 5}}
     <form method="POST" action="/resumes/upload" enctype="multipart/form-data" class="resume-upload">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
       <label for="resume" class="btn btn-primary">Upload Resume</label>
       <input type="file" id="resume" name="resume" accept="application/pdf" hidden />
       <p class="upload-hint">PDF only, max 10MB</p>

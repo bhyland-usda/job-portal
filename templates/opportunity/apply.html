@@ -1,0 +1,40 @@
+{{define "title"}}Apply - {{.Posting.Title}}{{end}}
+
+{{define "content"}}
+<div class="posting-layout">
+  <div class="profile-card">
+    <h2>Apply to Opportunity: {{.Posting.Title}}</h2>
+    <p class="posting-meta">
+      Posted by <a href="/profile/{{.Posting.AuthorID}}" class="user-link">{{.Posting.AuthorName}}</a>
+      &middot; {{.Posting.Type}}
+      {{if .Posting.Department}}&middot; {{.Posting.Department}}{{end}}
+      {{if .Posting.Location}}&middot; {{.Posting.Location}}{{end}}
+    </p>
+
+    {{if .Error}}
+    <div class="alert alert-error" role="alert">{{.Error}}</div>
+    {{end}}
+
+    <form method="POST" action="/opportunities/{{.Posting.ID}}/apply" class="posting-form">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+
+      <div class="form-group">
+        <label for="selection_why">Why should you be selected?</label>
+        <textarea id="selection_why" name="selection_why" rows="6" required placeholder="Describe your qualifications, relevant experience, and why you are a strong fit for this opportunity."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="project_tackle_approach">Given what you know about the project, how would you tackle this issue?</label>
+        <textarea id="project_tackle_approach" name="project_tackle_approach" rows="8" required placeholder="Outline your approach, first steps, collaboration plan, and expected outcomes."></textarea>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Submit Application</button>
+        <a href="/opportunities/{{.Posting.ID}}" class="btn btn-outline">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{{end}}
+
+{{template "base" .}}

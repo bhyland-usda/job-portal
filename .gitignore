@@ -49,3 +49,6 @@ site/
 # Test and temp outputs
 tmp/
 temp/
+
+.copilot-artifacts/
+*Zone.Identifier

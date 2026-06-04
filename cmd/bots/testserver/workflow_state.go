@@ -17,7 +17,7 @@ import (
 	mentorshippkg "github.com/bhyland-usda/job-portal/internal/mentorship"
 	moderationpkg "github.com/bhyland-usda/job-portal/internal/moderation"
 	pollpkg "github.com/bhyland-usda/job-portal/internal/poll"
-	postingpkg "github.com/bhyland-usda/job-portal/internal/posting"
+	postingpkg "github.com/bhyland-usda/job-portal/internal/opportunity"
 	searchpkg "github.com/bhyland-usda/job-portal/internal/search"
 	userpkg "github.com/bhyland-usda/job-portal/internal/user"
 	workspacepkg "github.com/bhyland-usda/job-portal/internal/workspace"
@@ -170,7 +170,7 @@ func newFixtureState() *fixtureState {
 	s.notifications["manager-1"] = []fixtureNotification{
 		{
 			ID:             "notif-4",
-			ClickURL:       "/postings/posting-1",
+			ClickURL:       "/opportunities/posting-1",
 			SenderInitials: "RC",
 			Message:        "Riley Carter bookmarked your detail posting.",
 			TimeAgo:        "30 minutes ago",
@@ -481,7 +481,7 @@ func (s *fixtureState) handleBookmarkAdd(w http.ResponseWriter, r *http.Request)
 	s.bookmarks[current.ID] = append([]bookmarkpkg.Bookmark{bookmark}, s.bookmarks[current.ID]...)
 
 	if current.ID != "manager-1" {
-		s.addNotificationLocked("manager-1", "/postings/"+targetID, current, current.FirstName+" "+current.LastName+" bookmarked your "+targetType+".")
+		s.addNotificationLocked("manager-1", "/opportunities/"+targetID, current, current.FirstName+" "+current.LastName+" bookmarked your "+targetType+".")
 	}
 
 	w.WriteHeader(http.StatusNoContent)

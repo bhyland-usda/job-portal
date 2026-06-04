@@ -51,7 +51,7 @@
                                 <option value="{{.ID}}" {{if eq .ID $deptID}}selected{{end}}>{{.Name}}</option>
                                 {{end}}
                             </select>
-                            <button type="submit" class="btn btn-outline btn-sm" data-submit-btn>Set</button>
+                            <button type="submit" class="btn btn-outline btn-sm" data-submit-btn disabled>Set</button>
                         </form>
                     </td>
                     <td>
@@ -93,25 +93,22 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
-});
 
-document.querySelectorAll('[data-dirty-form]').forEach(function(form) {
-  var select = form.querySelector('select');
-  var submit = form.querySelector('[data-submit-btn]');
-  if (!select || !submit) return;
+        document.querySelectorAll('[data-dirty-form]').forEach(function(form) {
+            var select = form.querySelector('select');
+            var submit = form.querySelector('[data-submit-btn]');
+            if (!select || !submit) return;
 
-  function syncDirtyState() {
-    var initial = select.getAttribute('data-initial-value') || '';
-    var current = select.value || '';
-    var dirty = initial !== current;
+            function syncDirtyState() {
+                var initial = select.getAttribute('data-initial-value') || '';
+                var current = select.value || '';
+                submit.disabled = (initial === current);
+            }
 
-    if (submit.textContent.trim() == "Update") {
-      submit.disabled = !dirty;
-    }
-  }
-
-  select.addEventListener('change', syncDirtyState);
-  syncDirtyState();
+            select.addEventListener('change', syncDirtyState);
+            select.addEventListener('input', syncDirtyState);
+            syncDirtyState();
+        });
 });
 </script>
 {{end}}

@@ -3,11 +3,13 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"html/template"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -44,7 +46,7 @@ import (
 	"github.com/bhyland-usda/job-portal/internal/onboarding"
 	"github.com/bhyland-usda/job-portal/internal/orgchart"
 	"github.com/bhyland-usda/job-portal/internal/poll"
-	"github.com/bhyland-usda/job-portal/internal/posting"
+	"github.com/bhyland-usda/job-portal/internal/opportunity"
 	"github.com/bhyland-usda/job-portal/internal/posts"
 	"github.com/bhyland-usda/job-portal/internal/resume"
 	"github.com/bhyland-usda/job-portal/internal/search"
@@ -61,6 +63,10 @@ func main() {
 	slog.SetDefault(logger)
 
 	cfg := loadConfig()
+	if err := validateConfig(cfg); err != nil {
+		slog.Error("invalid runtime configuration", "error", err)
+		os.Exit(1)
+	}
 
 	db, err := database.Connect(cfg.DatabaseURL)
 	if err != nil {
@@ -99,10 +105,11 @@ func main() {
 		"resume_view.html":              template.Must(template.ParseFiles("templates/resume/view.html")),
 		"admin_users.html":              parseTemplate("admin/users.html"),
 		"admin_audit.html":              parseTemplate("admin/audit.html"),
-		"posting_create.html":           parseTemplate("posting/create.html"),
-		"posting_view.html":             parseTemplate("posting/view.html"),
-		"my_posts.html":                 parseTemplate("posting/my_posts.html"),
-		"posting_search.html":           parseTemplate("posting/search.html"),
+		"posting_create.html":           parseTemplate("opportunity/create.html"),
+		"posting_view.html":             parseTemplate("opportunity/view.html"),
+		"posting_edit.html":             parseTemplate("opportunity/edit.html"),
+		"my_posts.html":                 parseTemplate("opportunity/my_posts.html"),
+		"posting_search.html":           parseTemplate("opportunity/search.html"),
 		"accomplishments.html":          parseTemplate("accomplishment/index.html"),
 		"accomplishment_form.html":      parseTemplate("accomplishment/form.html"),
 		"accomplishment_export.html":    template.Must(template.ParseFiles("templates/accomplishment/export.html")),
@@ -124,8 +131,8 @@ func main() {
 		"departments.html":              parseTemplate("department/index.html"),
 		"department_view.html":          parseTemplate("department/view.html"),
 		"mentorship.html":               parseTemplate("mentorship/index.html"),
-		"posting_apply.html":            parseTemplate("posting/apply.html"),
-		"posting_applications.html":     parseTemplate("posting/applications.html"),
+		"posting_apply.html":            parseTemplate("opportunity/apply.html"),
+		"posting_applications.html":     parseTemplate("opportunity/applications.html"),
 		"feedback.html":                 parseTemplate("feedback/index.html"),
 		"feedback_request.html":         parseTemplate("feedback/request.html"),
 		"feedback_respond.html":         parseTemplate("feedback/respond.html"),
@@ -147,10 +154,9 @@ func main() {
 		"admin_report.html":             template.Must(template.ParseFiles("templates/admin/report.html")),
 		"announcements.html":            parseTemplate("announcement/index.html"),
 		"announcement_create.html":      parseTemplate("announcement/create.html"),
-		"posting_outcome.html":          parseTemplate("posting/outcome.html"),
-		"posting_history.html":          parseTemplate("posting/history.html"),
+		"posting_outcome.html":          parseTemplate("opportunity/outcome.html"),
+		"posting_history.html":          parseTemplate("opportunity/history.html"),
 		"digest.html":                   parseTemplate("digest/index.html"),
-		"feed_scheduled.html":           parseTemplate("feed/scheduled.html"),
 		"profile_print.html":            template.Must(template.ParseFiles("templates/profile/print.html")),
 		"orgchart.html":                 parseTemplate("orgchart/index.html"),
 		"orgchart_assign.html":          parseTemplate("orgchart/assign.html"),
@@ -167,12 +173,19 @@ func main() {
 	// Session manager
 	sessions := auth.NewSessionManager(redisClient, cfg.SessionSecret)
 
+	errorPages := map[int]*template.Template{
+		http.StatusForbidden:           template.Must(template.ParseFiles("templates/errors/403.html")),
+		http.StatusNotFound:            template.Must(template.ParseFiles("templates/errors/404.html")),
+		http.StatusInternalServerError: template.Must(template.ParseFiles("templates/errors/500.html")),
+	}
+
 	// Auth middleware. requireAuth also enforces the Acceptable Use Policy gate:
 	// once auth populates the user context, RequireAUP redirects users who haven't
 	// accepted the AUP (it self-exempts /aup, /aup/accept, /logout, /static).
 	baseAuth := middleware.RequireAuthWithDB(sessions, db)
 	aupGate := middleware.RequireAUP(db)
-	requireAuth := func(next http.Handler) http.Handler { return baseAuth(aupGate(next)) }
+	csrfGate := middleware.RequireSameOriginUnsafeMethods
+	requireAuth := func(next http.Handler) http.Handler { return baseAuth(aupGate(csrfGate(next))) }
 	requireAdmin := middleware.RequireRole(db, "admin")
 
 	// Handlers
@@ -185,7 +198,7 @@ func main() {
 	messagingHandler := messaging.NewHandler(db, pages, notificationHandler)
 	resumeHandler := resume.NewHandler(db, pages)
 	adminHandler := admin.NewHandler(db, pages)
-	postingHandler := posting.NewHandler(db, pages)
+	opportunityHandler := opportunity.NewHandler(db, pages)
 	postsHandler := posts.NewHandler(db, pages)
 	accomplishmentHandler := accomplishment.NewHandler(db, pages)
 	bookmarkHandler := bookmark.NewHandler(db, pages)
@@ -227,7 +240,7 @@ func main() {
 		w.Write([]byte("ok"))
 	})
 
-	mux.HandleFunc("GET /avatar/{id}", userHandler.ServeAvatar)
+	mux.Handle("GET /avatar/{id}", requireAuth(http.HandlerFunc(userHandler.ServeAvatar)))
 
 	// Routes
 	authHandler.RegisterRoutes(mux)
@@ -239,7 +252,7 @@ func main() {
 	messagingHandler.RegisterRoutes(mux, requireAuth)
 	resumeHandler.RegisterRoutes(mux, requireAuth)
 	adminHandler.RegisterRoutes(mux, requireAuth, requireAdmin)
-	postingHandler.RegisterRoutes(mux, requireAuth, requireManager)
+	opportunityHandler.RegisterRoutes(mux, requireAuth, requireManager)
 	postsHandler.RegisterRoutes(mux, requireAuth)
 	accomplishmentHandler.RegisterRoutes(mux, requireAuth)
 	bookmarkHandler.RegisterRoutes(mux, requireAuth)
@@ -285,7 +298,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.Port,
-		Handler:      mux,
+		Handler:      middleware.WithErrorPages(middleware.RequireCSRFTokens(mux), errorPages),
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  120 * time.Second,
@@ -316,6 +329,7 @@ func main() {
 
 type config struct {
 	Port          string
+	AppEnv        string
 	DatabaseURL   string
 	RedisURL      string
 	SessionSecret string
@@ -326,12 +340,52 @@ type config struct {
 func loadConfig() config {
 	return config{
 		Port:          getEnv("PORT", "8080"),
+		AppEnv:        strings.ToLower(getEnv("APP_ENV", "development")),
 		DatabaseURL:   getEnv("DATABASE_URL", "postgres://jobportal:jobportal@localhost:5432/jobportal?sslmode=disable"),
 		RedisURL:      getEnv("REDIS_URL", "redis://localhost:6379"),
 		SessionSecret: getEnv("SESSION_SECRET", "dev-secret-change-me"),
 		AdminEmail:    getEnv("ADMIN_EMAIL", "admin@jobportal.local"),
 		AdminPassword: getEnv("ADMIN_PASSWORD", "changeme123"),
 	}
+}
+
+func validateConfig(cfg config) error {
+	if !isProductionLike(cfg.AppEnv) {
+		return nil
+	}
+
+	if weakSecret(cfg.SessionSecret) {
+		return fmt.Errorf("SESSION_SECRET is weak or default-like for %s", cfg.AppEnv)
+	}
+	if weakAdminPassword(cfg.AdminPassword) {
+		return fmt.Errorf("ADMIN_PASSWORD is weak or default-like for %s", cfg.AppEnv)
+	}
+	if strings.Contains(strings.ToLower(cfg.DatabaseURL), "sslmode=disable") {
+		return fmt.Errorf("DATABASE_URL must not disable TLS for %s", cfg.AppEnv)
+	}
+
+	return nil
+}
+
+func isProductionLike(env string) bool {
+	env = strings.ToLower(strings.TrimSpace(env))
+	return env == "production" || env == "prod" || env == "staging"
+}
+
+func weakSecret(v string) bool {
+	v = strings.TrimSpace(strings.ToLower(v))
+	if len(v) < 32 {
+		return true
+	}
+	return v == "dev-secret-change-me" || v == "change-me-in-production"
+}
+
+func weakAdminPassword(v string) bool {
+	v = strings.TrimSpace(strings.ToLower(v))
+	if len(v) < 12 {
+		return true
+	}
+	return v == "changeme123" || v == "password" || v == "admin" || v == "admin123"
 }
 
 func getEnv(key, fallback string) string {

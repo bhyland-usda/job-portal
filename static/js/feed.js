@@ -192,6 +192,26 @@
     }
   });
 
+  // Submit reactions asynchronously so clicking an emoji does not reload page.
+  document.addEventListener('submit', function(e) {
+    var form = e.target.closest('.reaction-bar form[action$="/like"]');
+    if (!form) return;
+
+    e.preventDefault();
+
+    fetch(form.action, {
+      method: 'POST',
+      credentials: 'same-origin',
+      body: new FormData(form)
+    }).then(function(resp) {
+      if (!resp.ok) return;
+      var match = form.action.match(/\/feed\/([^/]+)\/like$/);
+      if (match && match[1]) {
+        updateSinglePost(match[1]);
+      }
+    }).catch(function() {});
+  });
+
   // Highlight from notification
   var params = new URLSearchParams(window.location.search);
   var highlightId = params.get('highlight');

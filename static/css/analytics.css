@@ -1,0 +1,79 @@
+.wf-layout {
+  max-width: 1128px;
+  margin: 0 auto;
+}
+
+.wf-lead {
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+}
+
+.wf-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.wf-stat {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 18px;
+}
+
+.wf-stat .wf-num {
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.wf-stat .wf-label {
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.wf-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.wf-section h3 {
+  margin-bottom: 12px;
+}
+
+.wf-skills-section {
+  margin-top: 24px;
+}
+
+.wf-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.wf-table th,
+.wf-table td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.wf-table th {
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.wf-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 720px) {
+  .wf-grid {
+    grid-template-columns: 1fr;
+  }
+}

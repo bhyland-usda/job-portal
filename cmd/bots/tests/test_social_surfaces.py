@@ -1,4 +1,5 @@
 import re
+from pathlib import Path
 
 try:
     from .browser_harness import BrowserHarness
@@ -34,6 +35,117 @@ class SocialSurfaceTests(BrowserHarness):
             links.all_inner_texts(),
             ["Feed", "Search People", "Network", "Opportunities", "Workspaces"],
         )
+
+    def test_feed_composer_upload_form_includes_csrf_token(self):
+        self.open_feed("social")
+        self.assertGreater(
+            self.page.locator('form[action="/feed"] input[name="csrf_token"]').count(),
+            0,
+            "expected CSRF hidden field on feed upload form",
+        )
+
+    def test_feed_reaction_click_does_not_reload_page(self):
+        self.open_feed("social")
+
+        reaction_btn = self.page.locator('.reaction-bar form[action$="/like"] button').first
+        self.assertTrue(reaction_btn.is_visible())
+
+        self.page.evaluate(
+            """
+            () => {
+              window.__reactionSentinel = 'alive';
+              window.__beforeUnloadFired = false;
+              window.addEventListener('beforeunload', () => { window.__beforeUnloadFired = true; });
+            }
+            """
+        )
+
+        with self.page.expect_response(re.compile(r".*/feed/.*/like$")) as reaction_resp:
+            reaction_btn.click()
+
+        self.assertIn(reaction_resp.value.status, [200, 204, 303])
+        self.page.wait_for_timeout(250)
+
+        state = self.page.evaluate(
+            """
+            () => ({
+              sentinel: window.__reactionSentinel || null,
+              beforeUnload: !!window.__beforeUnloadFired,
+              path: window.location.pathname,
+            })
+            """
+        )
+
+        self.assertEqual(state["sentinel"], "alive")
+        self.assertFalse(state["beforeUnload"])
+        self.assertEqual(state["path"], "/feed")
+
+        def test_share_commentary_panel_has_room_and_keeps_actions_aligned(self):
+                self.open_feed("social")
+
+                before = self.page.evaluate(
+                        """
+                        () => {
+                            const row = document.querySelector('.feed-post .post-actions');
+                            const save = row.querySelector('.bookmark-btn, .bookmark-saved');
+                            const report = row.querySelector('.post-report > summary');
+                            const share = row.querySelector('.post-share > summary');
+                            if (!row || !report || !share) return null;
+                            const r = row.getBoundingClientRect();
+                            const sv = save ? save.getBoundingClientRect() : null;
+                            const rp = report.getBoundingClientRect();
+                            const sh = share.getBoundingClientRect();
+                            return {
+                                rowBottom: Math.round(r.bottom),
+                                saveTop: sv ? Math.round(sv.top) : null,
+                                reportTop: Math.round(rp.top),
+                                shareTop: Math.round(sh.top),
+                            };
+                        }
+                        """
+                )
+
+                self.assertIsNotNone(before)
+
+                self.page.locator('.feed-post .post-share > summary').first.click()
+                self.page.wait_for_selector('.feed-post .post-share[open] .post-share-form textarea')
+
+                after = self.page.evaluate(
+                        """
+                        () => {
+                            const row = document.querySelector('.feed-post .post-actions');
+                            const save = row.querySelector('.bookmark-btn, .bookmark-saved');
+                            const report = row.querySelector('.post-report > summary');
+                            const share = row.querySelector('.post-share > summary');
+                            const form = row.querySelector('.post-share[open] .post-share-form');
+                            const textarea = form ? form.querySelector('textarea') : null;
+                            if (!row || !report || !share || !form || !textarea) return null;
+                            const r = row.getBoundingClientRect();
+                            const sv = save ? save.getBoundingClientRect() : null;
+                            const rp = report.getBoundingClientRect();
+                            const sh = share.getBoundingClientRect();
+                            const ta = textarea.getBoundingClientRect();
+                            return {
+                                rowBottom: Math.round(r.bottom),
+                                saveTop: sv ? Math.round(sv.top) : null,
+                                reportTop: Math.round(rp.top),
+                                shareTop: Math.round(sh.top),
+                                textareaWidth: Math.round(ta.width),
+                                textareaHeight: Math.round(ta.height),
+                                formOverhang: Math.round(form.getBoundingClientRect().top - r.bottom),
+                            };
+                        }
+                        """
+                )
+
+                self.assertIsNotNone(after)
+                self.assertGreaterEqual(after["textareaWidth"], 300)
+                self.assertGreaterEqual(after["textareaHeight"], 100)
+                self.assertLessEqual(abs(after["shareTop"] - before["shareTop"]), 2)
+                self.assertLessEqual(abs(after["reportTop"] - before["reportTop"]), 2)
+                if before["saveTop"] is not None and after["saveTop"] is not None:
+                        self.assertLessEqual(abs(after["saveTop"] - before["saveTop"]), 2)
+                self.assertGreaterEqual(after["formOverhang"], 6)
 
     def test_all_tools_drawer_opens_below_header_with_grouped_sections(self):
         self.open_shell()
@@ -80,6 +192,130 @@ class SocialSurfaceTests(BrowserHarness):
         self.page.wait_for_function("document.getElementById('chat-toggle').checked")
         self.page.locator(".chat-scrim").click(force=True)
         self.page.wait_for_function("!document.getElementById('chat-toggle').checked")
+
+        def test_all_tools_drawer_omits_grouped_access_lead_copy(self):
+                self.open_shell()
+                self.open_tools_drawer()
+
+                self.assertEqual(
+                        self.page.get_by_text(
+                                "Grouped access to discovery, career, collaboration, and account tools."
+                        ).count(),
+                        0,
+                )
+
+        def test_shell_tabs_hide_when_corresponding_drawer_is_open(self):
+                self.open_shell()
+
+                # Open chat drawer -> chat tab hidden, tools tab still interactive.
+                self.page.locator("#chat-toggle-btn").click()
+                self.page.wait_for_function("document.getElementById('chat-toggle').checked")
+                chat_metrics = self.page.evaluate(
+                        """
+                        () => {
+                            const chat = document.getElementById('chat-toggle-btn');
+                            const tools = document.getElementById('tools-toggle-btn');
+                            const chatStyle = getComputedStyle(chat);
+                            const toolsStyle = getComputedStyle(tools);
+                            return {
+                                bodyClass: document.body.className,
+                                chatOpacity: chatStyle.opacity,
+                                chatPointerEvents: chatStyle.pointerEvents,
+                                toolsOpacity: toolsStyle.opacity,
+                                toolsPointerEvents: toolsStyle.pointerEvents,
+                            };
+                        }
+                        """
+                )
+                self.assertIn("chat-open", chat_metrics["bodyClass"])
+                self.assertEqual(chat_metrics["chatOpacity"], "0")
+                self.assertEqual(chat_metrics["chatPointerEvents"], "none")
+                self.assertNotEqual(chat_metrics["toolsOpacity"], "0")
+                self.assertNotEqual(chat_metrics["toolsPointerEvents"], "none")
+
+                self.page.locator(".chat-scrim").click(force=True)
+                self.page.wait_for_function("!document.getElementById('chat-toggle').checked")
+
+                # Open tools drawer -> tools tab hidden, chat tab still interactive.
+                self.page.locator("#tools-toggle-btn").click()
+                self.page.wait_for_function("document.getElementById('drawer-toggle').checked")
+                tools_metrics = self.page.evaluate(
+                        """
+                        () => {
+                            const chat = document.getElementById('chat-toggle-btn');
+                            const tools = document.getElementById('tools-toggle-btn');
+                            const chatStyle = getComputedStyle(chat);
+                            const toolsStyle = getComputedStyle(tools);
+                            return {
+                                bodyClass: document.body.className,
+                                toolsOpacity: toolsStyle.opacity,
+                                toolsPointerEvents: toolsStyle.pointerEvents,
+                                chatOpacity: chatStyle.opacity,
+                                chatPointerEvents: chatStyle.pointerEvents,
+                            };
+                        }
+                        """
+                )
+                self.assertIn("drawer-open", tools_metrics["bodyClass"])
+                self.assertEqual(tools_metrics["toolsOpacity"], "0")
+                self.assertEqual(tools_metrics["toolsPointerEvents"], "none")
+                self.assertNotEqual(tools_metrics["chatOpacity"], "0")
+                self.assertNotEqual(tools_metrics["chatPointerEvents"], "none")
+
+        def test_chat_tab_tracks_scrollbar_gutter_width(self):
+                self.open_shell()
+
+                metrics = self.page.evaluate(
+                        """
+                        () => {
+                            const chat = document.getElementById('chat-toggle-btn');
+                            const main = document.getElementById('main-content');
+                            const rect = chat.getBoundingClientRect();
+                            const rightGap = window.innerWidth - rect.right;
+                            const scrollbarWidth = Math.max(0, main.offsetWidth - main.clientWidth);
+                            return { rightGap, scrollbarWidth };
+                        }
+                        """
+                )
+
+                self.assertAlmostEqual(metrics["rightGap"], metrics["scrollbarWidth"], delta=1.5)
+
+        def test_shell_tools_and_messages_are_floating_side_tabs(self):
+                self.open_shell()
+
+                metrics = self.page.evaluate(
+                        """
+                        () => {
+                            const headerBottom = document.querySelector('.site-header').getBoundingClientRect().bottom;
+                            const tools = document.getElementById('tools-toggle-btn');
+                            const chat = document.getElementById('chat-toggle-btn');
+                            const toolsRect = tools.getBoundingClientRect();
+                            const chatRect = chat.getBoundingClientRect();
+                            const toolsStyle = getComputedStyle(tools);
+                            const chatStyle = getComputedStyle(chat);
+                            return {
+                                headerBottom,
+                                toolsLeft: toolsRect.left,
+                                chatRightGap: window.innerWidth - chatRect.right,
+                                toolsTop: toolsRect.top,
+                                chatTop: chatRect.top,
+                                toolsPosition: toolsStyle.position,
+                                chatPosition: chatStyle.position,
+                                toolsText: tools.innerText,
+                                chatText: chat.innerText,
+                            };
+                        }
+                        """
+                )
+
+                self.assertEqual(metrics["toolsPosition"], "fixed")
+                self.assertEqual(metrics["chatPosition"], "fixed")
+                self.assertLessEqual(metrics["toolsLeft"], 10)
+                self.assertLessEqual(metrics["chatRightGap"], 10)
+                self.assertGreater(metrics["toolsTop"], metrics["headerBottom"])
+                self.assertGreater(metrics["chatTop"], metrics["headerBottom"])
+                self.assertIn("☰", metrics["toolsText"])
+                self.assertIn("💬", metrics["chatText"])
 
     def test_shell_footer_stays_pinned_while_main_content_scrolls(self):
         self.open_shell()
@@ -219,6 +455,193 @@ class SocialSurfaceTests(BrowserHarness):
             """
         )
         self.assertEqual(self.page.locator(".notif-item-unread").count(), 0)
+
+    def test_notifications_dropdown_alignment_in_light_and_dark_modes(self):
+        self.open_path("/shell?role=employee", ".site-header", "the employee shell fixture")
+        self.page.locator("#notif-trigger").click()
+        self.page.wait_for_selector(".notif-item")
+
+        for dark_mode in (False, True):
+            self.page.evaluate(
+                """
+                (isDark) => {
+                    document.documentElement.classList.toggle('dark-mode', isDark);
+                }
+                """,
+                dark_mode,
+            )
+
+            metrics = self.page.evaluate(
+                """
+                () => {
+                    const trigger = document.getElementById('notif-trigger').getBoundingClientRect();
+                    const menu = document.getElementById('notif-menu').getBoundingClientRect();
+                    const item = document.querySelector('.notif-item').getBoundingClientRect();
+                    const read = document.querySelector('.notif-read-icon').getBoundingClientRect();
+                    const del = document.querySelector('.notif-delete-btn').getBoundingClientRect();
+                    return {
+                        viewportWidth: window.innerWidth,
+                        menuLeft: Math.round(menu.left),
+                        menuRight: Math.round(menu.right),
+                        menuTopGap: Math.round(menu.top - trigger.bottom),
+                        readRight: Math.round(read.right),
+                        delRight: Math.round(del.right),
+                        itemRight: Math.round(item.right),
+                    };
+                }
+                """
+            )
+
+            self.assertGreaterEqual(metrics["menuLeft"], 0)
+            self.assertLessEqual(metrics["menuRight"], metrics["viewportWidth"])
+            self.assertGreaterEqual(metrics["menuTopGap"], 6)
+            self.assertLessEqual(metrics["menuTopGap"], 12)
+            self.assertLessEqual(metrics["readRight"], metrics["itemRight"])
+            self.assertLessEqual(metrics["delRight"], metrics["itemRight"])
+
+    def test_notifications_hover_states_in_light_and_dark_modes(self):
+        self.open_path("/shell?role=employee", ".site-header", "the employee shell fixture")
+        self.page.locator("#notif-trigger").click()
+        self.page.wait_for_selector(".notif-item")
+
+        for dark_mode in (False, True):
+            self.page.evaluate(
+                """
+                (isDark) => {
+                    document.documentElement.classList.toggle('dark-mode', isDark);
+                }
+                """,
+                dark_mode,
+            )
+
+            before = self.page.evaluate(
+                """
+                () => {
+                    const firstItem = document.querySelector('.notif-item');
+                    const readBtn = document.querySelector('button.notif-read-icon');
+                    const delBtn = document.querySelector('button.notif-delete-btn');
+                    const css = (el) => getComputedStyle(el);
+                    return {
+                        itemBg: css(firstItem).backgroundColor,
+                        readBg: css(readBtn).backgroundColor,
+                        delBg: css(delBtn).backgroundColor,
+                    };
+                }
+                """
+            )
+
+            self.page.locator('.notif-item').first.hover()
+            self.page.wait_for_timeout(75)
+            item_hover_bg = self.page.evaluate(
+                "getComputedStyle(document.querySelector('.notif-item')).backgroundColor"
+            )
+
+            self.page.locator('button.notif-read-icon').first.hover()
+            self.page.wait_for_timeout(75)
+            read_after = self.page.evaluate(
+                """
+                () => {
+                    const readBtn = document.querySelector('button.notif-read-icon');
+                    const css = getComputedStyle(readBtn);
+                    return { bg: css.backgroundColor };
+                }
+                """
+            )
+
+            self.page.locator('button.notif-delete-btn').first.hover()
+            self.page.wait_for_timeout(75)
+            del_after = self.page.evaluate(
+                """
+                () => {
+                    const delBtn = document.querySelector('button.notif-delete-btn');
+                    const css = getComputedStyle(delBtn);
+                    return { bg: css.backgroundColor };
+                }
+                """
+            )
+
+            self.assertNotEqual(before["itemBg"], item_hover_bg)
+            self.assertNotEqual(before["readBg"], read_after["bg"])
+            self.assertNotEqual(before["delBg"], del_after["bg"])
+
+    def test_notifications_avatar_is_centered_and_clipped(self):
+        self.open_path("/shell?role=employee", ".site-header", "the employee shell fixture")
+        self.page.locator("#notif-trigger").click()
+        self.page.wait_for_selector(".notif-item")
+
+        for dark_mode in (False, True):
+            self.page.evaluate(
+                """
+                (isDark) => {
+                    document.documentElement.classList.toggle('dark-mode', isDark);
+                }
+                """,
+                dark_mode,
+            )
+            metrics = self.page.evaluate(
+                """
+                () => {
+                    const avatar = document.querySelector('.notif-item .notif-avatar');
+                    const img = document.querySelector('.notif-item .notif-avatar img');
+                    const styles = getComputedStyle(avatar);
+                    const avatarRect = avatar.getBoundingClientRect();
+                    const itemRect = document.querySelector('.notif-item').getBoundingClientRect();
+                    const imageRect = img ? img.getBoundingClientRect() : null;
+                    return {
+                        display: styles.display,
+                        overflow: styles.overflow,
+                        borderRadius: styles.borderRadius,
+                        avatarWidth: Math.round(avatarRect.width),
+                        avatarHeight: Math.round(avatarRect.height),
+                        avatarTopInsideItem: avatarRect.top >= itemRect.top,
+                        avatarBottomInsideItem: avatarRect.bottom <= itemRect.bottom,
+                        imageWidth: imageRect ? Math.round(imageRect.width) : null,
+                        imageHeight: imageRect ? Math.round(imageRect.height) : null,
+                    };
+                }
+                """
+            )
+
+            self.assertEqual(metrics["display"], "flex")
+            self.assertEqual(metrics["overflow"], "hidden")
+            self.assertIn(metrics["borderRadius"], ["50%", "18px"])
+            self.assertEqual(metrics["avatarWidth"], 36)
+            self.assertEqual(metrics["avatarHeight"], 36)
+            self.assertTrue(metrics["avatarTopInsideItem"])
+            self.assertTrue(metrics["avatarBottomInsideItem"])
+            if metrics["imageWidth"] is not None:
+                self.assertEqual(metrics["imageWidth"], 36)
+                self.assertEqual(metrics["imageHeight"], 36)
+
+    def test_profile_edit_exposes_avatar_upload_controls(self):
+        self.open_path("/shell?role=employee", ".site-header", "the employee shell fixture")
+        self.page.goto(f"{self.base_url}/profile/edit", wait_until="domcontentloaded")
+
+        self.assertTrue(self.page.locator('form[action="/profile/avatar"]').is_visible())
+        self.assertGreater(self.page.locator('input[type="file"][name="avatar"]').count(), 0)
+        self.assertTrue(self.page.get_by_text("Profile photo", exact=True).is_visible())
+        self.assertGreater(
+            self.page.locator('form[action="/profile/avatar"] input[name="csrf_token"]').count(),
+            0,
+        )
+
+    def test_profile_view_omits_avatar_upload_controls(self):
+        self.open_path("/shell?role=employee", ".site-header", "the employee shell fixture")
+        self.page.goto(f"{self.base_url}/profile/me", wait_until="domcontentloaded")
+        self.assertEqual(self.page.locator('form[action="/profile/avatar"]').count(), 0)
+        self.assertEqual(self.page.get_by_text("Change Photo", exact=True).count(), 0)
+
+    def test_profile_avatar_upload_succeeds_without_forbidden(self):
+        self.open_path("/shell?role=employee", ".site-header", "the employee shell fixture")
+        self.page.goto(f"{self.base_url}/profile/edit", wait_until="domcontentloaded")
+
+        avatar_file = Path(__file__).resolve().parents[3] / "testing_avatars" / "superman.jpg"
+        self.page.locator('#avatar-edit-input').set_input_files(str(avatar_file))
+        with self.page.expect_response(re.compile(r".*/profile/avatar$")) as upload_resp:
+            self.page.locator('form[action="/profile/avatar"] button[type="submit"]').click()
+        self.assertIn(upload_resp.value.status, [302, 303])
+        self.assertNotEqual(upload_resp.value.status, 403)
+        self.assertEqual(self.page.get_by_text("Forbidden").count(), 0)
 
     def test_messaging_drawer_opens_new_conversation_modal(self):
         self.open_shell()

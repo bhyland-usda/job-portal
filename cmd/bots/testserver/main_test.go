@@ -233,8 +233,8 @@ func TestWorkflowPagesMutateState(t *testing.T) {
 	server := startFixtureServer(t)
 	defer server.close()
 
-	_, body := server.get(t, "/postings/posting-1?role=employee")
-	if !strings.Contains(body, "Save Posting") {
+	_, body := server.get(t, "/opportunities/posting-1?role=employee")
+	if !strings.Contains(body, "Save Opportunity") {
 		t.Fatalf("expected posting page to show save action")
 	}
 
@@ -242,7 +242,7 @@ func TestWorkflowPagesMutateState(t *testing.T) {
 		"target_type": {"posting"},
 		"target_id":   {"posting-1"},
 	})
-	_, body = server.get(t, "/postings/posting-1?role=employee")
+	_, body = server.get(t, "/opportunities/posting-1?role=employee")
 	if !strings.Contains(body, "Saved") {
 		t.Fatalf("expected posting page to show saved state")
 	}

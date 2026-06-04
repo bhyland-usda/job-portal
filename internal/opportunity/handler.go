@@ -1,4 +1,4 @@
-package posting
+package opportunity
 
 import (
 	"context"
@@ -7,6 +7,8 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -24,23 +26,37 @@ type PostingAttachment struct {
 }
 
 type Posting struct {
-	ID            string
-	AuthorID      string
-	AuthorName    string
-	Title         string
-	Description   string
-	Type          string
-	Location      string
-	Department    string
-	Status        string
-	Skills        []string
-	MatchCount    int
-	CreatedAt     time.Time
-	Attachments   []PostingAttachment
-	Outcome       string
-	OutcomeStatus string
-	HasOutcome    bool
-	CompletedAt   time.Time
+	ID                       string
+	AuthorID                 string
+	AuthorName               string
+	Title                    string
+	Description              string
+	Type                     string
+	Location                 string
+	Department               string
+	Status                   string
+	Skills                   []string
+	MatchCount               int
+	CreatedAt                time.Time
+	Attachments              []PostingAttachment
+	Outcome                  string
+	OutcomeStatus            string
+	HasOutcome               bool
+	CompletedAt              time.Time
+	StartDate                time.Time
+	HasStartDate             bool
+	DurationDays             int
+	HasDurationDays          bool
+	ReportingManagerName     string
+	HasReportingManagerName  bool
+	ReportingManagerEmail    string
+	HasReportingManagerEmail bool
+	LocationType             string
+	ApplicationCloseDate     time.Time
+	HasApplicationCloseDate  bool
+	NumberOfPeople           int
+	HasNumberOfPeople        bool
+	LearningOutcomes         string
 }
 
 type PostingPage struct {
@@ -58,17 +74,33 @@ type SearchPage struct {
 
 type CreatePage struct {
 	middleware.BaseData
-	Error string
+	Error                 string
+	Title                 string
+	Type                  string
+	Department            string
+	Location              string
+	LocationType          string
+	StartDate             string
+	DurationDays          string
+	ApplicationCloseDate  string
+	NumberOfPeople        string
+	ReportingManagerName  string
+	ReportingManagerEmail string
+	Description           string
+	LearningOutcomes      string
+	Skills                string
 }
 
 type Application struct {
-	ID            string
-	PostingID     string
-	ApplicantID   string
-	ApplicantName string
-	CoverLetter   string
-	Status        string
-	CreatedAt     time.Time
+	ID                    string
+	PostingID             string
+	ApplicantID           string
+	ApplicantName         string
+	CoverLetter           string
+	Status                string
+	CreatedAt             time.Time
+	SelectionWhy          string
+	ProjectTackleApproach string
 }
 
 type ApplicationsPage struct {
@@ -78,6 +110,12 @@ type ApplicationsPage struct {
 }
 
 type ApplyPage struct {
+	middleware.BaseData
+	Posting Posting
+	Error   string
+}
+
+type EditPage struct {
 	middleware.BaseData
 	Posting Posting
 	Error   string
@@ -120,23 +158,30 @@ func NewHandler(db *sql.DB, pages map[string]*template.Template) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux, requireAuth, requireManager func(http.Handler) http.Handler) {
-	mux.Handle("GET /postings/create", requireAuth(requireManager(http.HandlerFunc(h.showCreate))))
-	mux.Handle("POST /postings/create", requireAuth(requireManager(http.HandlerFunc(h.handleCreate))))
-	mux.Handle("GET /postings/search", requireAuth(http.HandlerFunc(h.searchPostings)))
-	mux.Handle("GET /postings/history", requireAuth(http.HandlerFunc(h.showHistory)))
-	mux.Handle("GET /postings/{id}/outcome", requireAuth(http.HandlerFunc(h.showOutcome)))
-	mux.Handle("POST /postings/{id}/outcome", requireAuth(http.HandlerFunc(h.handleOutcome)))
-	mux.Handle("GET /postings/{id}/apply", requireAuth(http.HandlerFunc(h.showApply)))
-	mux.Handle("POST /postings/{id}/apply", requireAuth(http.HandlerFunc(h.handleApply)))
-	mux.Handle("GET /postings/{id}/applications", requireAuth(requireManager(http.HandlerFunc(h.showApplications))))
-	mux.Handle("POST /postings/applications/{id}/status", requireAuth(requireManager(http.HandlerFunc(h.updateApplicationStatus))))
 	mux.Handle("GET /posting-attachments/{id}", requireAuth(http.HandlerFunc(h.serveAttachment)))
-	mux.Handle("GET /postings/{id}", requireAuth(http.HandlerFunc(h.showPosting)))
-	mux.Handle("POST /postings/{id}/close", requireAuth(requireManager(http.HandlerFunc(h.closePosting))))
+	mux.Handle("GET /opportunities/create", requireAuth(requireManager(http.HandlerFunc(h.showCreate))))
+	mux.Handle("POST /opportunities/create", requireAuth(requireManager(http.HandlerFunc(h.handleCreate))))
+	mux.Handle("GET /opportunities/search", requireAuth(http.HandlerFunc(h.searchPostings)))
+	mux.Handle("GET /opportunities/history", requireAuth(http.HandlerFunc(h.showHistory)))
+	mux.Handle("GET /opportunities/{id}/outcome", requireAuth(http.HandlerFunc(h.showOutcome)))
+	mux.Handle("POST /opportunities/{id}/outcome", requireAuth(http.HandlerFunc(h.handleOutcome)))
+	mux.Handle("GET /opportunities/{id}", requireAuth(http.HandlerFunc(h.showPosting)))
+	mux.Handle("GET /opportunities/{id}/edit", requireAuth(requireManager(http.HandlerFunc(h.showEdit))))
+	mux.Handle("POST /opportunities/{id}/edit", requireAuth(requireManager(http.HandlerFunc(h.handleEdit))))
+	mux.Handle("GET /opportunities/{id}/apply", requireAuth(http.HandlerFunc(h.showApply)))
+	mux.Handle("POST /opportunities/{id}/apply", requireAuth(http.HandlerFunc(h.handleApply)))
+	mux.Handle("GET /opportunities/{id}/applications", requireAuth(requireManager(http.HandlerFunc(h.showApplications))))
+	mux.Handle("POST /opportunities/applications/{id}/status", requireAuth(requireManager(http.HandlerFunc(h.updateApplicationStatus))))
+	mux.Handle("POST /opportunities/{id}/close", requireAuth(requireManager(http.HandlerFunc(h.closePosting))))
 }
 
 func (h *Handler) showCreate(w http.ResponseWriter, r *http.Request) {
-	data := CreatePage{BaseData: middleware.NewBaseData(r)}
+	data := CreatePage{BaseData: middleware.NewBaseData(r), Error: r.URL.Query().Get("error")}
+	h.pages["posting_create.html"].ExecuteTemplate(w, "base", data)
+}
+
+func (h *Handler) renderCreate(w http.ResponseWriter, r *http.Request, data CreatePage) {
+	data.BaseData = middleware.NewBaseData(r)
 	h.pages["posting_create.html"].ExecuteTemplate(w, "base", data)
 }
 
@@ -157,13 +202,84 @@ func (h *Handler) handleCreate(w http.ResponseWriter, r *http.Request) {
 	location := strings.TrimSpace(r.FormValue("location"))
 	department := strings.TrimSpace(r.FormValue("department"))
 	skillsRaw := strings.TrimSpace(r.FormValue("skills"))
+	startDateRaw := r.FormValue("start_date")
+	durationRaw := r.FormValue("duration_days")
+	reportingManagerName := strings.TrimSpace(r.FormValue("reporting_manager_name"))
+	reportingManagerEmail := strings.TrimSpace(r.FormValue("reporting_manager_email"))
+	locationType := strings.TrimSpace(r.FormValue("location_type"))
+	applicationCloseRaw := r.FormValue("application_close_date")
+	numberOfPeopleRaw := r.FormValue("number_of_people")
+	learningOutcomes := strings.TrimSpace(r.FormValue("learning_outcomes"))
+	formData := CreatePage{
+		Title:                 title,
+		Type:                  postingType,
+		Department:            department,
+		Location:              location,
+		LocationType:          locationType,
+		StartDate:             startDateRaw,
+		DurationDays:          durationRaw,
+		ApplicationCloseDate:  applicationCloseRaw,
+		NumberOfPeople:        numberOfPeopleRaw,
+		ReportingManagerName:  reportingManagerName,
+		ReportingManagerEmail: reportingManagerEmail,
+		Description:           description,
+		LearningOutcomes:      learningOutcomes,
+		Skills:                skillsRaw,
+	}
 
-	if title == "" || description == "" || postingType == "" {
-		data := CreatePage{
-			BaseData: middleware.NewBaseData(r),
-			Error:    "Title, description, and type are required",
-		}
-		h.pages["posting_create.html"].ExecuteTemplate(w, "base", data)
+	if title == "" || description == "" || postingType == "" ||
+		startDateRaw == "" || durationRaw == "" || reportingManagerName == "" ||
+		reportingManagerEmail == "" || locationType == "" || applicationCloseRaw == "" ||
+		numberOfPeopleRaw == "" || learningOutcomes == "" {
+		formData.Error = "All required opportunity fields must be completed"
+		h.renderCreate(w, r, formData)
+		return
+	}
+
+	startDate, err := parseISODate(startDateRaw)
+	if err != nil {
+		formData.Error = "Start date must be in YYYY-MM-DD format"
+		h.renderCreate(w, r, formData)
+		return
+	}
+
+	applicationCloseDate, err := parseISODate(applicationCloseRaw)
+	if err != nil {
+		formData.Error = "Application close date must be in YYYY-MM-DD format"
+		h.renderCreate(w, r, formData)
+		return
+	}
+
+	if applicationCloseDate.After(startDate) {
+		formData.Error = "Application close date cannot be after start date"
+		h.renderCreate(w, r, formData)
+		return
+	}
+
+	durationDays, err := mustPositiveInt(durationRaw)
+	if err != nil {
+		formData.Error = "Duration must be a positive number of days"
+		h.renderCreate(w, r, formData)
+		return
+	}
+
+	numberOfPeople, err := mustPositiveInt(numberOfPeopleRaw)
+	if err != nil {
+		formData.Error = "Number of people must be a positive integer"
+		h.renderCreate(w, r, formData)
+		return
+	}
+
+	validLocationTypes := map[string]bool{"remote": true, "hybrid": true, "onsite": true}
+	if !validLocationTypes[locationType] {
+		formData.Error = "Location type must be remote, hybrid, or onsite"
+		h.renderCreate(w, r, formData)
+		return
+	}
+
+	if !validEmail(reportingManagerEmail) {
+		formData.Error = "Reporting manager email is invalid"
+		h.renderCreate(w, r, formData)
 		return
 	}
 
@@ -183,10 +299,16 @@ func (h *Handler) handleCreate(w http.ResponseWriter, r *http.Request) {
 
 	var postingID string
 	err = tx.QueryRowContext(r.Context(),
-		`INSERT INTO postings (author_id, title, description, type, location, department)
-		 VALUES ($1, $2, $3, $4, $5, $6)
+		`INSERT INTO postings (
+			author_id, title, description, type, location, department,
+			start_date, duration_days, reporting_manager_name, reporting_manager_email,
+			location_type, application_close_date, number_of_people, learning_outcomes
+		 )
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 		 RETURNING id`,
 		userID, title, description, postingType, location, department,
+		startDate, durationDays, reportingManagerName, reportingManagerEmail,
+		locationType, applicationCloseDate, numberOfPeople, learningOutcomes,
 	).Scan(&postingID)
 	if err != nil {
 		slog.Error("failed to create posting", "error", err)
@@ -245,7 +367,7 @@ func (h *Handler) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/postings/"+postingID, http.StatusSeeOther)
+	http.Redirect(w, r, "/opportunities/"+postingID, http.StatusSeeOther)
 }
 
 func (h *Handler) showPosting(w http.ResponseWriter, r *http.Request) {
@@ -253,24 +375,70 @@ func (h *Handler) showPosting(w http.ResponseWriter, r *http.Request) {
 
 	var posting Posting
 	var location, department, outcome, outcomeStatus sql.NullString
-	var completedAt sql.NullTime
+	var reportingManagerName, reportingManagerEmail, locationType, learningOutcomes sql.NullString
+	var completedAt, startDate, applicationCloseDate sql.NullTime
+	var durationDays, numberOfPeople sql.NullInt64
+
 	err := h.db.QueryRowContext(r.Context(),
 		`SELECT p.id, p.author_id,
 			CONCAT(u.first_name, ' ', u.last_name),
 			p.title, p.description, p.type,
 			p.location, p.department, p.status, p.created_at,
-			p.outcome, p.outcome_status, p.completed_at
+			p.outcome, p.outcome_status, p.completed_at,
+			p.start_date, p.duration_days, p.reporting_manager_name, p.reporting_manager_email,
+			p.location_type, p.application_close_date, p.number_of_people, p.learning_outcomes
 		 FROM postings p
 		 JOIN users u on u.id = p.author_id
 		 WHERE p.id = $1`,
 		postingID,
-	).Scan(&posting.ID, &posting.AuthorID, &posting.AuthorName, &posting.Title,
+	).Scan(
+		&posting.ID, &posting.AuthorID, &posting.AuthorName, &posting.Title,
 		&posting.Description, &posting.Type, &location, &department,
-		&posting.Status, &posting.CreatedAt,
-		&outcome, &outcomeStatus, &completedAt)
+		&posting.Status, &posting.CreatedAt, &outcome, &outcomeStatus, &completedAt,
+		&startDate, &durationDays, &reportingManagerName, &reportingManagerEmail,
+		&locationType, &applicationCloseDate, &numberOfPeople, &learningOutcomes,
+	)
 	if err != nil {
 		http.NotFound(w, r)
 		return
+	}
+
+	if startDate.Valid {
+		posting.StartDate = startDate.Time
+		posting.HasStartDate = true
+	}
+
+	if durationDays.Valid {
+		posting.DurationDays = int(durationDays.Int64)
+		posting.HasDurationDays = true
+	}
+
+	if reportingManagerName.Valid {
+		posting.ReportingManagerName = reportingManagerName.String
+		posting.HasReportingManagerName = true
+	}
+
+	if reportingManagerEmail.Valid {
+		posting.ReportingManagerEmail = reportingManagerEmail.String
+		posting.HasReportingManagerEmail = true
+	}
+
+	if locationType.Valid {
+		posting.LocationType = locationType.String
+	}
+
+	if applicationCloseDate.Valid {
+		posting.ApplicationCloseDate = applicationCloseDate.Time
+		posting.HasApplicationCloseDate = true
+	}
+
+	if numberOfPeople.Valid {
+		posting.NumberOfPeople = int(numberOfPeople.Int64)
+		posting.HasNumberOfPeople = true
+	}
+
+	if learningOutcomes.Valid {
+		posting.LearningOutcomes = learningOutcomes.String
 	}
 
 	if location.Valid {
@@ -399,7 +567,7 @@ func (h *Handler) closePosting(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/postings/"+postingID, http.StatusSeeOther)
+	http.Redirect(w, r, "/opportunities/"+postingID, http.StatusSeeOther)
 }
 
 // showOutcome renders the form the posting author (or an admin) uses to record
@@ -479,7 +647,7 @@ func (h *Handler) handleOutcome(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/postings/"+postingID, http.StatusSeeOther)
+	http.Redirect(w, r, "/opportunities/"+postingID, http.StatusSeeOther)
 }
 
 // showHistory lists the postings the current user was accepted to (their detail
@@ -594,22 +762,72 @@ func (h *Handler) searchPostings(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) loadPosting(ctx context.Context, postingID string) (Posting, error) {
 	var p Posting
-	var location, department sql.NullString
+	var location, department, reportingManagerName, reportingManagerEmail, locationType, learningOutcomes sql.NullString
+	var outcome, outcomeStatus sql.NullString
+	var startDate, applicationCloseDate, completedAt sql.NullTime
+	var durationDays, numberOfPeople sql.NullInt64
+
 	err := h.db.QueryRowContext(ctx,
 		`SELECT p.id, p.author_id,
 			CONCAT(u.first_name, ' ', u.last_name),
 			p.title, p.description, p.type,
-			p.location, p.department, p.status, p.created_at
+			p.location, p.department, p.status, p.created_at,
+			p.outcome, p.outcome_status, p.completed_at,
+			p.start_date, p.duration_days, p.reporting_manager_name, p.reporting_manager_email,
+			p.location_type, p.application_close_date, p.number_of_people, p.learning_outcomes
 		 FROM postings p
 		 JOIN users u ON u.id = p.author_id
 		 WHERE p.id = $1`,
 		postingID,
-	).Scan(&p.ID, &p.AuthorID, &p.AuthorName, &p.Title,
+	).Scan(
+		&p.ID, &p.AuthorID, &p.AuthorName, &p.Title,
 		&p.Description, &p.Type, &location, &department,
-		&p.Status, &p.CreatedAt)
+		&p.Status, &p.CreatedAt, &outcome, &outcomeStatus, &completedAt,
+		&startDate, &durationDays, &reportingManagerName, &reportingManagerEmail,
+		&locationType, &applicationCloseDate, &numberOfPeople, &learningOutcomes,
+	)
 	if err != nil {
 		return p, err
 	}
+
+	if startDate.Valid {
+		p.StartDate = startDate.Time
+		p.HasStartDate = true
+	}
+
+	if durationDays.Valid {
+		p.DurationDays = int(durationDays.Int64)
+		p.HasDurationDays = true
+	}
+
+	if reportingManagerName.Valid {
+		p.ReportingManagerName = reportingManagerName.String
+		p.HasReportingManagerName = true
+	}
+
+	if reportingManagerEmail.Valid {
+		p.ReportingManagerEmail = reportingManagerEmail.String
+		p.HasReportingManagerEmail = true
+	}
+
+	if locationType.Valid {
+		p.LocationType = locationType.String
+	}
+
+	if applicationCloseDate.Valid {
+		p.ApplicationCloseDate = applicationCloseDate.Time
+		p.HasApplicationCloseDate = true
+	}
+
+	if numberOfPeople.Valid {
+		p.NumberOfPeople = int(numberOfPeople.Int64)
+		p.HasNumberOfPeople = true
+	}
+
+	if learningOutcomes.Valid {
+		p.LearningOutcomes = learningOutcomes.String
+	}
+
 	if location.Valid {
 		p.Location = location.String
 	}
@@ -631,6 +849,16 @@ func (h *Handler) showApply(w http.ResponseWriter, r *http.Request) {
 	if p.Status != "active" {
 		http.Error(w, "This posting is no longer accepting applications", http.StatusBadRequest)
 		return
+	}
+
+	if p.HasApplicationCloseDate {
+		nowDate := time.Now().UTC().Truncate(24 * time.Hour)
+		closeDate := p.ApplicationCloseDate.UTC().Truncate(24 * time.Hour)
+
+		if nowDate.After(closeDate) {
+			http.Error(w, "This opportunity is no longer accepting applications", http.StatusBadRequest)
+			return
+		}
 	}
 
 	data := ApplyPage{BaseData: middleware.NewBaseData(r), Posting: p}
@@ -657,21 +885,27 @@ func (h *Handler) handleApply(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	coverLetter := strings.TrimSpace(r.FormValue("cover_letter"))
-	if coverLetter == "" {
+	selectionWhy := strings.TrimSpace(r.FormValue("selection_why"))
+	projectTackleApproach := strings.TrimSpace(r.FormValue("project_tackle_approach"))
+
+	if selectionWhy == "" || projectTackleApproach == "" {
 		data := ApplyPage{
 			BaseData: middleware.NewBaseData(r),
 			Posting:  p,
-			Error:    "Cover letter is required",
+			Error:    "Please answer both application questions",
 		}
 		h.pages["posting_apply.html"].ExecuteTemplate(w, "base", data)
 		return
 	}
 
+	coverLetter := selectionWhy
+
 	_, err = h.db.ExecContext(r.Context(),
-		`INSERT INTO posting_applications (posting_id, applicant_id, cover_letter)
-		 VALUES ($1, $2, $3)`,
-		postingID, userID, coverLetter,
+		`INSERT INTO posting_applications (
+			posting_id, applicant_id, cover_letter, selection_why, project_tackle_approach
+		 )
+		 VALUES ($1, $2, $3, $4, $5)`,
+		postingID, userID, coverLetter, selectionWhy, projectTackleApproach,
 	)
 	if err != nil {
 		if strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "duplicate") {
@@ -688,7 +922,7 @@ func (h *Handler) handleApply(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/postings/"+postingID, http.StatusSeeOther)
+	http.Redirect(w, r, "/opportunities/"+postingID, http.StatusSeeOther)
 }
 
 func (h *Handler) showApplications(w http.ResponseWriter, r *http.Request) {
@@ -713,13 +947,15 @@ func (h *Handler) showApplications(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.db.QueryContext(r.Context(),
 		`SELECT pa.id, pa.posting_id, pa.applicant_id,
 			CONCAT(u.first_name, ' ', u.last_name),
-			pa.cover_letter, pa.status, pa.created_at
+			pa.cover_letter, pa.status, pa.created_at,
+			COALESCE(pa.selection_why, ''), COALESCE(pa.project_tackle_approach, '')
 		 FROM posting_applications pa
 		 JOIN users u ON u.id = pa.applicant_id
 		 WHERE pa.posting_id = $1
 		 ORDER BY pa.created_at DESC`,
 		postingID,
 	)
+
 	if err != nil {
 		slog.Error("failed to load applications", "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -730,12 +966,18 @@ func (h *Handler) showApplications(w http.ResponseWriter, r *http.Request) {
 	var apps []Application
 	for rows.Next() {
 		var a Application
-		if err := rows.Scan(&a.ID, &a.PostingID, &a.ApplicantID,
-			&a.ApplicantName, &a.CoverLetter, &a.Status, &a.CreatedAt); err != nil {
+		if err := rows.Scan(
+			&a.ID, &a.PostingID, &a.ApplicantID,
+			&a.ApplicantName, &a.CoverLetter, &a.Status, &a.CreatedAt,
+			&a.SelectionWhy, &a.ProjectTackleApproach); err != nil {
 			slog.Error("failed to scan application", "error", err)
 			continue
 		}
 		apps = append(apps, a)
+	}
+
+	if err := rows.Err(); err != nil {
+		slog.Error("failed iterating applications", "error", err)
 	}
 
 	data := ApplicationsPage{
@@ -801,8 +1043,202 @@ func (h *Handler) updateApplicationStatus(w http.ResponseWriter, r *http.Request
 		badge.CheckAndAward(r.Context(), h.db, applicantID)
 	}
 
-	http.Redirect(w, r, "/postings/"+postingID+"/applications", http.StatusSeeOther)
+	http.Redirect(w, r, "/opportunities/"+postingID+"/applications", http.StatusSeeOther)
 }
+
+func (h *Handler) showEdit(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r.Context())
+	oppID := r.PathValue("id")
+
+	opp, err := h.loadPosting(r.Context(), oppID)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	if opp.AuthorID != userID {
+		role := middleware.GetUserRole(h.db, r.Context(), userID)
+		if role != "admin" {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+	}
+
+	data := EditPage{
+		BaseData: middleware.NewBaseData(r),
+		Posting:  opp,
+	}
+	h.pages["posting_edit.html"].ExecuteTemplate(w, "base", data)
+}
+
+func (h *Handler) handleEdit(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r.Context())
+	oppID := r.PathValue("id")
+
+	opp, err := h.loadPosting(r.Context(), oppID)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	if opp.AuthorID != userID {
+		role := middleware.GetUserRole(h.db, r.Context(), userID)
+		if role != "admin" {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+	}
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	title := strings.TrimSpace(r.FormValue("title"))
+	description := strings.TrimSpace(r.FormValue("description"))
+	postingType := strings.TrimSpace(r.FormValue("type"))
+	location := strings.TrimSpace(r.FormValue("location"))
+	department := strings.TrimSpace(r.FormValue("department"))
+	startDateRaw := r.FormValue("start_date")
+	durationRaw := r.FormValue("duration_days")
+	reportingManagerName := strings.TrimSpace(r.FormValue("reporting_manager_name"))
+	reportingManagerEmail := strings.TrimSpace(r.FormValue("reporting_manager_email"))
+	locationType := strings.TrimSpace(r.FormValue("location_type"))
+	applicationCloseRaw := r.FormValue("application_close_date")
+	numberOfPeopleRaw := r.FormValue("number_of_people")
+	learningOutcomes := strings.TrimSpace(r.FormValue("learning_outcomes"))
+
+	if title == "" || description == "" || postingType == "" ||
+		startDateRaw == "" || durationRaw == "" || reportingManagerName == "" ||
+		reportingManagerEmail == "" || locationType == "" || applicationCloseRaw == "" ||
+		numberOfPeopleRaw == "" || learningOutcomes == "" {
+
+		data := EditPage{
+			BaseData: middleware.NewBaseData(r),
+			Posting:  opp,
+			Error:    "All required opportunity fields must be completed",
+		}
+		h.pages["posting_edit.html"].ExecuteTemplate(w, "base", data)
+		return
+	}
+
+	validTypes := map[string]bool{"project": true, "detail": true}
+	if !validTypes[postingType] {
+		data := EditPage{
+			BaseData: middleware.NewBaseData(r),
+			Posting:  opp,
+			Error:    "Opportunity type must be project or detail",
+		}
+		h.pages["posting_edit.html"].ExecuteTemplate(w, "base", data)
+		return
+	}
+
+	validLocationTypes := map[string]bool{"remote": true, "hybrid": true, "onsite": true}
+	if !validLocationTypes[locationType] {
+		data := EditPage{
+			BaseData: middleware.NewBaseData(r),
+			Posting:  opp,
+			Error:    "Location type must be remote, hybrid, or onsite",
+		}
+		h.pages["posting_edit.html"].ExecuteTemplate(w, "base", data)
+		return
+	}
+
+	startDate, err := parseISODate(startDateRaw)
+	if err != nil {
+		data := EditPage{
+			BaseData: middleware.NewBaseData(r),
+			Posting:  opp,
+			Error:    "Start date must be in YYYY-MM-DD format",
+		}
+		h.pages["posting_edit.html"].ExecuteTemplate(w, "base", data)
+		return
+	}
+
+	applicationCloseDate, err := parseISODate(applicationCloseRaw)
+	if err != nil {
+		data := EditPage{
+			BaseData: middleware.NewBaseData(r),
+			Posting:  opp,
+			Error:    "Application close date must be in YYYY-MM-DD format",
+		}
+		h.pages["posting_edit.html"].ExecuteTemplate(w, "base", data)
+		return
+	}
+
+	if applicationCloseDate.After(startDate) {
+		data := EditPage{
+			BaseData: middleware.NewBaseData(r),
+			Posting:  opp,
+			Error:    "Application close date cannot be after start date",
+		}
+		h.pages["posting_edit.html"].ExecuteTemplate(w, "base", data)
+		return
+	}
+
+	durationDays, err := mustPositiveInt(durationRaw)
+	if err != nil {
+		data := EditPage{
+			BaseData: middleware.NewBaseData(r),
+			Posting:  opp,
+			Error:    "Duration must be a positive integer",
+		}
+		h.pages["posting_edit.html"].ExecuteTemplate(w, "base", data)
+		return
+	}
+
+	numberOfPeople, err := mustPositiveInt(numberOfPeopleRaw)
+	if err != nil {
+		data := EditPage{
+			BaseData: middleware.NewBaseData(r),
+			Posting:  opp,
+			Error:    "Number of people must be a positive integer",
+		}
+		h.pages["posting_edit.html"].ExecuteTemplate(w, "base", data)
+		return
+	}
+
+	if !validEmail(reportingManagerEmail) {
+		data := EditPage{
+			BaseData: middleware.NewBaseData(r),
+			Posting:  opp,
+			Error:    "Reporting manager email is invalid",
+		}
+		h.pages["posting_edit.html"].ExecuteTemplate(w, "base", data)
+		return
+	}
+
+	_, err = h.db.ExecContext(r.Context(),
+		`UPDATE postings
+		 SET title = $1,
+		 	 description = $2,
+			 type = $3,
+			 location = $4,
+			 department = $5,
+			 start_date = $6,
+			 duration_days = $7,
+			 reporting_manager_name = $8,
+			 reporting_manager_email = $9,
+			 location_type = $10,
+			 application_close_date = $11,
+			 number_of_people = $12,
+			 learning_outcomes = $13,
+			 updated_at = NOW()
+		 WHERE id = $14`,
+		title, description, postingType, location, department,
+		startDate, durationDays, reportingManagerName, reportingManagerEmail,
+		locationType, applicationCloseDate, numberOfPeople, learningOutcomes, oppID,
+	)
+	if err != nil {
+		slog.Error("failed to update opportunity", "error", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/opportunities/"+oppID, http.StatusSeeOther)
+}
+
+// HELPERS
 
 func GetMatchedPostings(db *sql.DB, ctx context.Context, userID string) ([]Posting, error) {
 	rows, err := db.QueryContext(ctx,
@@ -839,4 +1275,28 @@ func GetMatchedPostings(db *sql.DB, ctx context.Context, userID string) ([]Posti
 		postings = append(postings, posting)
 	}
 	return postings, rows.Err()
+}
+
+func parseISODate(raw string) (time.Time, error) {
+	return time.Parse("2006-01-02", strings.TrimSpace(raw))
+}
+
+func mustPositiveInt(raw string) (int, error) {
+	val := strings.TrimSpace(raw)
+
+	if val == "" {
+		return 0, fmt.Errorf("required")
+	}
+
+	posInt, err := strconv.Atoi(val)
+	if err != nil || posInt <= 0 {
+		return 0, fmt.Errorf("must be a positive integer")
+	}
+
+	return posInt, nil
+}
+
+func validEmail(raw string) bool {
+	re := regexp.MustCompile(`^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$`)
+	return re.MatchString(strings.TrimSpace(raw))
 }

@@ -1,18 +1,6 @@
 {{define "title"}}Org Chart{{end}}
 
 {{define "content"}}
-<style>
-.orgchart-layout { max-width: 1080px; margin: 0 auto; }
-.orgchart-tree, .orgchart-tree ul { list-style: none; margin: 0; padding: 0; }
-.orgchart-tree ul { margin-left: 24px; border-left: 2px solid #e2e5ea; padding-left: 16px; margin-top: 8px; }
-.org-node { padding: 10px 14px; margin: 6px 0; background: #fff; border: 1px solid #e2e5ea;
-            border-radius: 8px; }
-.org-node .org-name { font-weight: 600; color: #1d2733; }
-.org-node .org-headline { color: #56687a; font-size: 0.9em; }
-.org-node .org-dept { display: inline-block; margin-top: 4px; font-size: 0.78em;
-            color: #2a6f3b; background: #e8f4ec; border-radius: 10px; padding: 1px 9px; }
-.org-empty { color: #56687a; }
-</style>
 <div class="orgchart-layout">
     <div class="profile-card">
         <div class="content-header">
@@ -22,7 +10,7 @@
             {{end}}
         </div>
         {{if .Roots}}
-        <ul class="orgchart-tree">
+        <ul class="orgchart-tree orgchart-graph">
             {{range .Roots}}{{template "orgnode" .}}{{end}}
         </ul>
         {{else}}
@@ -40,7 +28,7 @@
         {{if .Department}}<span class="org-dept">{{.Department}}</span>{{end}}
     </div>
     {{if .Children}}
-    <ul>
+    <ul class="orgchart-children">
         {{range .Children}}{{template "orgnode" .}}{{end}}
     </ul>
     {{end}}

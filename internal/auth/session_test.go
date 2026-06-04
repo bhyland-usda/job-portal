@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"sort"
 	"testing"
 	"time"
@@ -314,5 +315,29 @@ func TestDestroyRemovesFromIndex(t *testing.T) {
 	}
 	if _, ok := fr.sets[userSessionsKey("user-1")][token]; ok {
 		t.Errorf("Destroy did not remove token from user index")
+	}
+}
+
+func TestSecureCookieForRequest_DefaultsByHost(t *testing.T) {
+	t.Setenv("SECURE_COOKIES", "")
+
+	localReq := httptest.NewRequest(http.MethodGet, "http://localhost:8080/login", nil)
+	if secureCookieForRequest(localReq) {
+		t.Fatal("expected localhost to default to non-secure cookie")
+	}
+
+	prodReq := httptest.NewRequest(http.MethodGet, "https://portal.example/login", nil)
+	prodReq.Host = "portal.example"
+	if !secureCookieForRequest(prodReq) {
+		t.Fatal("expected non-localhost host to default to secure cookie")
+	}
+}
+
+func TestSecureCookieForRequest_ExplicitOverride(t *testing.T) {
+	os.Setenv("SECURE_COOKIES", "false")
+	defer os.Unsetenv("SECURE_COOKIES")
+	req := httptest.NewRequest(http.MethodGet, "https://portal.example/login", nil)
+	if secureCookieForRequest(req) {
+		t.Fatal("expected explicit SECURE_COOKIES=false to disable secure cookies")
 	}
 }

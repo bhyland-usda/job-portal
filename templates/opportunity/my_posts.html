@@ -43,14 +43,14 @@
         <span class="posting-type posting-type-{{.Type}}">{{.Type}}</span>
         <span class="posting-status-{{.Status}}">{{.Status}}</span>
       </div>
-      <h3><a href="/postings/{{.ID}}" class="title-link">{{.Title}}</a></h3>
+      <h3><a href="/opportunities/{{.ID}}" class="title-link">{{.Title}}</a></h3>
       <div class="my-post-meta">
         <span>{{.MatchCount}} matched employees</span>
         <span>{{.CreatedAt.Format "Jan 2, 2006"}}</span>
       </div>
       {{if eq .Status "active"}}
       <div class="my-post-actions">
-        <form method="POST" action="/postings/{{.ID}}/close" class="inline">
+        <form method="POST" action="/opportunities/{{.ID}}/close" class="inline">
           <button type="submit" class="btn-link btn-danger">Close</button>
         </form>
       </div>

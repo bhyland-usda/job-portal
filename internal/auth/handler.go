@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -14,10 +15,44 @@ type Handler struct {
 	db       *sql.DB
 	pages    map[string]*template.Template
 	sessions *SessionManager
+	limiter  *loginRateLimiter
+}
+
+type authPageData struct {
+	UserID    string
+	Error     string
+	CSRFToken string
+}
+
+func csrfTokenFromRequest(r *http.Request) string {
+	c, err := r.Cookie("csrf_token")
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(c.Value)
+}
+
+func (h *Handler) renderLogin(w http.ResponseWriter, r *http.Request, errMsg string) {
+	h.pages["login.html"].ExecuteTemplate(w, "base", authPageData{
+		Error:     errMsg,
+		CSRFToken: csrfTokenFromRequest(r),
+	})
+}
+
+func (h *Handler) renderRegister(w http.ResponseWriter, r *http.Request, errMsg string) {
+	h.pages["register.html"].ExecuteTemplate(w, "base", authPageData{
+		Error:     errMsg,
+		CSRFToken: csrfTokenFromRequest(r),
+	})
 }
 
 func NewHandler(db *sql.DB, pages map[string]*template.Template, sessions *SessionManager) *Handler {
-	return &Handler{db: db, pages: pages, sessions: sessions}
+	return &Handler{
+		db:       db,
+		pages:    pages,
+		sessions: sessions,
+		limiter:  newLoginRateLimiter(5, 15*time.Minute),
+	}
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
@@ -180,7 +215,7 @@ func maskToken(token string) string {
 }
 
 func (h *Handler) showRegister(w http.ResponseWriter, r *http.Request) {
-	h.pages["register.html"].ExecuteTemplate(w, "base", nil)
+	h.renderRegister(w, r, "")
 }
 
 func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
@@ -195,16 +230,12 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 	lastName := strings.TrimSpace(r.FormValue("last_name"))
 
 	if email == "" || password == "" || firstName == "" || lastName == "" {
-		h.pages["register.html"].ExecuteTemplate(w, "base", map[string]string{
-			"Error": "All fields required.",
-		})
+		h.renderRegister(w, r, "All fields required.")
 		return
 	}
 
 	if len(password) < 8 {
-		h.pages["register.html"].ExecuteTemplate(w, "base", map[string]string{
-			"Error": "Password must be at least 8 characters.",
-		})
+		h.renderRegister(w, r, "Password must be at least 8 characters.")
 		return
 	}
 
@@ -225,9 +256,7 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		if strings.Contains(err.Error(), "unique") {
-			h.pages["register.html"].ExecuteTemplate(w, "base", map[string]string{
-				"Error": "An account with this email already exists.",
-			})
+			h.renderRegister(w, r, "An account with this email already exists.")
 			return
 		}
 		slog.Error("failed to create user", "error", err)
@@ -252,7 +281,7 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) showLogin(w http.ResponseWriter, r *http.Request) {
-	err := h.pages["login.html"].ExecuteTemplate(w, "base", nil)
+	err := h.pages["login.html"].ExecuteTemplate(w, "base", authPageData{CSRFToken: csrfTokenFromRequest(r)})
 	if err != nil {
 		slog.Error("failed to render login", "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -267,6 +296,11 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	email := strings.ToLower(strings.TrimSpace(r.FormValue("email")))
 	password := r.FormValue("password")
+	key := loginRateLimitKey(r, email)
+	if !h.limiter.Allow(key) {
+		h.renderLogin(w, r, "Too many failed attempts. Please try again later.")
+		return
+	}
 
 	var userID, hash string
 	err := h.db.QueryRowContext(r.Context(),
@@ -274,9 +308,8 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	).Scan(&userID, &hash)
 
 	if err == sql.ErrNoRows {
-		h.pages["login.html"].ExecuteTemplate(w, "base", map[string]string{
-			"Error": "Invalid email or password.",
-		})
+		h.limiter.Failure(key)
+		h.renderLogin(w, r, "Invalid email or password.")
 		return
 	}
 
@@ -287,11 +320,11 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)); err != nil {
-		h.pages["login.html"].ExecuteTemplate(w, "base", map[string]string{
-			"Error": "Invalid email or password.",
-		})
+		h.limiter.Failure(key)
+		h.renderLogin(w, r, "Invalid email or password.")
 		return
 	}
+	h.limiter.Success(key)
 
 	if err := h.sessions.Create(w, r, userID); err != nil {
 		slog.Error("failed to create session", "error", err)

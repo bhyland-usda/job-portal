@@ -1,50 +1,22 @@
 # Known Bugs — USDA JobPortal
 
-_Last updated: 2026-05-22_
+_Last updated: 2026-05-29_
 
 ## Open
 
-- Join Now link is unstyled
-- User Acceptance Policy needs to follow correct theming
-- Admin Dashboard needs to follow correct themeing
-- Admin User Management Screen
-  - Dropdowns are hard to open (multiple clicks needed)
-  - When Set button is clicked for department, the page refreshes but the new value isn't persisted
-  - When Actions dropdown is finally opened (hard to open) clicking a value doesn't update the value to trigger the user to click the Update button
-  - Clicking update to update a user's permissions doesn't do anything.
-  - Needs a back to dashboard button.
-- Audit log catches changes, but the changes were not effective (see above bugs)
-- Audit log has entries, but Admin Dashboard doesn't show anything in the Recent Audit Activity
-- Assign Managers dropdowns are hard to open
-- Org Chart theme needs to follow correct themeing
-- Org Chart should be more of a hierarchal graph than a scrollable list
-- All tools needs to be a floating tab on the lefthand side with a hamburger menu icon and moved off of the top of the page
-- Messages needs to be a floating tab on the righthand side of the page with a Chat Bubble icon and moved off the top of the page
-- Skills Heat Map needs to follow the correct themeing
-- Workforce Analytics dashboard cards need to follow the correct themeing
+- Security (temporary regression)
+  - To keep avatar and multipart uploads working in local HTTP-only dev, same-origin middleware now allows unsafe requests when both `Origin` and `Referer` are missing, deferring enforcement to CSRF token checks.
+  - Risk: request-origin enforcement is weaker in this fallback path than the prior strict lock-down.
+  - Follow-up: once real HTTPS/proxy infrastructure is available, re-enable strict origin/referrer enforcement for all unsafe methods and validate with end-to-end tests in production-like networking.
+
 - Feed Page
-  - Clicking a emoji button refreshes the page, it should just update the button and likes.
-  - The share commentary text box is too small, height and width
-  - When share commentary box is open the Save and Report buttons have their layout disrupted.
   - Clicking share doesn't really have a function in the first place.
   - Saving a social post, and then clicking on it in the Saved Page just takes the user back to the feed page, not the post itself.
   - Attaching a file when writing a new social post doesn't show anything to say it's been attached successfully. There should be the files name or a small preview.
   - Adding a comment on a post refreshes the page, it should just add the comment and only refresh that post's comment section.
 - Notifications are not sent to the manager when someone applies to their post.
 - Too many clicks for managers to get to the applicants of their postings.
-- Change status dropdown needs to follow the correct themeing.
-- Change status does not update the status when an option is chosen from the dropdown.
-- Change status dropdown has a hard time opening (can be seen in rendering flashes on the dropdown itself), but does open on first click.
-- Record Outcome page for a posting:
-  - Dropdown is hard to open (same as other dropdowns)
-  - Clicking a selection on the Outcome Status does not update the value.
-  - When posting has been closed the Record Outcome button is still active (maybe switch it to update outcome?)
 - Postings need to have a workflow of when applicants can no longer apply without closing it.
-- Social Post drafts text box is too small and the Save Draft button should be under it on the right hand side.
-- Social Post drafts should have the same scheduling mechanism as posting right now on the Social Feed. In fact, it should be removed from the Social Feed page and placed in drafts.
-- Manager Create Post page, same issue with the dropdown as every other page, hard to open and selecting something does not update the value.
-- Create Post page dropdown has no keyboard shortcut to open it. There needs to be a keyboard workflow for EVERY page.
-- Opportunities/Browse Postings Type filter dropdown has the same issue as all the other dropdowns tested.
 
 ---
 
@@ -73,3 +45,18 @@ _Last updated: 2026-05-22_
 |-------|------------|
 | A 1:1 message was routed into an existing **group** conversation that included the recipient | `findDirectConversation` now restricts the lookup to conversations with exactly two participants; fixed in both `startConversation` and `startGroupConversation` |
 | No DB-level guard against duplicate 1:1 conversations | Migration `048`: canonical `conversations.direct_key` + partial unique index; create paths set it, with graceful race recovery |
+| Dropdown controls across admin/posting/org chart/leaderboard forms were inconsistent (hard to open, value changes not reflected, accidental refreshes) | Standardized explicit submit + dirty-state behavior, removed auto-submit dropdowns, added strict Playwright coverage that verifies select values actually change on option selection |
+| "Join now" auth link appeared unstyled | Added explicit auth switch link styling in shared CSS so login/register cross-link is visually consistent and accessible |
+| Acceptable Use Policy page did not follow app theming | Removed inline hardcoded colors and migrated AUP styles to shared themed CSS using standard color tokens and card spacing |
+| Cross-theme control contrast was inconsistent on key pages (dark primary buttons too light, feed reaction controls too dim, dashboard cards using non-themed fallbacks) | Tuned dark-mode primary tokens for accessible contrast, added dark-mode feed reaction overrides, switched admin dashboard cards/panels to shared theme tokens, and added a Playwright light/dark contrast regression suite |
+| User deletion could record a `user_delete` audit entry even when no row was actually deleted | Reworked delete to `DELETE ... RETURNING` in a transaction, only audit after confirmed deletion, and added regression tests for both success and not-found paths |
+| Admin Dashboard could fail to show meaningful recent audit entries when actor/details fields were blank-ish | Hardened dashboard/audit queries with trimmed fallbacks (`System`, `(no details)`, `Unknown user`) and added regression coverage for the exact SQL fallback contract |
+| Org Chart pages did not follow shared theming (inline hardcoded style blocks/attributes) | Moved org chart styles to shared `static/css/orgchart.css`, imported it via `main.css`, removed inline template styles, and added browser regression checks that org chart pages no longer embed inline style blocks |
+| Org Chart was presented as a plain scroll-style list rather than a graph-like hierarchy | Updated org chart markup and styling to a connector-based graph presentation (`orgchart-graph`/`orgchart-children`) with responsive fallback behavior, plus browser regression coverage |
+| All tools and messages controls lived in the top nav instead of floating side tabs | Converted tools/messages toggles to fixed side tabs with icon labels (`☰`, `💬`) anchored left/right and validated behavior with browser regression tests |
+| Skills Heat Map page did not follow shared theming | Removed inline style block, added shared themed styles in `static/css/insights.css`, introduced `.heatmap-layout`, and enabled fixture rendering/tests for `/insights/heatmap` |
+| Workforce Analytics dashboard cards did not follow shared theming | Removed inline style block/attributes and migrated workforce styles to `static/css/analytics.css` using shared theme tokens |
+| Feed reaction buttons triggered full-page refreshes | Reactions now submit asynchronously in `static/js/feed.js`, updating only the touched post; added Playwright regression coverage for no-reload behavior |
+| Share commentary panel was too small and opening it disrupted Save/Report layout | Converted share form to anchored panel with larger textarea and stable action-row alignment in `static/css/feed.css`; added Playwright geometry/layout regression coverage |
+| Social drafts lacked clear post-type context (Social Feed vs Project/Detail) | Updated `templates/feed/drafts.html` with explicit Social Feed labeling and added direct links to create/manage Project/Detail postings |
+| Social scheduling lived on feed instead of drafts, and drafts editor was too small/plain | Removed scheduling controls from `templates/feed/feed.html`, moved scheduling into drafts (`/feed/drafts/schedule`), and upgraded drafts inputs to larger rich editors backed by safe markdown rendering in feed (`internal/feed/handler.go`) |

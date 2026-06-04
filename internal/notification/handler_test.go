@@ -2,8 +2,10 @@ package notification
 
 import (
 	"context"
+	"encoding/json"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 
@@ -130,6 +132,48 @@ func TestHandleClickConnectionAccepted(t *testing.T) {
 	want := "/profile/" + accepter
 	if loc != want {
 		t.Errorf("connection_accepted should route to %q, got %q", want, loc)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("unmet expectations: %v", err)
+	}
+}
+
+func TestGetRecentUsesSenderIDForAvatarURL(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("failed to create mock db: %v", err)
+	}
+	defer db.Close()
+
+	h := &Handler{db: db}
+
+	rows := sqlmock.NewRows([]string{"id", "sender_id", "first_name", "last_name", "avatar_url", "message", "read", "created_at"}).
+		AddRow("n1", "sender-123", "Ada", "Lovelace", "/avatar", "hello", false, time.Now())
+
+	mock.ExpectQuery(`SELECT n\.id, n\.sender_id`).
+		WithArgs("recipient-1").
+		WillReturnRows(rows)
+
+	req := httptest.NewRequest("GET", "/notifications/recent", nil)
+	req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, "recipient-1"))
+	rec := httptest.NewRecorder()
+
+	h.getRecent(rec, req)
+
+	if rec.Code != 200 {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+
+	var out []map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatalf("failed to decode json: %v", err)
+	}
+	if len(out) != 1 {
+		t.Fatalf("expected one notification, got %d", len(out))
+	}
+	if got := out[0]["sender_avatar"]; got != "/avatar/sender-123" {
+		t.Fatalf("expected sender_avatar /avatar/sender-123, got %v", got)
 	}
 
 	if err := mock.ExpectationsWereMet(); err != nil {

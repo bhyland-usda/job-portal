@@ -169,7 +169,33 @@ class AdminSubsystemPageTests(BrowserHarness):
         self.assert_role_visible("heading", "Org Chart")
         self.assertGreater(self.page.locator(".orgchart-tree > li").count(), 0)
         self.assertGreater(self.page.locator(".org-node .org-name").count(), 0)
+        self.assertTrue(self.page.locator(".orgchart-tree.orgchart-graph").is_visible())
         self.assert_role_visible("link", "Assign Managers")
+
+    def test_orgchart_pages_use_shared_themed_styles(self):
+        self.open_path("/orgchart", ".orgchart-layout", "the org chart")
+        self.assertEqual(self.page.locator("main#main-content style").count(), 0)
+
+        self.open_path("/admin/orgchart", ".orgchart-assign-layout", "the org chart assignment page")
+        self.assertEqual(self.page.locator("main#main-content style").count(), 0)
+        back_link = self.page.get_by_role("link", name="← Back to Org Chart")
+        self.assertTrue(back_link.is_visible())
+
+    def test_workforce_and_heatmap_pages_use_shared_themed_styles(self):
+        self.open_path(
+            "/analytics/workforce",
+            ".wf-layout",
+            "the workforce analytics dashboard",
+        )
+        self.assertEqual(self.page.locator("main#main-content style").count(), 0)
+        self.assertEqual(self.page.locator("main#main-content [style]").count(), 0)
+
+        response = self.page.goto(f"{self.base_url}/insights/heatmap", wait_until="domcontentloaded")
+        self.assertIsNotNone(response)
+        self.assertLess(response.status, 400)
+        self.assertEqual(urlparse(self.page.url).path, "/insights/heatmap")
+        self.page.wait_for_selector(".heatmap-layout", timeout=5000)
+        self.assertEqual(self.page.locator("main#main-content style").count(), 0)
 
     def test_data_export_page_renders_download_summary(self):
         self.open_path("/data-export", ".dataexport-layout", "the data export page")

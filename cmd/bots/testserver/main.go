@@ -34,7 +34,7 @@ import (
 	onboardingpkg "github.com/bhyland-usda/job-portal/internal/onboarding"
 	orgchartpkg "github.com/bhyland-usda/job-portal/internal/orgchart"
 	pollpkg "github.com/bhyland-usda/job-portal/internal/poll"
-	postingpkg "github.com/bhyland-usda/job-portal/internal/posting"
+	postingpkg "github.com/bhyland-usda/job-portal/internal/opportunity"
 	resumepkg "github.com/bhyland-usda/job-portal/internal/resume"
 	searchpkg "github.com/bhyland-usda/job-portal/internal/search"
 	spotlightpkg "github.com/bhyland-usda/job-portal/internal/spotlight"
@@ -156,6 +156,27 @@ type feedPage struct {
 	Tab      string
 	Posts    []feedPost
 	Postings []feedPosting
+}
+
+type feedDraftPage struct {
+	middleware.BaseData
+	Drafts         []feedDraft
+	ScheduledPosts []scheduledFeedPost
+}
+
+type feedDraft struct {
+	ID              string
+	Content         string
+	RenderedContent template.HTML
+	CreatedAt       time.Time
+}
+
+type scheduledFeedPost struct {
+	ID              string
+	Content         string
+	RenderedContent template.HTML
+	CreatedAt       time.Time
+	ScheduledAt     time.Time
 }
 
 type feedPost struct {
@@ -284,9 +305,11 @@ func main() {
 		"login.html":                    parseTemplate("auth/login.html"),
 		"sessions.html":                 parseTemplate("auth/sessions.html"),
 		"profile.html":                  parseTemplate("profile/view.html"),
+		"profile_edit.html":             parseTemplate("profile/edit.html"),
 		"resumes.html":                  parseTemplate("resume/index.html"),
 		"resume_view.html":              template.Must(template.ParseFiles("templates/resume/view.html")),
 		"accomplishments.html":          parseTemplate("accomplishment/index.html"),
+		"accomplishment_form.html":      parseTemplate("accomplishment/form.html"),
 		"certifications.html":           parseTemplate("certification/index.html"),
 		"digest.html":                   parseTemplate("digest/index.html"),
 		"feedback_request.html":         parseTemplate("feedback/request.html"),
@@ -299,20 +322,30 @@ func main() {
 		"mentorship.html":               parseTemplate("mentorship/index.html"),
 		"department_view.html":          parseTemplate("department/view.html"),
 		"workspace_view.html":           parseTemplate("workspace/view.html"),
-		"posting_view.html":             parseTemplate("posting/view.html"),
+		"posting_view.html":             parseTemplate("opportunity/view.html"),
+		"posting_search.html":           parseTemplate("opportunity/search.html"),
+		"posting_create.html":           parseTemplate("opportunity/create.html"),
+		"posting_applications.html":     parseTemplate("opportunity/applications.html"),
+		"posting_outcome.html":          parseTemplate("opportunity/outcome.html"),
+		"drafts.html":                   parseTemplate("feed/drafts.html"),
 		"article_view.html":             parseTemplate("article/view.html"),
 		"news_view.html":                parseTemplate("news/view.html"),
 		"announcements.html":            parseTemplate("announcement/index.html"),
 		"spotlight.html":                parseTemplate("spotlight/index.html"),
+		"spotlight_create.html":         parseTemplate("spotlight/create.html"),
 		"kudos.html":                    parseTemplate("kudos/index.html"),
 		"polls.html":                    parseTemplate("poll/index.html"),
 		"badges.html":                   parseTemplate("badge/index.html"),
 		"admin_dashboard.html":          parseTemplate("admin/dashboard.html"),
+		"admin_users.html":              parseTemplate("admin/users.html"),
 		"moderation_queue.html":         parseTemplate("moderation/queue.html"),
 		"foia.html":                     parseTemplate("admin/foia.html"),
 		"workforce_dashboard.html":      parseTemplate("analytics/workforce_dashboard.html"),
+		"leaderboard.html":              parseTemplate("analytics/leaderboard.html"),
+		"heatmap.html":                  parseTemplate("insights/heatmap.html"),
 		"network.html":                  parseTemplate("insights/network.html"),
 		"orgchart.html":                 parseTemplate("orgchart/index.html"),
+		"orgchart_assign.html":          parseTemplate("orgchart/assign.html"),
 		"data_export.html":              parseTemplate("dataexport/index.html"),
 		"aup.html":                      parseTemplate("aup/index.html"),
 	}
@@ -351,7 +384,7 @@ func main() {
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
 	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/shell", http.StatusSeeOther)
+		http.Redirect(w, r, "/landing", http.StatusSeeOther)
 	})
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -376,7 +409,7 @@ func main() {
 			BaseData: current.baseData(),
 			Links: []fixtureLink{
 				{Label: "Employee profile fixture", URL: "/profile/me?role=employee"},
-				{Label: "Manager posting fixture", URL: "/postings/posting-1?role=manager"},
+				{Label: "Manager posting fixture", URL: "/opportunities/posting-1?role=manager"},
 				{Label: "Admin dashboard fixture", URL: "/admin/dashboard?role=admin"},
 				{Label: "Search fixture", URL: "/search?role=employee&q=analytics"},
 				{Label: "Workspace fixture", URL: "/workspaces/workspace-1?role=employee"},
@@ -417,6 +450,12 @@ func main() {
 			tab = "social"
 		}
 		if err := feedTmpl.ExecuteTemplate(w, "base", sampleFeedPage(current, tab)); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	})
+	mux.HandleFunc("GET /feed/drafts", func(w http.ResponseWriter, r *http.Request) {
+		current := selectFixtureUser(w, r, "manager")
+		if err := pages["drafts.html"].ExecuteTemplate(w, "base", sampleFeedDraftPage(current)); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	})
@@ -494,7 +533,7 @@ func main() {
 		{Pattern: "/workspaces/{id}", Page: "workspace_view.html", ExecuteName: "base", DefaultRole: "employee", Build: func(current fixtureUser, r *http.Request) any {
 			return sampleWorkspace(current)
 		}},
-		{Pattern: "/postings/{id}", Page: "posting_view.html", ExecuteName: "base", DefaultRole: "manager", Build: func(current fixtureUser, r *http.Request) any {
+		{Pattern: "/opportunities/{id}", Page: "posting_view.html", ExecuteName: "base", DefaultRole: "manager", Build: func(current fixtureUser, r *http.Request) any {
 			return samplePosting(current)
 		}},
 		{Pattern: "/articles/{id}", Page: "article_view.html", ExecuteName: "base", DefaultRole: "manager", Build: func(current fixtureUser, r *http.Request) any {
@@ -569,11 +608,20 @@ func main() {
 	mux.HandleFunc("GET /groups", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/groups/group-1", http.StatusSeeOther)
 	})
-	mux.HandleFunc("GET /postings/search", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/postings/posting-1", http.StatusSeeOther)
+	mux.HandleFunc("GET /opportunities/search", func(w http.ResponseWriter, r *http.Request) {
+		current := selectFixtureUser(w, r, "manager")
+		if err := pages["posting_search.html"].ExecuteTemplate(w, "base", samplePostingSearch(current, r)); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	})
-	mux.HandleFunc("GET /postings/create", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/postings/posting-1", http.StatusSeeOther)
+	mux.HandleFunc("GET /opportunities/create", func(w http.ResponseWriter, r *http.Request) {
+		current := selectFixtureUser(w, r, "manager")
+		if err := pages["posting_create.html"].ExecuteTemplate(w, "base", samplePostingCreate(current)); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	})
+	mux.HandleFunc("POST /opportunities/create", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/opportunities/posting-1?role=manager", http.StatusSeeOther)
 	})
 	mux.HandleFunc("GET /articles", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/articles/article-1", http.StatusSeeOther)
@@ -591,10 +639,16 @@ func main() {
 		http.Redirect(w, r, "/analytics/workforce", http.StatusSeeOther)
 	})
 	mux.HandleFunc("GET /insights/heatmap", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/insights/network", http.StatusSeeOther)
+		current := selectFixtureUser(w, r, "manager")
+		if err := pages["heatmap.html"].ExecuteTemplate(w, "base", sampleHeatmap(current)); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	})
 	mux.HandleFunc("GET /admin/users", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/admin/dashboard", http.StatusSeeOther)
+		current := selectFixtureUser(w, r, "admin")
+		if err := pages["admin_users.html"].ExecuteTemplate(w, "base", sampleAdminUsers(current)); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	})
 	mux.HandleFunc("GET /admin/audit", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/admin/dashboard", http.StatusSeeOther)
@@ -603,10 +657,16 @@ func main() {
 		http.Redirect(w, r, "/admin/dashboard", http.StatusSeeOther)
 	})
 	mux.HandleFunc("GET /admin/spotlight", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/spotlight?role=admin", http.StatusSeeOther)
+		current := selectFixtureUser(w, r, "admin")
+		if err := pages["spotlight_create.html"].ExecuteTemplate(w, "base", sampleSpotlightCreate(current)); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	})
 	mux.HandleFunc("GET /admin/orgchart", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/orgchart?role=admin", http.StatusSeeOther)
+		current := selectFixtureUser(w, r, "admin")
+		if err := pages["orgchart_assign.html"].ExecuteTemplate(w, "base", sampleOrgchartAssign(current)); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	})
 	mux.HandleFunc("GET /admin/announcements/new", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/announcements?role=admin", http.StatusSeeOther)
@@ -779,20 +839,44 @@ func main() {
 	mux.HandleFunc("POST /polls/{id}/vote", func(w http.ResponseWriter, r *http.Request) {
 		workflowFixtures.handlePollVote(w, r)
 	})
-	mux.HandleFunc("POST /postings/{id}/close", func(w http.ResponseWriter, r *http.Request) {
-		redirectBack(w, r, "/postings/"+r.PathValue("id"))
+	mux.HandleFunc("POST /opportunities/{id}/close", func(w http.ResponseWriter, r *http.Request) {
+		redirectBack(w, r, "/opportunities/"+r.PathValue("id"))
 	})
-	mux.HandleFunc("GET /postings/{id}/apply", func(w http.ResponseWriter, r *http.Request) {
-		redirectBack(w, r, "/postings/"+r.PathValue("id"))
+	mux.HandleFunc("GET /opportunities/{id}/apply", func(w http.ResponseWriter, r *http.Request) {
+		redirectBack(w, r, "/opportunities/"+r.PathValue("id"))
 	})
-	mux.HandleFunc("GET /postings/{id}/applications", func(w http.ResponseWriter, r *http.Request) {
-		redirectBack(w, r, "/postings/"+r.PathValue("id"))
+	mux.HandleFunc("GET /opportunities/{id}/applications", func(w http.ResponseWriter, r *http.Request) {
+		current := selectFixtureUser(w, r, "manager")
+		if err := pages["posting_applications.html"].ExecuteTemplate(w, "base", samplePostingApplications(current, r.PathValue("id"))); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	})
-	mux.HandleFunc("GET /postings/{id}/outcome", func(w http.ResponseWriter, r *http.Request) {
-		redirectBack(w, r, "/postings/"+r.PathValue("id"))
+	mux.HandleFunc("GET /opportunities/{id}/outcome", func(w http.ResponseWriter, r *http.Request) {
+		current := selectFixtureUser(w, r, "manager")
+		if err := pages["posting_outcome.html"].ExecuteTemplate(w, "base", samplePostingOutcome(current, r.PathValue("id"))); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	})
 	mux.HandleFunc("POST /admin/moderation/{id}/resolve", func(w http.ResponseWriter, r *http.Request) {
 		workflowFixtures.handleModerationResolve(w, r)
+	})
+	mux.HandleFunc("GET /profile/edit", func(w http.ResponseWriter, r *http.Request) {
+		current := selectFixtureUser(w, r, "employee")
+		if err := pages["profile_edit.html"].ExecuteTemplate(w, "base", sampleProfileEdit(current)); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	})
+	mux.HandleFunc("GET /accomplishments/add", func(w http.ResponseWriter, r *http.Request) {
+		current := selectFixtureUser(w, r, "employee")
+		if err := pages["accomplishment_form.html"].ExecuteTemplate(w, "base", sampleAccomplishmentForm(current)); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	})
+	mux.HandleFunc("GET /analytics/leaderboard", func(w http.ResponseWriter, r *http.Request) {
+		current := selectFixtureUser(w, r, "employee")
+		if err := pages["leaderboard.html"].ExecuteTemplate(w, "base", sampleLeaderboard(current, r)); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	})
 	mux.HandleFunc("GET /admin/foia/export", func(w http.ResponseWriter, r *http.Request) {
 		workflowFixtures.handleFOIAExport(w, r)
@@ -911,8 +995,203 @@ func sampleFeedPage(current fixtureUser, tab string) feedPage {
 	}
 }
 
+func sampleFeedDraftPage(current fixtureUser) feedDraftPage {
+	return feedDraftPage{
+		BaseData: current.baseData(),
+		Drafts: []feedDraft{
+			{ID: "draft-1", Content: "**Weekly update**\n\n- Completed onboarding check-ins\n- Published staffing notes", RenderedContent: template.HTML("<strong>Weekly update</strong><br><br>&bull; Completed onboarding check-ins<br>&bull; Published staffing notes"), CreatedAt: fixtureNow.AddDate(0, 0, -2)},
+			{ID: "draft-2", Content: "Need review on detail interview templates before Friday.", RenderedContent: template.HTML("Need review on detail interview templates before Friday."), CreatedAt: fixtureNow.AddDate(0, 0, -1)},
+		},
+		ScheduledPosts: []scheduledFeedPost{
+			{ID: "post-future-1", Content: "Reminder: Q3 networking event starts Monday.", RenderedContent: template.HTML("Reminder: Q3 networking event starts Monday."), CreatedAt: fixtureNow.AddDate(0, 0, -3), ScheduledAt: fixtureNow.AddDate(0, 0, 2).Add(3 * time.Hour)},
+		},
+	}
+}
+
 func sampleProfileView(current fixtureUser, profileID string) userpkg.ProfileView {
 	return workflowFixtures.profileView(current, profileID)
+}
+
+func sampleProfileEdit(current fixtureUser) userpkg.ProfileData {
+	birthday := fixtureNow.AddDate(-34, 0, 0)
+	hireDate := fixtureNow.AddDate(-6, 0, 0)
+	until := fixtureNow.AddDate(0, 0, 14)
+	return userpkg.ProfileData{
+		BaseData: current.baseData(),
+		User: userpkg.User{
+			ID:                current.ID,
+			Email:             strings.ToLower(current.FirstName) + "@usda.gov",
+			FirstName:         current.FirstName,
+			LastName:          current.LastName,
+			Headline:          current.Headline,
+			About:             current.About,
+			Location:          current.Location,
+			Birthday:          &birthday,
+			HireDate:          &hireDate,
+			WorkStatus:        "telework",
+			WorkStatusUntil:   &until,
+			ProfileVisibility: "connections",
+		},
+		IsOwnProfile: true,
+	}
+}
+
+func sampleAccomplishmentForm(current fixtureUser) accomplishmentpkg.FormPage {
+	return accomplishmentpkg.FormPage{
+		BaseData:       current.baseData(),
+		Accomplishment: nil,
+		Error:          "",
+	}
+}
+
+func samplePostingSearch(current fixtureUser, r *http.Request) postingpkg.SearchPage {
+	query := strings.TrimSpace(r.URL.Query().Get("q"))
+	if query == "" {
+		query = "analytics"
+	}
+	selectedType := strings.TrimSpace(r.URL.Query().Get("type"))
+	postings := []postingpkg.Posting{
+		{
+			ID:          "posting-1",
+			AuthorID:    "manager-1",
+			AuthorName:  "Taylor Jordan",
+			Title:       "Temporary detail opportunity",
+			Description: "Support the USDA workforce dashboard refresh.",
+			Type:        "detail",
+			Department:  "NRCS",
+			Location:    "Washington, DC",
+			Status:      "active",
+			CreatedAt:   fixtureNow.AddDate(0, 0, -2),
+		},
+		{
+			ID:          "posting-2",
+			AuthorID:    "manager-1",
+			AuthorName:  "Taylor Jordan",
+			Title:       "Data quality project sprint",
+			Description: "Improve cross-agency data quality checks.",
+			Type:        "project",
+			Department:  "Forest Service",
+			Location:    "Remote",
+			Status:      "active",
+			CreatedAt:   fixtureNow.AddDate(0, 0, -5),
+		},
+	}
+	if selectedType == "project" {
+		postings = postings[1:]
+	} else if selectedType == "detail" {
+		postings = postings[:1]
+	}
+	return postingpkg.SearchPage{
+		BaseData: current.baseData(),
+		Query:    query,
+		Type:     selectedType,
+		Postings: postings,
+	}
+}
+
+func samplePostingCreate(current fixtureUser) postingpkg.CreatePage {
+	return postingpkg.CreatePage{BaseData: current.baseData()}
+}
+
+func samplePostingApplications(current fixtureUser, postingID string) postingpkg.ApplicationsPage {
+	if strings.TrimSpace(postingID) == "" {
+		postingID = "posting-1"
+	}
+	return postingpkg.ApplicationsPage{
+		BaseData: current.baseData(),
+		Posting: postingpkg.Posting{
+			ID:         postingID,
+			Title:      "Temporary detail opportunity",
+			Type:       "detail",
+			Status:     "active",
+			Department: "NRCS",
+		},
+		Applications: []postingpkg.Application{
+			{
+				ID:            "app-1",
+				PostingID:     postingID,
+				ApplicantID:   "employee-1",
+				ApplicantName: "Riley Carter",
+				CoverLetter:   "I can support this initiative immediately.",
+				Status:        "pending",
+				CreatedAt:     fixtureNow.AddDate(0, 0, -1),
+			},
+		},
+	}
+}
+
+func samplePostingOutcome(current fixtureUser, postingID string) postingpkg.OutcomePage {
+	if strings.TrimSpace(postingID) == "" {
+		postingID = "posting-1"
+	}
+	return postingpkg.OutcomePage{
+		BaseData: current.baseData(),
+		Posting: postingpkg.Posting{
+			ID:            postingID,
+			Title:         "Temporary detail opportunity",
+			Type:          "detail",
+			Department:    "NRCS",
+			Location:      "Washington, DC",
+			OutcomeStatus: "completed",
+			Outcome:       "Delivered dashboard rollout with documentation.",
+			HasOutcome:    true,
+		},
+	}
+}
+
+func sampleAdminUsers(current fixtureUser) adminpkg.AdminPage {
+	users := []adminpkg.User{
+		{ID: "employee-1", Email: "riley@usda.gov", FirstName: "Riley", LastName: "Carter", Role: "employee", DepartmentID: "dept-1", DepartmentName: "NRCS"},
+		{ID: "manager-1", Email: "taylor@usda.gov", FirstName: "Taylor", LastName: "Jordan", Role: "manager", DepartmentID: "dept-2", DepartmentName: "Forest Service"},
+	}
+	depts := []adminpkg.Department{
+		{ID: "dept-1", Name: "NRCS"},
+		{ID: "dept-2", Name: "Forest Service"},
+		{ID: "dept-3", Name: "FSA"},
+	}
+	return adminpkg.AdminPage{BaseData: current.baseData(), Users: users, Departments: depts}
+}
+
+func sampleSpotlightCreate(current fixtureUser) spotlightpkg.CreatePage {
+	users := []spotlightpkg.UserOption{
+		{ID: "employee-1", Name: "Riley Carter"},
+		{ID: "coworker-1", Name: "Alex Nguyen"},
+		{ID: "diana-1", Name: "Diana Prince"},
+	}
+	return spotlightpkg.CreatePage{BaseData: current.baseData(), Users: users}
+}
+
+func sampleOrgchartAssign(current fixtureUser) orgchartpkg.AssignPage {
+	users := []orgchartpkg.SelectUser{
+		{ID: "employee-1", Name: "Riley Carter"},
+		{ID: "manager-1", Name: "Taylor Jordan"},
+		{ID: "mentor-1", Name: "Morgan Lee"},
+	}
+	return orgchartpkg.AssignPage{BaseData: current.baseData(), Users: users}
+}
+
+func sampleLeaderboard(current fixtureUser, r *http.Request) analyticspkg.LeaderboardPage {
+	selected := strings.TrimSpace(r.URL.Query().Get("department"))
+	options := []analyticspkg.DepartmentOption{
+		{ID: "dept-1", Name: "NRCS"},
+		{ID: "dept-2", Name: "Forest Service"},
+	}
+	entries := []analyticspkg.LeaderboardEntry{
+		{Rank: 1, UserID: "mentor-1", Name: "Morgan Lee", Department: "NRCS", Score: 128},
+		{Rank: 2, UserID: "employee-1", Name: "Riley Carter", Department: "Forest Service", Score: 117},
+	}
+	if selected == "dept-1" {
+		entries = entries[:1]
+	}
+	if selected == "dept-2" {
+		entries = entries[1:]
+	}
+	return analyticspkg.LeaderboardPage{
+		BaseData:           current.baseData(),
+		Entries:            entries,
+		DepartmentOptions:  options,
+		SelectedDepartment: selected,
+	}
 }
 
 func sampleResumeData(current fixtureUser) any {
@@ -1183,6 +1462,33 @@ func sampleWorkforce(current fixtureUser) analyticspkg.WorkforcePage {
 		Roles:          []analyticspkg.NamedCount{{Name: "employee", Count: 220}, {Name: "manager", Count: 24}, {Name: "admin", Count: 4}},
 		TopSkills:      []analyticspkg.NamedCount{{Name: "Program Management", Count: 64}, {Name: "Analytics", Count: 48}, {Name: "GIS", Count: 31}},
 		Engagement:     analyticspkg.EngagementTotals{Posts: 42, Comments: 96, Connections: 17, Kudos: 23},
+	}
+}
+
+func sampleHeatmap(current fixtureUser) insightspkg.HeatmapPage {
+	return insightspkg.HeatmapPage{
+		BaseData:    current.baseData(),
+		Departments: []string{"Office of Workforce Strategy", "Forest Service"},
+		Skills:      []string{"Go", "Program Management", "GIS"},
+		Rows: []insightspkg.HeatRow{
+			{
+				Department: "Office of Workforce Strategy",
+				Cells: []insightspkg.HeatCell{
+					{Count: 4, Color: template.CSS("rgb(46,125,50)")},
+					{Count: 2, Color: template.CSS("rgb(150,200,150)")},
+					{Count: 1, Color: template.CSS("rgb(200,230,200)")},
+				},
+			},
+			{
+				Department: "Forest Service",
+				Cells: []insightspkg.HeatCell{
+					{Count: 1, Color: template.CSS("rgb(200,230,200)")},
+					{Count: 3, Color: template.CSS("rgb(95,165,95)")},
+					{Count: 0, Color: template.CSS("#ffffff")},
+				},
+			},
+		},
+		MaxCount: 4,
 	}
 }
 

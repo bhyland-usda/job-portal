@@ -169,6 +169,53 @@
   text-decoration: underline;
 }
 
+.avatar-upload-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.avatar-upload-edit {
+  margin-top: 0;
+  text-align: left;
+}
+
+.avatar-upload-edit .btn {
+  min-width: 120px;
+  text-align: center;
+}
+
+.profile-photo-editor {
+  margin: 8px 0 20px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+}
+
+.profile-photo-editor h2 {
+  font-size: 17px;
+  margin: 0 0 12px;
+}
+
+.profile-photo-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.profile-photo-row .profile-avatar {
+  flex-shrink: 0;
+}
+
+.profile-photo-row .avatar-upload {
+  flex: 1;
+  min-width: 260px;
+}
+
 .avatar-small {
   width: 40px;
   height: 40px;

@@ -18,7 +18,7 @@
       <div class="bookmark-item">
         <div class="bookmark-info">
           <span class="bookmark-type-badge bookmark-type-{{.TargetType}}">{{.TargetType}}</span>
-          <a href="{{if eq .TargetType "post"}}/feed{{else if eq .TargetType "posting"}}/postings/{{.TargetID}}{{else if eq .TargetType "article"}}/articles/{{.TargetID}}{{else if eq .TargetType "profile"}}/profile/{{.TargetID}}{{end}}" class="bookmark-title">{{.Title}}</a>
+          <a href="{{if eq .TargetType "post"}}/feed{{else if eq .TargetType "posting"}}/opportunities/{{.TargetID}}{{else if eq .TargetType "article"}}/articles/{{.TargetID}}{{else if eq .TargetType "profile"}}/profile/{{.TargetID}}{{end}}" class="bookmark-title">{{.Title}}</a>
           <span class="bookmark-date">Saved {{.CreatedAt.Format "Jan 2, 2006"}}</span>
         </div>
         <form method="POST" action="/bookmarks/{{.ID}}/delete" class="inline">

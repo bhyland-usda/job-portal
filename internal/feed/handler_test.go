@@ -2,6 +2,7 @@ package feed
 
 import (
 	"context"
+	"database/sql"
 	"html/template"
 	"net/http/httptest"
 	"net/url"
@@ -28,9 +29,9 @@ func testPages() map[string]*template.Template {
 		))
 	}
 	return map[string]*template.Template{
-		"feed.html":           mk("feed/feed.html"),
-		"feed_scheduled.html": mk("feed/scheduled.html"),
-		"trending.html":       mk("feed/trending.html"),
+		"feed.html":     mk("feed/feed.html"),
+		"drafts.html":   mk("feed/drafts.html"),
+		"trending.html": mk("feed/trending.html"),
 	}
 }
 
@@ -350,6 +351,33 @@ func TestShowTrendingRanksRecentHashtags(t *testing.T) {
 	}
 }
 
+func TestServeAttachmentUnauthorizedReturnsNotFound(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("failed to create mock db: %v", err)
+	}
+	defer db.Close()
+
+	mock.ExpectQuery(`FROM post_attachments pa`).
+		WithArgs("att-1", "viewer-1").
+		WillReturnError(sql.ErrNoRows)
+
+	h := &Handler{db: db}
+	req := httptest.NewRequest("GET", "/feed/attachment/att-1", nil)
+	req.SetPathValue("id", "att-1")
+	req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, "viewer-1"))
+	rec := httptest.NewRecorder()
+
+	h.serveAttachment(rec, req)
+
+	if rec.Code != 404 {
+		t.Fatalf("expected 404, got %d", rec.Code)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("unmet expectations: %v", err)
+	}
+}
+
 // TestShowTrendingEmptyState verifies the handler degrades gracefully to the
 // empty-state message when there is no recent hashtag activity.
 func TestShowTrendingEmptyState(t *testing.T) {
@@ -469,9 +497,9 @@ func TestCreatePostNotifiesMentionedUser(t *testing.T) {
 	}
 }
 
-// TestShowScheduledListsFuturePosts verifies the author scheduled view lists the
-// current user's not-yet-published posts (scheduled_at > now()).
-func TestShowScheduledListsFuturePosts(t *testing.T) {
+// TestShowDraftsListsDraftsAndScheduledPosts verifies drafts page now includes
+// both saved drafts and future scheduled social posts.
+func TestShowDraftsListsDraftsAndScheduledPosts(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("failed to create mock db: %v", err)
@@ -481,6 +509,11 @@ func TestShowScheduledListsFuturePosts(t *testing.T) {
 	created := time.Date(2026, 5, 22, 0, 0, 0, 0, time.UTC)
 	scheduled := time.Date(2026, 6, 1, 9, 0, 0, 0, time.UTC)
 
+	mock.ExpectQuery(`FROM post_drafts`).
+		WithArgs("user-7").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "content", "created_at"}).
+			AddRow("draft-1", "draft text", created))
+
 	mock.ExpectQuery(`scheduled_at > now\(\)`).
 		WithArgs("user-7").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "content", "created_at", "scheduled_at"}).
@@ -488,17 +521,157 @@ func TestShowScheduledListsFuturePosts(t *testing.T) {
 
 	h := &Handler{db: db, pages: testPages()}
 
-	req := httptest.NewRequest("GET", "/feed/scheduled", nil)
+	req := httptest.NewRequest("GET", "/feed/drafts", nil)
 	req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, "user-7"))
 	rec := httptest.NewRecorder()
 
-	h.showScheduled(rec, req)
+	h.showDrafts(rec, req)
 
 	if rec.Code != 200 {
 		t.Fatalf("expected 200, got %d; body=%s", rec.Code, rec.Body.String())
 	}
-	if body := rec.Body.String(); !strings.Contains(body, "see you in june") {
+	body := rec.Body.String()
+	if !strings.Contains(body, "draft text") {
+		t.Errorf("expected draft content in body, got:\n%s", body)
+	}
+	if !strings.Contains(body, "see you in june") {
 		t.Errorf("expected scheduled post content in body, got:\n%s", body)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("unmet expectations: %v", err)
+	}
+}
+
+func TestRedirectScheduledToDrafts(t *testing.T) {
+	h := &Handler{}
+	req := httptest.NewRequest("GET", "/feed/scheduled", nil)
+	rec := httptest.NewRecorder()
+
+	h.redirectScheduledToDrafts(rec, req)
+
+	if rec.Code != 303 {
+		t.Fatalf("expected 303 redirect, got %d", rec.Code)
+	}
+	if loc := rec.Header().Get("Location"); loc != "/feed/drafts" {
+		t.Fatalf("expected redirect to /feed/drafts, got %q", loc)
+	}
+}
+
+func TestScheduleDraftPostStoresFutureScheduledPost(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("failed to create mock db: %v", err)
+	}
+	defer db.Close()
+
+	mock.ExpectExec(`INSERT INTO posts \(user_id, content, scheduled_at\) VALUES \(\$1, \$2, \$3\)`).
+		WithArgs("user-7", "scheduled from drafts", sqlmock.AnyArg()).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	h := &Handler{db: db}
+	future := time.Now().Add(24 * time.Hour).Format("2006-01-02T15:04")
+
+	form := url.Values{}
+	form.Set("content", "scheduled from drafts")
+	form.Set("scheduled_at", future)
+
+	req := httptest.NewRequest("POST", "/feed/drafts/schedule", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, "user-7"))
+	rec := httptest.NewRecorder()
+
+	h.scheduleDraftPost(rec, req)
+
+	if rec.Code != 303 {
+		t.Fatalf("expected 303 redirect, got %d; body=%s", rec.Code, rec.Body.String())
+	}
+	if loc := rec.Header().Get("Location"); loc != "/feed/drafts" {
+		t.Fatalf("expected redirect to /feed/drafts, got %q", loc)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("unmet expectations: %v", err)
+	}
+}
+
+func TestSaveDraftStoresRichMarkdownWhenRequested(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("failed to create mock db: %v", err)
+	}
+	defer db.Close()
+
+	rich := "**Bold intro**"
+	mock.ExpectExec(`INSERT INTO post_drafts \(user_id, content\) VALUES \(\$1, \$2\)`).
+		WithArgs("user-7", richMarkdownPrefix+rich).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	h := &Handler{db: db}
+	form := url.Values{}
+	form.Set("content", rich)
+	form.Set("content_format", "rich_markdown")
+
+	req := httptest.NewRequest("POST", "/feed/drafts", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, "user-7"))
+	rec := httptest.NewRecorder()
+
+	h.saveDraft(rec, req)
+
+	if rec.Code != 303 {
+		t.Fatalf("expected 303 redirect, got %d; body=%s", rec.Code, rec.Body.String())
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("unmet expectations: %v", err)
+	}
+}
+
+func TestRenderContentRichMarkdownToHTML(t *testing.T) {
+	h := &Handler{}
+	html := h.renderContent(context.Background(), richMarkdownPrefix+"**Bold**\n\n- One\n- Two")
+	rendered := string(html)
+
+	if !strings.Contains(rendered, "<strong>Bold</strong>") {
+		t.Fatalf("expected bold markdown rendered to strong tag, got %q", rendered)
+	}
+	if !strings.Contains(rendered, "<ul>") || !strings.Contains(rendered, "<li>One</li>") {
+		t.Fatalf("expected list markdown rendered to ul/li tags, got %q", rendered)
+	}
+}
+
+func TestPublishDraftPreservesRichMarkdownContent(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("failed to create mock db: %v", err)
+	}
+	defer db.Close()
+
+	richStored := richMarkdownPrefix + "**Release note**\n\n- line item"
+
+	mock.ExpectQuery(`SELECT content FROM post_drafts WHERE id = \$1 AND user_id = \$2`).
+		WithArgs("draft-1", "user-7").
+		WillReturnRows(sqlmock.NewRows([]string{"content"}).AddRow(richStored))
+
+	mock.ExpectExec(`INSERT INTO posts \(user_id, content\) VALUES \(\$1, \$2\)`).
+		WithArgs("user-7", richStored).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	mock.ExpectExec(`DELETE FROM post_drafts WHERE id = \$1`).
+		WithArgs("draft-1").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	h := &Handler{db: db, broker: NewBroker()}
+	req := httptest.NewRequest("POST", "/feed/drafts/draft-1/publish", nil)
+	req.SetPathValue("id", "draft-1")
+	req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, "user-7"))
+	rec := httptest.NewRecorder()
+
+	h.publishDraft(rec, req)
+
+	if rec.Code != 303 {
+		t.Fatalf("expected 303 redirect, got %d; body=%s", rec.Code, rec.Body.String())
+	}
+	if loc := rec.Header().Get("Location"); loc != "/feed" {
+		t.Fatalf("expected redirect to /feed, got %q", loc)
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("unmet expectations: %v", err)

@@ -97,6 +97,13 @@
   text-decoration: none;
 }
 
+.posting-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px 16px;
+  margin: 14px 0;
+}
+
 .posting-body {
   margin: 16px 0;
   line-height: 1.6;
@@ -111,6 +118,24 @@
   margin-bottom: 8px;
 }
 
+.posting-learning {
+  margin: 16px 0;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+}
+
+.posting-learning h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+
+.posting-learning p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
 .posting-match-count {
   color: var(--primary);
   font-weight: 600;
@@ -120,6 +145,68 @@
 
 .posting-close {
   margin-top: 16px;
+}
+
+.posting-actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.posting-actions .posting-close {
+  margin-top: 0;
+}
+
+.posting-apply {
+  margin-top: 12px;
+}
+
+.posting-attachments {
+  margin: 16px 0;
+}
+
+.posting-attachments h3 {
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.posting-attachments .post-media {
+  margin-bottom: 8px;
+}
+
+.posting-attachments .post-attachment-file {
+  display: inline-flex;
+  margin-bottom: 6px;
+}
+
+.posting-outcome {
+  margin: 16px 0;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+}
+
+.posting-outcome h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+
+.posting-outcome p {
+  margin: 0 0 6px;
+  white-space: pre-wrap;
+}
+
+.posting-outcome .posting-meta {
+  margin: 0;
+}
+
+.outcome-status {
+  margin-left: 8px;
+  font-weight: 600;
+  text-transform: capitalize;
 }
 
 .posting-form .form-group {
@@ -223,6 +310,53 @@
   font-weight: 600;
   font-size: 12px;
   text-transform: capitalize;
+}
+
+.application-answer-block {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+}
+
+.application-answer-title {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.application-answer {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.5;
+  font-size: 14px;
+}
+
+.application-answer-empty {
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.applications-list {
+  display: grid;
+  gap: 12px;
+}
+
+.application-item {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--bg-card);
+}
+
+.application-header, .application-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 /* Status badges */

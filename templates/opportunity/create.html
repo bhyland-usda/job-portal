@@ -1,0 +1,107 @@
+{{define "title"}}Create Opportunity{{end}}
+
+{{define "content"}}
+<div class="posting-layout">
+  <div class="profile-card">
+    <h2>Create Opportunity</h2>
+
+    {{if .Error}}
+    <div class = "alert alert-error" role="alert">{{.Error}}</div>
+    {{end}}
+
+    <form method="POST" action="/opportunities/create" class="posting-form" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+
+      <div class="form-group">
+        <label for="title">Opportunity Title</label>
+        <input type="text" id="title" name="title" required placeholder="e.g. Data Analyst for Forest Service Project" value="{{.Title}}" />
+      </div>
+
+      <div class="form-group">
+        <label for="type">Opportunity Type</label>
+        <select id="type" name="type" required>
+          <option value="" {{if eq .Type ""}}selected{{end}}>Select type...</option>
+          <option value="project" {{if eq .Type "project"}}selected{{end}}>Project</option>
+          <option value="detail" {{if eq .Type "detail"}}selected{{end}}>Detail</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="department">Department</label>
+        <input type="text" id="department" name="department" placeholder="e.g. NRCS, Forest Service" value="{{.Department}}" />
+      </div>
+
+      <div class="form-group">
+        <label for="location">Location</label>
+        <input type="text" id="location" name="location" placeholder="e.g. Washington, DC" value="{{.Location}}" />
+      </div>
+
+      <div class="form-group">
+        <label for="location_type">Location Type</label>
+        <select id="location_type" name="location_type" required>
+          <option value="" {{if eq .LocationType ""}}selected{{end}}>Select location type...</option>
+          <option value="remote" {{if eq .LocationType "remote"}}selected{{end}}>Remote</option>
+          <option value="hybrid" {{if eq .LocationType "hybrid"}}selected{{end}}>Hybrid</option>
+          <option value="onsite" {{if eq .LocationType "onsite"}}selected{{end}}>On-site</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="start_date">Start Date</label>
+        <input type="date" id="start_date" name="start_date" required value="{{.StartDate}}" />
+      </div>
+
+      <div class="form-group">
+        <label for="duration_days">Duration (in days)</label>
+        <input type="number" id="duration_days" name="duration_days" min="1" step="1" required placeholder="e.g. 90" value="{{.DurationDays}}" />
+      </div>
+
+      <div class="form-group">
+        <label for="application_close_date">Application Close Date</label>
+        <input type="date" id="application_close_date" name="application_close_date" required value="{{.ApplicationCloseDate}}" />
+      </div>
+
+      <div class="form-group">
+        <label for="number_of_people">Number of People</label>
+        <input type="number" id="number_of_people" name="number_of_people" min="1" step="1" required placeholder="e.g. 4" value="{{.NumberOfPeople}}" />
+      </div>
+
+      <div class="form_group">
+        <label for="reporting_manager_name">Reporting Manager Name</label>
+        <input type="text" id="reporting_manager_name" name="reporting_manager_name" required placeholder="e.g. John Doe" value="{{.ReportingManagerName}}" />
+      </div>
+
+      <div class="form_group">
+        <label for="reporting_manager_email">Reporting Manager E-Mail</label>
+        <input type="email" id="reporting_manager_email" name="reporting_manager_email" required placeholder="e.g. john.doe@usda.gov" value="{{.ReportingManagerEmail}}" />
+      </div>
+
+      <div class="form-group">
+        <label for="description">Opportunity Description</label>
+        <textarea id="description" name="description" rows="6" required placeholder="Describe the work, context, and expected deliverables...">{{.Description}}</textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="learning_outcomes">What applicants will learn from this experience</label>
+        <textarea id="learning_outcomes" name="learning_outcomes" rows="5" required placeholder="Describe skills, exposure, and growth applicants can expect...">{{.LearningOutcomes}}</textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="skills">Required Skills</label>
+        <input type="text" id="skills" name="skills" placeholder="e.g. Python, GIS, Data Analysis" aria-describedby="skills-hint" value="{{.Skills}}" />
+        <p class="form-hint" id="skills-hint">Comma-separated. Matches against employee skill profiles.</p>
+      </div>
+
+      <div class="form-group">
+        <label for="attachments">Attachments</label>
+        <input type="file" id="attachments" name="attachments" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.jpg,.jpeg,.png,.gif,.webp" aria-describedby="attachments-hint" />
+        <p class="form-hint" id="attachments-hint">Documents and images only. Max 25MB per file.</p>
+      </div>
+
+      <button type="submit" class="btn btn-primary">Create Opportunity</button>
+    </form>
+  </div>
+</div>
+{{end}}
+
+{{template "base" .}}

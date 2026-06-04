@@ -21,13 +21,13 @@
 
         <form method="get" class="lb-filter">
             <label for="department">Department:</label>
-            <select id="department" name="department" onchange="this.form.submit()">
+            <select id="department" name="department">
                 <option value="">All departments</option>
                 {{range .DepartmentOptions}}
                 <option value="{{.ID}}" {{if eq .ID $.SelectedDepartment}}selected{{end}}>{{.Name}}</option>
                 {{end}}
             </select>
-            <noscript><button type="submit" class="btn btn-outline btn-sm">Filter</button></noscript>
+            <button type="submit" class="btn btn-outline btn-sm">Filter</button>
         </form>
 
         {{if .Entries}}

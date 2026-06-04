@@ -23,6 +23,18 @@ document.addEventListener("DOMContentLoaded", function () {
   var selectedUsers = [];
   var lastTypingSent = 0;
 
+  function getCookie(name) {
+    var cookie = document.cookie || '';
+    var parts = cookie.split(';');
+    for (var i = 0; i < parts.length; i++) {
+      var p = parts[i].trim();
+      if (p.indexOf(name + '=') === 0) {
+        return decodeURIComponent(p.substring(name.length + 1));
+      }
+    }
+    return '';
+  }
+
   function setHidden(el, hidden) {
     if (!el) return;
     el.classList.toggle('is-hidden', hidden);
@@ -596,6 +608,9 @@ document.addEventListener("DOMContentLoaded", function () {
       fetch('/messages/chat/' + currentConvID, {
         method: 'POST',
         credentials: 'same-origin',
+        headers: {
+          'X-CSRF-Token': getCookie('csrf_token')
+        },
         body: formData
       }).then(function() { loadMessages(); }).catch(function() {});
     });

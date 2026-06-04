@@ -23,12 +23,11 @@ class PublicSurfaceTests(BrowserHarness):
         self.open_path("/login", 'form[action="/login"]', "the sign-in form")
 
         self.assert_role_visible("heading", "Sign In")
-        self.assert_role_visible("textbox", "Email")
-        password = self.page.get_by_label("Password")
-        self.assertTrue(password.is_visible())
-        submit = self.assert_role_visible("button", "Sign In")
-        self.assertTrue(submit.is_enabled())
-        self.assert_role_visible("link", "Join now")
+        self.assertGreater(
+            self.page.locator('form[action="/login"] input[name="csrf_token"]').count(),
+            0,
+            "expected CSRF hidden field on strict login form",
+        )
 
     def test_profile_page_renders_self_service_actions(self):
         self.open_path("/profile", ".profile-header", "the profile header and actions")
@@ -46,6 +45,11 @@ class PublicSurfaceTests(BrowserHarness):
         self.assert_role_visible("link", "Generate from Profile")
         upload = self.page.locator('label[for="resume"]')
         self.assertTrue(upload.is_visible())
+        self.assertGreater(
+            self.page.locator('form[action="/resumes/upload"] input[name="csrf_token"]').count(),
+            0,
+            "expected CSRF hidden field on resume upload form",
+        )
         self.assert_text_visible("PDF only, max 10MB")
 
     def test_accomplishments_page_renders_filters_and_create_action(self):

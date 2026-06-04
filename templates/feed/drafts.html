@@ -1,36 +1,119 @@
 {{define "title"}}Drafts{{end}}
 
 {{define "content"}}
-<div class="feed-layout">
-    <div class="profile-card">
-        <h2>Drafts</h2>
-        <form method="POST" action="/feed/drafts" style="margin-bottom:20px;">
-            <textarea name="content" placeholder="Save a draft..." rows="3" required></textarea>
-            <button type="submit" class="btn btn-outline" style="margin-top:8px;">Save Draft</button>
-        </form>
-
-        {{if .Drafts}}
-        {{range .Drafts}}
-        <div class="my-post-item">
-            <p class="my-post-content">{{.Content}}</p>
-            <div class="my-post-meta">
-                <span>{{.CreatedAt.Format "Jan 2, 2006"}}</span>
+<div class="feed-layout drafts-layout">
+    <div class="profile-card drafts-page">
+        <header class="drafts-header">
+            <div class="drafts-title-wrap">
+                <h2>Drafts</h2>
+                <p class="text-muted">Create and schedule <strong>Social Feed</strong> posts from one workspace.</p>
             </div>
-            <div class="my-post-actions">
-                <form method="POST" action="/feed/drafts/{{.ID}}/publish" class="inline">
-                    <button type="submit" class="btn-link">Publish</button>
+            <nav class="drafts-header-links" aria-label="Draft type guidance">
+                <a href="/opportunities/create" class="btn-link">Create Project/Detail Opportunity</a>
+                <a href="/my-posts?tab=postings" class="btn-link">Manage Project/Detail Posts</a>
+            </nav>
+        </header>
+
+        <div class="draft-main-grid">
+            <section class="draft-composer-card" aria-labelledby="social-feed-composer-title">
+                <h3 id="social-feed-composer-title" class="draft-section-title">Social Feed Composer</h3>
+                <form method="POST" action="/feed/drafts" class="draft-form-stack" data-draft-composer>
+                    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+                    <input type="hidden" name="content_format" value="rich_markdown" />
+                    <div class="rich-editor" data-rich-editor>
+                        <div class="rich-editor-toolbar" role="toolbar" aria-label="Social draft formatting">
+                            <button type="button" class="btn-link" data-rich-command="bold" title="Bold"><strong>B</strong></button>
+                            <button type="button" class="btn-link" data-rich-command="italic" title="Italic"><em>I</em></button>
+                            <button type="button" class="btn-link" data-rich-command="insertUnorderedList" title="Bulleted list">&#8226; List</button>
+                            <button type="button" class="btn-link" data-rich-command="createLink" title="Add link">Link</button>
+                        </div>
+                        <div
+                            class="rich-editor-input"
+                            data-rich-input
+                            contenteditable="true"
+                            role="textbox"
+                            aria-multiline="true"
+                            data-placeholder="Share progress updates, milestones, or announcements..."
+                        ></div>
+                        <input type="hidden" name="content" data-rich-output />
+                    </div>
+
+                    <div class="draft-schedule-panel" data-schedule-panel hidden>
+                        <label for="drafts-scheduled-at" class="draft-schedule-label">Publish at</label>
+                        <input type="datetime-local" id="drafts-scheduled-at" name="scheduled_at" data-schedule-input />
+                    </div>
+
+                    <div class="draft-form-actions">
+                        <button type="submit" class="btn btn-outline">Save Draft</button>
+                        <button type="button" class="btn btn-outline" data-schedule-toggle>Schedule</button>
+                        <button type="submit" class="btn btn-primary" formaction="/feed/drafts/schedule" data-schedule-submit hidden>Schedule Post</button>
+                    </div>
                 </form>
-                <form method="POST" action="/feed/drafts/{{.ID}}/delete" class="inline">
-                    <button type="submit" class="btn-link btn-danger">Delete</button>
-                </form>
+            </section>
+
+            <div class="draft-lists-stack">
+                <section class="draft-list-card" aria-labelledby="social-feed-drafts-title">
+                    <h3 id="social-feed-drafts-title" class="draft-section-title">Social Feed Drafts ({{len .Drafts}})</h3>
+                    <div class="draft-list-scroll">
+                        {{if .Drafts}}
+                        {{range .Drafts}}
+                        <div class="my-post-item draft-item-card">
+                            <div class="my-post-meta">
+                                <span class="draft-kind-badge">Type: Social Feed</span>
+                                <span>{{.CreatedAt.Format "Jan 2, 2006"}}</span>
+                            </div>
+                            <p class="my-post-content">{{if .RenderedContent}}{{.RenderedContent}}{{else}}{{.Content}}{{end}}</p>
+                            <div class="my-post-actions">
+                                <form method="POST" action="/feed/drafts/{{.ID}}/publish" class="inline">
+                                    <button type="submit" class="btn-link">Publish</button>
+                                </form>
+                                <form method="POST" action="/feed/drafts/{{.ID}}/delete" class="inline">
+                                    <button type="submit" class="btn-link btn-danger">Delete</button>
+                                </form>
+                            </div>
+                        </div>
+                        {{end}}
+                        {{else}}
+                        <p class="empty-state">No social feed drafts saved.</p>
+                        {{end}}
+                    </div>
+                </section>
+
+                <section class="draft-list-card" aria-labelledby="scheduled-social-feed-title">
+                    <h3 id="scheduled-social-feed-title" class="draft-section-title">Scheduled Social Feed Posts ({{len .ScheduledPosts}})</h3>
+                    <div class="draft-list-scroll">
+                        {{if .ScheduledPosts}}
+                        {{range .ScheduledPosts}}
+                        <div class="my-post-item draft-item-card">
+                            <div class="my-post-meta">
+                                <span class="draft-kind-badge">Type: Social Feed</span>
+                                <span>Created {{.CreatedAt.Format "Jan 2, 2006"}}</span>
+                            </div>
+                            <p class="my-post-content">{{if .RenderedContent}}{{.RenderedContent}}{{else}}{{.Content}}{{end}}</p>
+                            <div class="my-post-meta">
+                                <span class="scheduled-badge">&#128337; Scheduled for {{.ScheduledAt.Format "Jan 2, 2006 3:04 PM"}}</span>
+                            </div>
+                            <div class="my-post-actions">
+                                <form method="POST" action="/feed/{{.ID}}/delete" class="inline">
+                                    <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" />
+                                    <button type="submit" class="btn-link btn-danger">Delete</button>
+                                </form>
+                            </div>
+                        </div>
+                        {{end}}
+                        {{else}}
+                        <p class="empty-state">No scheduled social feed posts.</p>
+                        {{end}}
+                    </div>
+                </section>
             </div>
         </div>
-        {{end}}
-        {{else}}
-        <p class="empty-state">No drafts saved.</p>
-        {{end}}
     </div>
 </div>
+{{end}}
+
+{{define "scripts"}}
+<script src="/static/js/drafts.js"></script>
 {{end}}
 
 {{template "base" .}}

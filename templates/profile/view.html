@@ -125,12 +125,6 @@
                     {{slice .User.FirstName 0 1}}{{slice .User.LastName 0 1}}
                 </div>
                 {{end}}
-                {{if .IsOwnProfile}}
-                <form method="POST" action="/profile/avatar" enctype="multipart/form-data" class="avatar-upload">
-                    <label for="avatar" class="btn-link">Change Photo</label>
-                    <input type="file" id="avatar" name="avatar" accept="image/jpeg,image/png,image/webp" hidden />
-                </form>
-                {{end}}
             </div>
             <div class="profile-info">
                 <h1>{{.User.FirstName}} {{.User.LastName}}</h1>
@@ -202,9 +196,6 @@
 
     <div class="profile-card">
         <h2>Experience</h2>
-        {{if .IsOwnProfile}}
-        <a href="/profile/experience/add" class="card-action">+ Add</a>
-        {{end}} 
         {{range .Experiences}}
         <div class="profile-entry">
             <h3>{{.Title}}</h3>
@@ -221,14 +212,6 @@
             {{if .Description}}
             <p class="entry-desc">{{.Description}}</p>
             {{end}}
-            {{if $.IsOwnProfile}}
-            <div class="entry-actions">
-                <a href="/profile/experience/{{.ID}}/edit" class="btn-link">Edit</a>
-                <form method="POST" action="/profile/experience/{{.ID}}/delete" class="inline">
-                    <button type="submit" class="btn-link btn-danger">Delete</button>
-                </form>
-            </div>
-            {{end}}
         </div>
         {{else}}
         <p class="empty-state">No experience added yet.</p>
@@ -237,9 +220,7 @@
 
     <div class="profile-card">
         <h2>Education</h2>
-        {{if .IsOwnProfile}}
-        <a href="/profile/education/add" class="card-action">+ Add</a>
-        {{end}} {{range .Educations}}
+        {{range .Educations}}
         <div class="profile-entry">
             <h3>{{.School}}</h3>
             <p class="entry-subtitle">
@@ -248,14 +229,6 @@
             <p class="entry-date">
                 {{.StartYear}} - {{if .EndYear}}{{.EndYear}}{{else}}Present{{end}}
             </p>
-            {{if $.IsOwnProfile}}
-            <div class="entry-actions">
-                <a href="/profile/education/{{.ID}}/edit" class="btn-link">Edit</a>
-                <form method="POST" action="/profile/education/{{.ID}}/delete" class="inline">
-                    <button type="submit" class="btn-link btn-danger">Delete</button>
-                </form>
-            </div>
-            {{end}}
         </div>
         {{else}}
         <p class="empty-state">No education added yet.</p>
@@ -264,9 +237,7 @@
 
     <div class="profile-card">
         <h2>Skills</h2>
-        {{if .IsOwnProfile}}
-        <a href="/profile/skills/edit" class="card-action">+ Add</a>
-        {{end}} {{if .SkillViews}}
+        {{if .SkillViews}}
         <div class="skills-list">
             {{range .SkillViews}}
             <div class="skill-item">
@@ -294,17 +265,6 @@
     </div>
     {{end}}
 </div>
-{{end}}
-
-{{define "scripts"}}
-<script>
-    var avatarInput = document.getElementById('avatar');
-    if (avatarInput) {
-        avatarInput.addEventListener('change', function() {
-            this.closest('form').submit();
-        });
-    }
-</script>
 {{end}}
 
 {{template "base" .}}

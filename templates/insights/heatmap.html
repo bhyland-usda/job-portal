@@ -1,25 +1,7 @@
 {{define "title"}}Skills Heat Map{{end}}
 
 {{define "content"}}
-<style>
-  .heatmap-card { background:#fff; border:1px solid #e0e0e0; border-radius:8px; padding:24px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
-  .heatmap-card h2 { margin:0 0 4px; }
-  .heatmap-sub { color:#666; margin:0 0 20px; font-size:14px; }
-  .heatmap-scroll { overflow-x:auto; }
-  table.heatmap { border-collapse:collapse; width:100%; font-size:13px; }
-  table.heatmap th, table.heatmap td { border:1px solid #e8e8e8; padding:0; text-align:center; }
-  table.heatmap thead th { background:#f5f7f5; padding:8px 6px; font-weight:600; vertical-align:bottom; }
-  table.heatmap thead th.corner { background:#fff; border:none; }
-  table.heatmap th.skill span { display:inline-block; white-space:nowrap; }
-  table.heatmap tbody th.dept { background:#f5f7f5; padding:8px 12px; text-align:left; font-weight:600; white-space:nowrap; }
-  .heat-cell { display:block; padding:10px 8px; min-width:44px; font-weight:600; color:#1b3a1b; }
-  .heat-cell.zero { color:#bbb; font-weight:400; }
-  .heatmap-legend { display:flex; align-items:center; gap:8px; margin-top:16px; font-size:13px; color:#555; }
-  .legend-swatch { width:120px; height:14px; border-radius:3px; border:1px solid #e0e0e0;
-    background:linear-gradient(to right, #ffffff, #2e7d32); }
-  .heatmap-empty { color:#777; padding:24px 0; }
-</style>
-
+<div class="heatmap-layout">
 <div class="heatmap-card">
   <h2>Skills Heat Map</h2>
   <p class="heatmap-sub">Number of employees per department holding each skill. Darker cells indicate more employees.</p>
@@ -58,6 +40,7 @@
   {{else}}
   <p class="heatmap-empty">No skill data available yet. Once employees add skills and are assigned to departments, the heat map will populate here.</p>
   {{end}}
+</div>
 </div>
 {{end}}
 

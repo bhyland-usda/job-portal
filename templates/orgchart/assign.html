@@ -1,18 +1,14 @@
 {{define "title"}}Assign Managers{{end}}
 
 {{define "content"}}
-<style>
-.orgchart-assign-layout { max-width: 960px; margin: 0 auto; }
-.orgchart-assign-layout .form-hint { color: #56687a; font-size: 0.9em; margin-top: -8px; margin-bottom: 14px; }
-</style>
 <div class="orgchart-assign-layout">
     <div class="profile-card">
         <h2>Assign Managers</h2>
         {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
-        <form method="POST" action="/admin/orgchart">
+        <form method="POST" action="/admin/orgchart" data-orgchart-form>
             <div class="form-group">
                 <label for="employee_id">Employee</label>
-                <select id="employee_id" name="employee_id" required>
+                <select id="employee_id" name="employee_id" required data-initial-value="">
                     <option value="">Select an employee…</option>
                     {{range .Users}}
                     <option value="{{.ID}}">{{.Name}}</option>
@@ -21,7 +17,7 @@
             </div>
             <div class="form-group">
                 <label for="manager_id">Reports To (Manager)</label>
-                <select id="manager_id" name="manager_id">
+                <select id="manager_id" name="manager_id" data-initial-value="">
                     <option value="">No manager (top of chart)</option>
                     {{range .Users}}
                     <option value="{{.ID}}">{{.Name}}</option>
@@ -29,11 +25,37 @@
                 </select>
             </div>
             <p class="form-hint">An employee cannot be their own manager. Choosing "No manager" places them at the top of the chart.</p>
-            <button type="submit" class="btn btn-primary">Save Reporting Relationship</button>
+            <button type="submit" class="btn btn-primary" id="orgchart-submit" disabled>Save Reporting Relationship</button>
         </form>
-        <a href="/orgchart" class="back-link" style="display:inline-block;margin-top:16px;">← Back to Org Chart</a>
+        <a href="/orgchart" class="back-link orgchart-back-link">← Back to Org Chart</a>
     </div>
 </div>
+{{end}}
+
+{{define "scripts"}}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var form = document.querySelector('[data-orgchart-form]');
+  if (!form) return;
+
+  var employee = form.querySelector('#employee_id');
+  var manager = form.querySelector('#manager_id');
+  var submit = form.querySelector('#orgchart-submit');
+  if (!employee || !manager || !submit) return;
+
+  function syncState() {
+    var hasEmployee = (employee.value || '').trim() !== '';
+    var validPair = employee.value !== manager.value;
+    submit.disabled = !(hasEmployee && validPair);
+  }
+
+  employee.addEventListener('change', syncState);
+  employee.addEventListener('input', syncState);
+  manager.addEventListener('change', syncState);
+  manager.addEventListener('input', syncState);
+  syncState();
+});
+</script>
 {{end}}
 
 {{template "base" .}}

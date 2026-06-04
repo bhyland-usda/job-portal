@@ -4,9 +4,11 @@ services:
     ports:
       - "8080:8080"
     environment:
+      - APP_ENV=development
       - DATABASE_URL=postgres://jobportal:jobportal@db:5432/jobportal?sslmode=disable
       - REDIS_URL=redis://redis:6379
       - SESSION_SECRET=change-me-in-production
+      - SECURE_COOKIES=false
     depends_on:
       db:
         condition: service_healthy
@@ -20,7 +22,7 @@ services:
       POSTGRES_PASSWORD: jobportal
       POSTGRES_DB: jobportal
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -32,7 +34,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s

@@ -1,0 +1,140 @@
+.orgchart-layout {
+  max-width: 1080px;
+  margin: 0 auto;
+}
+
+.orgchart-tree,
+.orgchart-tree ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.orgchart-tree ul {
+  margin-top: 16px;
+}
+
+.orgchart-graph {
+  display: flex;
+  justify-content: center;
+}
+
+.orgchart-graph > li,
+.orgchart-children > li {
+  position: relative;
+  padding: 0 12px;
+}
+
+.orgchart-children {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  padding-top: 22px;
+}
+
+.orgchart-children::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 2px;
+  height: 20px;
+  background: var(--border);
+  transform: translateX(-50%);
+}
+
+.orgchart-children > li::before {
+  content: "";
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  width: 2px;
+  height: 12px;
+  background: var(--border);
+  transform: translateX(-50%);
+}
+
+.orgchart-children > li:not(:only-child)::after {
+  content: "";
+  position: absolute;
+  top: -12px;
+  left: calc(-50% + 12px);
+  width: calc(100% + 24px);
+  height: 2px;
+  background: var(--border);
+}
+
+.org-node {
+  padding: 10px 14px;
+  margin: 6px 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-width: 210px;
+  text-align: center;
+}
+
+.org-node .org-name {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.org-node .org-headline {
+  color: var(--text-secondary);
+  font-size: 0.9em;
+  margin-top: 2px;
+}
+
+.org-node .org-dept {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 0.78em;
+  color: var(--accent);
+  background: var(--accent-light);
+  border-radius: 10px;
+  padding: 1px 9px;
+}
+
+.org-empty {
+  color: var(--text-secondary);
+}
+
+.orgchart-assign-layout {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.orgchart-assign-layout .form-hint {
+  color: var(--text-secondary);
+  font-size: 0.9em;
+  margin-top: -8px;
+  margin-bottom: 14px;
+}
+
+.orgchart-back-link {
+  display: inline-block;
+  margin-top: 16px;
+}
+
+@media (max-width: 900px) {
+  .orgchart-graph,
+  .orgchart-children {
+    display: block;
+  }
+
+  .orgchart-children::before,
+  .orgchart-children > li::before,
+  .orgchart-children > li::after {
+    display: none;
+  }
+
+  .orgchart-graph > li,
+  .orgchart-children > li {
+    padding: 0;
+  }
+
+  .org-node {
+    text-align: left;
+    min-width: 0;
+  }
+}

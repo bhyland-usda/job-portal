@@ -277,6 +277,60 @@
   border-color: var(--primary);
 }
 
+/* AUP */
+.aup-layout {
+  max-width: 1128px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.aup-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 32px;
+}
+
+.aup-card h2 {
+  margin-top: 0;
+}
+
+.aup-policy {
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.aup-policy h3 {
+  margin-top: 24px;
+  margin-bottom: 8px;
+  font-size: 1.05rem;
+}
+
+.aup-policy ul {
+  margin: 8px 0 8px 20px;
+}
+
+.aup-policy li {
+  margin-bottom: 6px;
+}
+
+.aup-actions {
+  margin-top: 28px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.aup-accepted-note {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.aup-meta {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
 /* Dark mode period badges */
 .dark-mode .period-quarterly { background: rgba(0,71,133,0.2); color: var(--primary); }
 .dark-mode .period-yearly { background: rgba(0,89,65,0.2); color: var(--accent); }
