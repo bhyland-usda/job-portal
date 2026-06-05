@@ -446,22 +446,40 @@ echo "  Likes and comments seeded."
 echo "[8/23] Seeding postings (10)..."
 ###############################################################################
 run_sql <<'EOSQL'
-INSERT INTO postings (id, author_id, title, description, type, location, department, status)
-SELECT gen_random_uuid(), u.id, t.title, t.descr, t.ptype, t.loc, t.dept, 'active'
+INSERT INTO postings (id, author_id, title, description, type, location, department, location_type, status)
+SELECT gen_random_uuid(), u.id, t.title, t.descr, t.ptype, t.loc, t.dept, t.ltype, 'active'
 FROM (VALUES
-  ('clark.kent@usda.gov','Cloud Migration Engineer','Looking for an engineer to migrate NRCS legacy systems to AWS GovCloud. FedRAMP experience required. 12-month detail.','detail','Fort Collins, CO','NRCS'),
-  ('clark.kent@usda.gov','Soil Health Dashboard Project','Build an interactive dashboard for soil health metrics. Need GIS and data visualization skills. 6-month project.','project','Washington, DC','NRCS'),
-  ('bruce.wayne@usda.gov','Cybersecurity Incident Response Lead','Senior analyst to lead incident response. CISSP required. Must be comfortable working nights.','detail','Kansas City, MO','OCIO'),
-  ('bruce.wayne@usda.gov','Zero Trust Architecture Implementation','Project to implement zero-trust security across USDA networks. 9-month engagement.','project','Washington, DC','OCIO'),
-  ('diana.prince@usda.gov','Platform Tester - JobPortal QA','Detail to test the new USDA JobPortal before agency-wide launch. Web app testing experience needed.','detail','Washington, DC','Rural Development'),
-  ('ororo.munroe@usda.gov','Climate Resilience Data Scientist','Seeking a data scientist to model climate impacts on crop yields. Python and R required.','detail','College Park, MD','ARS'),
-  ('felicity.smoak@usda.gov','AI Ethics Policy Analyst','Develop ethical AI guidelines for USDA applications. Policy and technology background needed.','detail','Washington, DC','OCIO'),
-  ('charles.xavier@usda.gov','Training Content Developer','Create e-learning modules for the new employee onboarding system. Instructional design experience required.','detail','Frederick, MD','APHIS'),
-  ('michael.holt@usda.gov','Data Pipeline Engineer','Build ETL pipelines for agricultural research data. Spark and Python experience required.','detail','Beltsville, MD','ARS'),
-  ('clark.kent@usda.gov','GIS Web Application Developer','Build an interactive web map for soil survey data. Leaflet.js and PostGIS. Completed.','project','Fort Collins, CO','NRCS')
-) AS t(email, title, descr, ptype, loc, dept)
+  ('clark.kent@usda.gov','Cloud Migration Engineer','Looking for an engineer to migrate NRCS legacy systems to AWS GovCloud. FedRAMP experience required. 12-month detail.','detail','Fort Collins, CO','NRCS','hybrid'),
+  ('clark.kent@usda.gov','Soil Health Dashboard Project','Build an interactive dashboard for soil health metrics. Need GIS and data visualization skills. 6-month project.','project','Washington, DC','NRCS','onsite'),
+  ('bruce.wayne@usda.gov','Cybersecurity Incident Response Lead','Senior analyst to lead incident response. CISSP required. Must be comfortable working nights.','detail','Kansas City, MO','OCIO','onsite'),
+  ('bruce.wayne@usda.gov','Zero Trust Architecture Implementation','Project to implement zero-trust security across USDA networks. 9-month engagement.','project','Washington, DC','OCIO','hybrid'),
+  ('diana.prince@usda.gov','Platform Tester - JobPortal QA','Detail to test the new USDA JobPortal before agency-wide launch. Web app testing experience needed.','detail','Washington, DC','Rural Development','onsite'),
+  ('ororo.munroe@usda.gov','Climate Resilience Data Scientist','Seeking a data scientist to model climate impacts on crop yields. Python and R required.','detail','College Park, MD','ARS','hybrid'),
+  ('felicity.smoak@usda.gov','AI Ethics Policy Analyst','Develop ethical AI guidelines for USDA applications. Policy and technology background needed.','detail','Washington, DC','OCIO','remote'),
+  ('charles.xavier@usda.gov','Training Content Developer','Create e-learning modules for the new employee onboarding system. Instructional design experience required.','detail','Frederick, MD','APHIS','remote'),
+  ('michael.holt@usda.gov','Data Pipeline Engineer','Build ETL pipelines for agricultural research data. Spark and Python experience required.','detail','Beltsville, MD','ARS','hybrid'),
+  ('clark.kent@usda.gov','GIS Web Application Developer','Build an interactive web map for soil survey data. Leaflet.js and PostGIS. Completed.','project','Fort Collins, CO','NRCS','onsite')
+) AS t(email, title, descr, ptype, loc, dept, ltype)
 JOIN users u ON u.email = t.email
 WHERE NOT EXISTS (SELECT 1 FROM postings p WHERE p.title = t.title);
+
+-- Ensure location_type is populated for this seeded title set on re-runs too.
+UPDATE postings p
+SET location_type = t.ltype
+FROM (VALUES
+  ('Cloud Migration Engineer','hybrid'),
+  ('Soil Health Dashboard Project','onsite'),
+  ('Cybersecurity Incident Response Lead','onsite'),
+  ('Zero Trust Architecture Implementation','hybrid'),
+  ('Platform Tester - JobPortal QA','onsite'),
+  ('Climate Resilience Data Scientist','hybrid'),
+  ('AI Ethics Policy Analyst','remote'),
+  ('Training Content Developer','remote'),
+  ('Data Pipeline Engineer','hybrid'),
+  ('GIS Web Application Developer','onsite')
+) AS t(title, ltype)
+WHERE p.title = t.title
+  AND (p.location_type IS NULL OR p.location_type = '' OR p.location_type <> t.ltype);
 
 -- Close the completed one
 UPDATE postings SET status = 'closed' WHERE title = 'GIS Web Application Developer';

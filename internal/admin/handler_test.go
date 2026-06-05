@@ -127,9 +127,66 @@ func TestShowDashboardRendersMetrics(t *testing.T) {
 		"role_change", // recent audit
 		"New Bie",     // recent signup
 		"newbie@usda.gov",
+		"/admin/semantic-health",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("expected dashboard to contain %q, got:\n%s", want, body)
+		}
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("unmet expectations: %v", err)
+	}
+}
+
+func TestShowSemanticHealthRendersCoverageAndSamples(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("failed to create mock db: %v", err)
+	}
+	defer db.Close()
+
+	tmpl := template.Must(template.ParseFiles(
+		"../../templates/layouts/base.html",
+		"../../templates/layouts/navbar.html",
+		"../../templates/admin/semantic.html",
+	))
+	pages := map[string]*template.Template{"admin_semantic.html": tmpl}
+	h := NewHandler(db, pages)
+
+	now := time.Now()
+	mock.ExpectQuery(`FROM postings`).
+		WithArgs("opportunity").
+		WillReturnRows(sqlmock.NewRows([]string{"total", "embedded", "missing", "stale"}).AddRow(10, 8, 2, 1))
+	mock.ExpectQuery(`FROM workspaces`).
+		WithArgs("workspace").
+		WillReturnRows(sqlmock.NewRows([]string{"total", "embedded", "missing", "stale"}).AddRow(6, 6, 0, 0))
+	mock.ExpectQuery(`UNION ALL`).
+		WillReturnRows(sqlmock.NewRows([]string{"entity_type", "id", "name", "updated_at", "reason"}).
+			AddRow("opportunity", "opp-1", "Data Modernization", now, "stale embedding").
+			AddRow("workspace", "ws-1", "Platform Guild", now, "missing embedding"))
+
+	req := httptest.NewRequest("GET", "/admin/semantic-health", nil)
+	req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, "admin-1"))
+	rec := httptest.NewRecorder()
+
+	h.showSemanticHealth(rec, req)
+
+	if rec.Code != 200 {
+		t.Fatalf("expected 200, got %d; body=%s", rec.Code, rec.Body.String())
+	}
+	body := rec.Body.String()
+	for _, want := range []string{
+		"Semantic Health",
+		"Opportunities",
+		"Workspaces",
+		"Data Modernization",
+		"Platform Guild",
+		"stale embedding",
+		"missing embedding",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("expected semantic page to contain %q, got:\n%s", want, body)
 		}
 	}
 

@@ -15,6 +15,8 @@ import (
 	"github.com/bhyland-usda/job-portal/internal/attachment"
 	"github.com/bhyland-usda/job-portal/internal/badge"
 	"github.com/bhyland-usda/job-portal/internal/middleware"
+	"github.com/bhyland-usda/job-portal/internal/semantic"
+	"github.com/bhyland-usda/job-portal/internal/skillgraph"
 )
 
 type PostingAttachment struct {
@@ -67,9 +69,14 @@ type PostingPage struct {
 
 type SearchPage struct {
 	middleware.BaseData
-	Query    string
-	Type     string
-	Postings []Posting
+	Query                string
+	Type                 string
+	Postings             []Posting
+	SearchLocationRemote bool
+	SearchLocationHybrid bool
+	SearchLocationOnsite bool
+	HasSearchCriteria    bool
+	ResultMode           string
 }
 
 type CreatePage struct {
@@ -366,6 +373,8 @@ func (h *Handler) handleCreate(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+
+	h.syncOpportunityEmbedding(r.Context(), postingID)
 
 	http.Redirect(w, r, "/opportunities/"+postingID, http.StatusSeeOther)
 }
@@ -705,11 +714,43 @@ func (h *Handler) showHistory(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) searchPostings(w http.ResponseWriter, r *http.Request) {
 	query := strings.TrimSpace(r.URL.Query().Get("q"))
 	postingType := r.URL.Query().Get("type")
+	searchLocationPref := locationTypePreferenceFromQuery(r)
+	userID := middleware.GetUserID(r.Context())
 
 	data := SearchPage{
-		BaseData: middleware.NewBaseData(r),
-		Query:    query,
-		Type:     postingType,
+		BaseData:             middleware.NewBaseData(r),
+		Query:                query,
+		Type:                 postingType,
+		SearchLocationRemote: searchLocationPref.Remote,
+		SearchLocationHybrid: searchLocationPref.Hybrid,
+		SearchLocationOnsite: searchLocationPref.Onsite,
+		HasSearchCriteria:    query != "" || postingType != "" || !searchLocationPref.IsAll(),
+	}
+
+	if query == "" && postingType == "" && searchLocationPref.IsAll() {
+		recommended, err := GetMatchedPostings(h.db, r.Context(), userID, semantic.EnabledForRequest(r), searchLocationPref)
+		if err != nil {
+			slog.Error("failed to load matched postings for browse view; using active postings fallback", "error", err)
+		} else {
+			if len(recommended) > 0 {
+				data.Postings = recommended
+				data.ResultMode = "Showing recommended opportunities for your profile."
+				h.pages["posting_search.html"].ExecuteTemplate(w, "base", data)
+				return
+			}
+		}
+	}
+
+	if semantic.EnabledForRequest(r) && query != "" {
+		semanticMatches, err := h.searchPostingsByVector(r.Context(), query, postingType, searchLocationPref)
+		if err != nil {
+			slog.Error("semantic posting search failed; falling back to keyword search", "error", err)
+		} else if len(semanticMatches) > 0 {
+			data.Postings = semanticMatches
+			data.ResultMode = "Showing ranked search matches."
+			h.pages["posting_search.html"].ExecuteTemplate(w, "base", data)
+			return
+		}
 	}
 
 	args := []interface{}{}
@@ -728,6 +769,13 @@ func (h *Handler) searchPostings(w http.ResponseWriter, r *http.Request) {
 		conditions = append(conditions, fmt.Sprintf("p.type = $%d", argIdx))
 		args = append(args, postingType)
 		argIdx++
+	}
+
+	locationTypeCondition, locationTypeArgs, nextArg := locationTypeWhereClause(searchLocationPref, argIdx)
+	if locationTypeCondition != "" {
+		conditions = append(conditions, locationTypeCondition)
+		args = append(args, locationTypeArgs...)
+		argIdx = nextArg
 	}
 
 	sql := fmt.Sprintf(`SELECT p.id, p.author_id,
@@ -757,7 +805,82 @@ func (h *Handler) searchPostings(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if query == "" {
+		if postingType != "" || !searchLocationPref.IsAll() {
+			data.ResultMode = "Showing active opportunities matching your filters."
+		} else {
+			data.ResultMode = "Showing all active opportunities."
+		}
+	}
+
 	h.pages["posting_search.html"].ExecuteTemplate(w, "base", data)
+}
+
+func filterPostingsByType(postings []Posting, postingType string) []Posting {
+	postingType = strings.TrimSpace(strings.ToLower(postingType))
+	if postingType == "" {
+		return postings
+	}
+
+	filtered := make([]Posting, 0, len(postings))
+	for _, posting := range postings {
+		if strings.ToLower(strings.TrimSpace(posting.Type)) == postingType {
+			filtered = append(filtered, posting)
+		}
+	}
+	return filtered
+}
+
+func (h *Handler) searchPostingsByVector(ctx context.Context, query, postingType string, locationPref semantic.LocationTypePreference) ([]Posting, error) {
+	vec := semantic.GenerateEmbedding(query)
+	vecLiteral := semantic.ToPGVectorLiteral(vec)
+
+	args := []interface{}{semantic.EntityTypeOpportunity, vecLiteral}
+	conditions := []string{"p.status = 'active'"}
+	argIdx := 3
+	if postingType != "" {
+		conditions = append(conditions, fmt.Sprintf("p.type = $%d", argIdx))
+		args = append(args, postingType)
+		argIdx++
+	}
+
+	locationTypeCondition, locationTypeArgs, _ := locationTypeWhereClause(locationPref, argIdx)
+	if locationTypeCondition != "" {
+		conditions = append(conditions, locationTypeCondition)
+		args = append(args, locationTypeArgs...)
+	}
+
+	rows, err := h.db.QueryContext(ctx,
+		`SELECT p.id, p.author_id,
+				CONCAT(u.first_name, ' ', u.last_name),
+				p.title, p.description, p.type,
+				COALESCE(p.location, ''), COALESCE(p.department, ''),
+				p.status, p.created_at
+		 FROM postings p
+		 JOIN users u ON u.id = p.author_id
+		 JOIN semantic_embeddings se
+		   ON se.entity_type = $1 AND se.entity_id = p.id
+		 WHERE `+strings.Join(conditions, " AND ")+`
+		 ORDER BY se.embedding <=> $2::vector, p.created_at DESC
+		 LIMIT 50`,
+		args...,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var postings []Posting
+	for rows.Next() {
+		var p Posting
+		if err := rows.Scan(&p.ID, &p.AuthorID, &p.AuthorName, &p.Title,
+			&p.Description, &p.Type, &p.Location, &p.Department,
+			&p.Status, &p.CreatedAt); err != nil {
+			continue
+		}
+		postings = append(postings, p)
+	}
+	return postings, rows.Err()
 }
 
 func (h *Handler) loadPosting(ctx context.Context, postingID string) (Posting, error) {
@@ -1235,12 +1358,97 @@ func (h *Handler) handleEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.syncOpportunityEmbedding(r.Context(), oppID)
+
 	http.Redirect(w, r, "/opportunities/"+oppID, http.StatusSeeOther)
+}
+
+func (h *Handler) syncOpportunityEmbedding(ctx context.Context, postingID string) {
+	if !semantic.Enabled() {
+		return
+	}
+
+	if err := semantic.UpsertOpportunityEmbeddingByID(ctx, h.db, postingID); err != nil {
+		slog.Error("failed to upsert opportunity embedding", "posting_id", postingID, "error", err)
+	}
 }
 
 // HELPERS
 
-func GetMatchedPostings(db *sql.DB, ctx context.Context, userID string) ([]Posting, error) {
+func GetMatchedPostings(db *sql.DB, ctx context.Context, userID string, matchingEnabled bool, locationPref semantic.LocationTypePreference) ([]Posting, error) {
+	if matchingEnabled && skillgraph.Enabled() {
+		graphMatches, err := getMatchedPostingsBySkillGraph(ctx, db, userID, locationPref)
+		if err != nil {
+			slog.Error("skill-graph matched postings query failed; using semantic/vector fallback", "error", err)
+		} else if len(graphMatches) > 0 {
+			return graphMatches, nil
+		}
+	}
+
+	if matchingEnabled && semantic.Enabled() {
+		text, err := userOpportunityCorpus(ctx, db, userID)
+		if err != nil {
+			slog.Error("failed to build user opportunity corpus", "user_id", userID, "error", err)
+		} else if text != "" {
+			conditions := []string{"p.status = 'active'"}
+			args := []interface{}{semantic.EntityTypeOpportunity, semantic.ToPGVectorLiteral(semantic.GenerateEmbedding(text))}
+			locationTypeCondition, locationTypeArgs, _ := locationTypeWhereClause(locationPref, 3)
+			if locationTypeCondition != "" {
+				conditions = append(conditions, locationTypeCondition)
+				args = append(args, locationTypeArgs...)
+			}
+
+			rows, err := db.QueryContext(ctx,
+				`SELECT p.id, p.author_id,
+						CONCAT(u.first_name, ' ', u.last_name),
+						p.title, p.description, p.type,
+						COALESCE(p.location, ''), COALESCE(p.department, ''),
+						p.status, p.created_at
+				 FROM postings p
+				 JOIN users u ON u.id = p.author_id
+				 JOIN semantic_embeddings se
+				   ON se.entity_type = $1 AND se.entity_id = p.id
+				 WHERE `+strings.Join(conditions, " AND ")+`
+				 ORDER BY se.embedding <=> $2::vector, p.created_at DESC
+				 LIMIT 50`,
+				args...,
+			)
+			if err == nil {
+				defer rows.Close()
+				var postings []Posting
+				for rows.Next() {
+					var posting Posting
+					if err := rows.Scan(&posting.ID, &posting.AuthorID, &posting.AuthorName, &posting.Title,
+						&posting.Description, &posting.Type, &posting.Location, &posting.Department,
+						&posting.Status, &posting.CreatedAt); err != nil {
+						continue
+					}
+					postings = append(postings, posting)
+				}
+				if rows.Err() == nil && len(postings) > 0 {
+					return postings, nil
+				}
+			} else {
+				slog.Error("semantic matched postings query failed; using exact skill fallback", "error", err)
+			}
+		}
+	}
+
+	conditions := []string{
+		"p.status = 'active'",
+		`EXISTS(
+			SELECT 1 FROM posting_skills ps
+			JOIN skills s ON LOWER(s.name) = LOWER(ps.skill_name)
+			WHERE ps.posting_id = p.id AND s.user_id = $1
+		)`,
+	}
+	args := []interface{}{userID}
+	locationTypeCondition, locationTypeArgs, _ := locationTypeWhereClause(locationPref, 2)
+	if locationTypeCondition != "" {
+		conditions = append(conditions, locationTypeCondition)
+		args = append(args, locationTypeArgs...)
+	}
+
 	rows, err := db.QueryContext(ctx,
 		`SELECT p.id, p.author_id,
 			CONCAT(u.first_name, ' ', u.last_name),
@@ -1249,15 +1457,10 @@ func GetMatchedPostings(db *sql.DB, ctx context.Context, userID string) ([]Posti
 			p.status, p.created_at
 		FROM postings p
 		JOIN users u ON u.id = p.author_id
-		WHERE p.status = 'active'
-			AND EXISTS(
-				SELECT 1 FROM posting_skills ps
-				JOIN skills s ON LOWER(s.name) = LOWER(ps.skill_name)
-				WHERE ps.posting_id = p.id AND s.user_id = $1
-			) 
+		WHERE `+strings.Join(conditions, " AND ")+`
 		ORDER BY p.created_at DESC
 		LIMIT 50`,
-		userID,
+		args...,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("query postings: %w", err)
@@ -1275,6 +1478,156 @@ func GetMatchedPostings(db *sql.DB, ctx context.Context, userID string) ([]Posti
 		postings = append(postings, posting)
 	}
 	return postings, rows.Err()
+}
+
+func getMatchedPostingsBySkillGraph(ctx context.Context, db *sql.DB, userID string, locationPref semantic.LocationTypePreference) ([]Posting, error) {
+	locationTypeCondition, locationTypeArgs, _ := locationTypeWhereClause(locationPref, 2)
+	locationTypeFilter := ""
+	if locationTypeCondition != "" {
+		locationTypeFilter = " AND " + locationTypeCondition
+	}
+
+	args := []interface{}{userID}
+	args = append(args, locationTypeArgs...)
+
+	rows, err := db.QueryContext(ctx,
+		`WITH user_skills AS (
+		    SELECT DISTINCT COALESCE(sa.canonical_skill, lower(s.name)) AS skill
+		    FROM skills s
+		    LEFT JOIN skill_aliases sa ON sa.alias_skill = lower(s.name)
+		    WHERE s.user_id = $1
+		),
+		posting_required AS (
+		    SELECT p.id AS posting_id,
+		           COALESCE(sa.canonical_skill, lower(ps.skill_name)) AS skill
+		    FROM postings p
+		    JOIN posting_skills ps ON ps.posting_id = p.id
+		    LEFT JOIN skill_aliases sa ON sa.alias_skill = lower(ps.skill_name)
+		    WHERE p.status = 'active'
+		),
+		exact_scores AS (
+		    SELECT pr.posting_id, COUNT(DISTINCT pr.skill)::float8 AS exact_score
+		    FROM posting_required pr
+		    JOIN user_skills us ON us.skill = pr.skill
+		    GROUP BY pr.posting_id
+		),
+		adjacent_scores AS (
+		    SELECT pr.posting_id,
+		           COALESCE(SUM(GREATEST(0, LEAST(1, sg.weight))), 0)::float8 AS adjacent_score
+		    FROM posting_required pr
+		    JOIN skill_adjacency sg ON sg.to_skill = pr.skill
+		    JOIN user_skills us ON us.skill = sg.from_skill
+		    GROUP BY pr.posting_id
+		)
+		SELECT p.id, p.author_id,
+		       CONCAT(u.first_name, ' ', u.last_name),
+		       p.title, p.description, p.type,
+		       COALESCE(p.location, ''), COALESCE(p.department, ''),
+		       p.status, p.created_at,
+		       COALESCE(es.exact_score, 0) AS exact_score,
+		       COALESCE(ads.adjacent_score, 0) AS adjacent_score,
+		       (COALESCE(es.exact_score, 0) + COALESCE(ads.adjacent_score, 0) * 0.35) AS total_score
+		FROM postings p
+		JOIN users u ON u.id = p.author_id
+		LEFT JOIN exact_scores es ON es.posting_id = p.id
+		LEFT JOIN adjacent_scores ads ON ads.posting_id = p.id
+		WHERE p.status = 'active'
+		  AND (COALESCE(es.exact_score, 0) > 0 OR COALESCE(ads.adjacent_score, 0) > 0)
+		  `+locationTypeFilter+`
+		ORDER BY total_score DESC, p.created_at DESC
+		LIMIT 50`,
+		args...,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var postings []Posting
+	for rows.Next() {
+		var posting Posting
+		var exactScore, adjacentScore, totalScore float64
+		if err := rows.Scan(&posting.ID, &posting.AuthorID, &posting.AuthorName, &posting.Title,
+			&posting.Description, &posting.Type, &posting.Location, &posting.Department,
+			&posting.Status, &posting.CreatedAt, &exactScore, &adjacentScore, &totalScore); err != nil {
+			continue
+		}
+		postings = append(postings, posting)
+	}
+	return postings, rows.Err()
+}
+
+func locationTypePreferenceFromQuery(r *http.Request) semantic.LocationTypePreference {
+	values := r.URL.Query()["location_type"]
+	if len(values) == 0 {
+		// Empty-query wildcard searches should still respect the currently applied
+		// location preference unless explicit location filters are provided.
+		return semantic.LocationTypePreferenceForRequest(r)
+	}
+
+	pref := semantic.LocationTypePreference{}
+	for _, v := range values {
+		switch strings.ToLower(strings.TrimSpace(v)) {
+		case "remote":
+			pref.Remote = true
+		case "hybrid":
+			pref.Hybrid = true
+		case "onsite", "on-site":
+			pref.Onsite = true
+		}
+	}
+
+	if len(pref.Selected()) == 0 {
+		return semantic.DefaultLocationTypePreference()
+	}
+	return pref
+}
+
+func locationTypeWhereClause(pref semantic.LocationTypePreference, startArg int) (string, []interface{}, int) {
+	selected := pref.Selected()
+	if len(selected) == 0 || pref.IsAll() {
+		return "", nil, startArg
+	}
+
+	placeholders := make([]string, 0, len(selected))
+	args := make([]interface{}, 0, len(selected))
+	arg := startArg
+	for _, locationType := range selected {
+		placeholders = append(placeholders, fmt.Sprintf("$%d", arg))
+		args = append(args, locationType)
+		arg++
+	}
+
+	inferredLocationType := `CASE
+		WHEN LOWER(COALESCE(p.location, '')) LIKE '%remote%' THEN 'remote'
+		WHEN LOWER(COALESCE(p.location, '')) LIKE '%hybrid%' THEN 'hybrid'
+		WHEN LOWER(COALESCE(p.location, '')) LIKE '%on-site%'
+		  OR LOWER(COALESCE(p.location, '')) LIKE '%onsite%'
+		  OR LOWER(COALESCE(p.location, '')) LIKE '%on site%' THEN 'onsite'
+		ELSE NULL
+	END`
+
+	normalizedLocationType := "LOWER(COALESCE(NULLIF(p.location_type, ''), " + inferredLocationType + "))"
+	return normalizedLocationType + " IN (" + strings.Join(placeholders, ", ") + ")", args, arg
+}
+
+func userOpportunityCorpus(ctx context.Context, db *sql.DB, userID string) (string, error) {
+	var headline, about, skills sql.NullString
+	err := db.QueryRowContext(ctx,
+		`SELECT COALESCE(u.headline, ''),
+		        COALESCE(u.about, ''),
+		        COALESCE(string_agg(s.name, ' '), '')
+		 FROM users u
+		 LEFT JOIN skills s ON s.user_id = u.id
+		 WHERE u.id = $1
+		 GROUP BY u.id, u.headline, u.about`,
+		userID,
+	).Scan(&headline, &about, &skills)
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(strings.Join([]string{headline.String, about.String, skills.String}, "\n")), nil
 }
 
 func parseISODate(raw string) (time.Time, error) {

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/bhyland-usda/job-portal/internal/middleware"
+	"github.com/bhyland-usda/job-portal/internal/semantic"
 )
 
 type User struct {
@@ -88,6 +89,34 @@ type DashboardPage struct {
 	RecentAudit            []AuditEntry
 }
 
+// SemanticCoverageRow is a single semantic-coverage metric row for an entity
+// type (opportunities or workspaces).
+type SemanticCoverageRow struct {
+	Label    string
+	Total    int
+	Embedded int
+	Missing  int
+	Stale    int
+}
+
+// SemanticStaleItem is one stale or missing semantic entity sample shown on
+// the diagnostics page.
+type SemanticStaleItem struct {
+	EntityType string
+	EntityID   string
+	Name       string
+	UpdatedAt  time.Time
+	Reason     string
+}
+
+// SemanticPage backs templates/admin/semantic.html.
+type SemanticPage struct {
+	middleware.BaseData
+	Enabled  bool
+	Coverage []SemanticCoverageRow
+	Samples  []SemanticStaleItem
+}
+
 // ReportPage backs templates/admin/report.html. It is a standalone print page
 // and therefore does not embed middleware.BaseData (no app chrome).
 type ReportPage struct {
@@ -117,8 +146,103 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, requireAuth, requireAdmin f
 	mux.Handle("POST /admin/users/{id}/delete", requireAuth(requireAdmin(http.HandlerFunc(h.deleteUser))))
 	mux.Handle("GET /admin/audit", requireAuth(requireAdmin(http.HandlerFunc(h.showAudit))))
 	mux.Handle("GET /admin/dashboard", requireAuth(requireAdmin(http.HandlerFunc(h.showDashboard))))
+	mux.Handle("GET /admin/semantic-health", requireAuth(requireAdmin(http.HandlerFunc(h.showSemanticHealth))))
 	mux.Handle("GET /admin/report", requireAuth(requireAdmin(http.HandlerFunc(h.showReport))))
 	mux.Handle("GET /me/role", requireAuth(http.HandlerFunc(h.getRole)))
+}
+
+func (h *Handler) showSemanticHealth(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	data := SemanticPage{
+		BaseData: middleware.NewBaseData(r),
+		Enabled:  semantic.Enabled(),
+	}
+
+	type coverageQuery struct {
+		label      string
+		entityType string
+		tableName  string
+		freshCol   string
+	}
+
+	queries := []coverageQuery{
+		{label: "Opportunities", entityType: semantic.EntityTypeOpportunity, tableName: "postings", freshCol: "updated_at"},
+		{label: "Workspaces", entityType: semantic.EntityTypeWorkspace, tableName: "workspaces", freshCol: "created_at"},
+	}
+
+	for _, q := range queries {
+		var row SemanticCoverageRow
+		row.Label = q.label
+		countSQL := fmt.Sprintf(
+			`SELECT
+				COUNT(*) AS total,
+				COUNT(se.entity_id) AS embedded,
+				COUNT(*) FILTER (WHERE se.entity_id IS NULL) AS missing,
+				COUNT(*) FILTER (WHERE se.entity_id IS NOT NULL AND t.%s > se.updated_at) AS stale
+			 FROM %s t
+			 LEFT JOIN semantic_embeddings se
+			   ON se.entity_type = $1 AND se.entity_id = t.id`,
+			q.freshCol,
+			q.tableName,
+		)
+		if err := h.db.QueryRowContext(ctx, countSQL, q.entityType).Scan(&row.Total, &row.Embedded, &row.Missing, &row.Stale); err != nil {
+			slog.Error("semantic health: failed to load coverage", "entity_type", q.entityType, "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		data.Coverage = append(data.Coverage, row)
+	}
+
+	rows, err := h.db.QueryContext(ctx,
+		`SELECT 'opportunity' AS entity_type,
+		        p.id,
+		        p.title,
+		        p.updated_at,
+		        CASE
+		          WHEN se.entity_id IS NULL THEN 'missing embedding'
+		          WHEN p.updated_at > se.updated_at THEN 'stale embedding'
+		          ELSE 'fresh'
+		        END AS reason
+		 FROM postings p
+		 LEFT JOIN semantic_embeddings se
+		   ON se.entity_type = 'opportunity' AND se.entity_id = p.id
+		 WHERE se.entity_id IS NULL OR p.updated_at > se.updated_at
+		 UNION ALL
+		 SELECT 'workspace' AS entity_type,
+		        w.id,
+		        w.name,
+		        w.created_at AS updated_at,
+		        CASE
+		          WHEN se.entity_id IS NULL THEN 'missing embedding'
+		          WHEN w.created_at > se.updated_at THEN 'stale embedding'
+		          ELSE 'fresh'
+		        END AS reason
+		 FROM workspaces w
+		 LEFT JOIN semantic_embeddings se
+		   ON se.entity_type = 'workspace' AND se.entity_id = w.id
+		 WHERE se.entity_id IS NULL OR w.created_at > se.updated_at
+		 ORDER BY updated_at DESC
+		 LIMIT 20`,
+	)
+	if err != nil {
+		slog.Error("semantic health: failed to load stale samples", "error", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var item SemanticStaleItem
+		if err := rows.Scan(&item.EntityType, &item.EntityID, &item.Name, &item.UpdatedAt, &item.Reason); err != nil {
+			slog.Error("semantic health: failed to scan stale sample", "error", err)
+			continue
+		}
+		data.Samples = append(data.Samples, item)
+	}
+
+	if err := h.pages["admin_semantic.html"].ExecuteTemplate(w, "base", data); err != nil {
+		slog.Error("semantic health: failed to render", "error", err)
+	}
 }
 
 // showDashboard renders the admin dashboard with headline workforce metrics

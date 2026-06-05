@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/bhyland-usda/job-portal/internal/middleware"
+	"github.com/bhyland-usda/job-portal/internal/semantic"
+	"github.com/bhyland-usda/job-portal/internal/skillgraph"
 )
 
 type Workspace struct {
@@ -118,12 +120,14 @@ func (h *Handler) listWorkspaces(w http.ResponseWriter, r *http.Request) {
 		slog.Error("failed to iterate workspaces", "error", err)
 	}
 
-	recommendedWorkspaces, err := GetMatchedWorkspaces(h.db, r.Context(), userID)
+	matchingEnabled := semantic.EnabledForRequest(r)
+
+	recommendedWorkspaces, err := GetMatchedWorkspaces(h.db, r.Context(), userID, matchingEnabled)
 	if err != nil {
 		slog.Error("failed to load workspace recommendations", "error", err)
 	}
 
-	searchResults, err := SearchWorkspaces(h.db, r.Context(), userID, searchQuery)
+	searchResults, err := SearchWorkspaces(h.db, r.Context(), userID, searchQuery, matchingEnabled)
 	if err != nil {
 		slog.Error("failed to search workspaces", "error", err)
 	}
@@ -187,6 +191,8 @@ func (h *Handler) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.syncWorkspaceEmbedding(r.Context(), workspaceID)
+
 	http.Redirect(w, r, "/workspaces/"+workspaceID, http.StatusSeeOther)
 }
 
@@ -221,14 +227,16 @@ func (h *Handler) listWorkspacesWithData(w http.ResponseWriter, r *http.Request,
 		}
 	}
 
-	recommendedWorkspaces, err := GetMatchedWorkspaces(h.db, r.Context(), userID)
+	matchingEnabled := semantic.EnabledForRequest(r)
+
+	recommendedWorkspaces, err := GetMatchedWorkspaces(h.db, r.Context(), userID, matchingEnabled)
 	if err != nil {
 		slog.Error("failed to load workspace recommendations", "error", err)
 	} else {
 		data.RecommendedWorkspaces = recommendedWorkspaces
 	}
 
-	searchResults, err := SearchWorkspaces(h.db, r.Context(), userID, searchQuery)
+	searchResults, err := SearchWorkspaces(h.db, r.Context(), userID, searchQuery, matchingEnabled)
 	if err != nil {
 		slog.Error("failed to search workspaces", "error", err)
 	} else {
@@ -335,7 +343,57 @@ func (h *Handler) showWorkspace(w http.ResponseWriter, r *http.Request) {
 
 // GetMatchedWorkspaces returns workspaces whose title or description match at
 // least one skill on the current user's profile.
-func GetMatchedWorkspaces(db *sql.DB, ctx context.Context, userID string) ([]Workspace, error) {
+func GetMatchedWorkspaces(db *sql.DB, ctx context.Context, userID string, matchingEnabled bool) ([]Workspace, error) {
+	if matchingEnabled && skillgraph.Enabled() {
+		graphMatches, err := getMatchedWorkspacesBySkillGraph(ctx, db, userID)
+		if err != nil {
+			slog.Error("skill-graph workspace matching failed; using semantic/vector fallback", "error", err)
+		} else if len(graphMatches) > 0 {
+			return graphMatches, nil
+		}
+	}
+
+	if matchingEnabled && semantic.Enabled() {
+		text, err := userWorkspaceCorpus(ctx, db, userID)
+		if err != nil {
+			slog.Error("failed to build user workspace corpus", "user_id", userID, "error", err)
+		} else if text != "" {
+			rows, err := db.QueryContext(ctx,
+				`SELECT ws.id, ws.name, ws.description, ws.created_by, ws.created_at,
+						(SELECT COUNT(*) FROM workspace_members wm WHERE wm.workspace_id = ws.id) AS member_count
+				 FROM workspaces ws
+				 JOIN semantic_embeddings se
+				   ON se.entity_type = $2 AND se.entity_id = ws.id
+				 WHERE NOT EXISTS (
+				 	SELECT 1 FROM workspace_members m
+				 	WHERE m.workspace_id = ws.id AND m.user_id = $1
+				 )
+				 ORDER BY se.embedding <=> $3::vector, ws.created_at DESC
+				 LIMIT 50`,
+				userID,
+				semantic.EntityTypeWorkspace,
+				semantic.ToPGVectorLiteral(semantic.GenerateEmbedding(text)),
+			)
+			if err == nil {
+				defer rows.Close()
+
+				var workspaces []Workspace
+				for rows.Next() {
+					var ws Workspace
+					if err := rows.Scan(&ws.ID, &ws.Name, &ws.Description, &ws.CreatedBy, &ws.CreatedAt, &ws.MemberCount); err != nil {
+						continue
+					}
+					workspaces = append(workspaces, ws)
+				}
+				if rows.Err() == nil && len(workspaces) > 0 {
+					return workspaces, nil
+				}
+			} else {
+				slog.Error("semantic workspace matching failed; using skill keyword fallback", "error", err)
+			}
+		}
+	}
+
 	rows, err := db.QueryContext(ctx,
 		`SELECT ws.id, ws.name, ws.description, ws.created_by, ws.created_at,
 			(SELECT COUNT(*) FROM workspace_members wm WHERE wm.workspace_id = ws.id) AS member_count
@@ -372,11 +430,110 @@ func GetMatchedWorkspaces(db *sql.DB, ctx context.Context, userID string) ([]Wor
 	return workspaces, rows.Err()
 }
 
+func getMatchedWorkspacesBySkillGraph(ctx context.Context, db *sql.DB, userID string) ([]Workspace, error) {
+	rows, err := db.QueryContext(ctx,
+		`WITH user_skills AS (
+		    SELECT DISTINCT COALESCE(sa.canonical_skill, lower(s.name)) AS skill
+		    FROM skills s
+		    LEFT JOIN skill_aliases sa ON sa.alias_skill = lower(s.name)
+		    WHERE s.user_id = $1
+		),
+		expanded_skills AS (
+		    SELECT skill, 1.0::float8 AS weight FROM user_skills
+		    UNION ALL
+		    SELECT sg.to_skill AS skill,
+		           GREATEST(0, LEAST(1, sg.weight))::float8 AS weight
+		    FROM skill_adjacency sg
+		    JOIN user_skills us ON us.skill = sg.from_skill
+		),
+		consolidated_skills AS (
+		    SELECT skill, MAX(weight) AS weight
+		    FROM expanded_skills
+		    GROUP BY skill
+		),
+		workspace_scores AS (
+		    SELECT ws.id,
+		           SUM(CASE
+		               WHEN LOWER(ws.name) LIKE '%' || cs.skill || '%'
+		                 OR LOWER(COALESCE(ws.description, '')) LIKE '%' || cs.skill || '%'
+		               THEN cs.weight ELSE 0
+		           END) AS skill_score
+		    FROM workspaces ws
+		    CROSS JOIN consolidated_skills cs
+		    GROUP BY ws.id
+		)
+		SELECT ws.id, ws.name, ws.description, ws.created_by, ws.created_at,
+		       (SELECT COUNT(*) FROM workspace_members wm WHERE wm.workspace_id = ws.id) AS member_count,
+		       COALESCE(sc.skill_score, 0) AS skill_score
+		FROM workspaces ws
+		JOIN workspace_scores sc ON sc.id = ws.id
+		WHERE NOT EXISTS (
+		    SELECT 1 FROM workspace_members m
+		    WHERE m.workspace_id = ws.id AND m.user_id = $1
+		)
+		  AND sc.skill_score > 0
+		ORDER BY sc.skill_score DESC, ws.created_at DESC
+		LIMIT 50`,
+		userID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var workspaces []Workspace
+	for rows.Next() {
+		var ws Workspace
+		var score float64
+		if err := rows.Scan(&ws.ID, &ws.Name, &ws.Description, &ws.CreatedBy, &ws.CreatedAt, &ws.MemberCount, &score); err != nil {
+			continue
+		}
+		workspaces = append(workspaces, ws)
+	}
+	return workspaces, rows.Err()
+}
+
 // SearchWorkspaces returns non-member workspaces matching a free-text query.
-func SearchWorkspaces(db *sql.DB, ctx context.Context, userID, query string) ([]Workspace, error) {
+func SearchWorkspaces(db *sql.DB, ctx context.Context, userID, query string, matchingEnabled bool) ([]Workspace, error) {
 	query = strings.TrimSpace(query)
 	if query == "" {
 		return nil, nil
+	}
+
+	if matchingEnabled && semantic.Enabled() {
+		rows, err := db.QueryContext(ctx,
+			`SELECT ws.id, ws.name, ws.description, ws.created_by, ws.created_at,
+					(SELECT COUNT(*) FROM workspace_members wm WHERE wm.workspace_id = ws.id) AS member_count,
+					EXISTS(
+						SELECT 1 FROM workspace_members wm
+						WHERE wm.workspace_id = ws.id AND wm.user_id = $1
+					) AS is_member
+			 FROM workspaces ws
+			 JOIN semantic_embeddings se
+			   ON se.entity_type = $2 AND se.entity_id = ws.id
+			 ORDER BY is_member DESC, se.embedding <=> $3::vector, ws.created_at DESC
+			 LIMIT 50`,
+			userID,
+			semantic.EntityTypeWorkspace,
+			semantic.ToPGVectorLiteral(semantic.GenerateEmbedding(query)),
+		)
+		if err == nil {
+			defer rows.Close()
+
+			var workspaces []Workspace
+			for rows.Next() {
+				var ws Workspace
+				if err := rows.Scan(&ws.ID, &ws.Name, &ws.Description, &ws.CreatedBy, &ws.CreatedAt, &ws.MemberCount, &ws.IsMember); err != nil {
+					continue
+				}
+				workspaces = append(workspaces, ws)
+			}
+			if rows.Err() == nil && len(workspaces) > 0 {
+				return workspaces, nil
+			}
+		} else {
+			slog.Error("semantic workspace search failed; using keyword fallback", "error", err)
+		}
 	}
 
 	likePattern := "%" + query + "%"
@@ -429,6 +586,35 @@ func (h *Handler) joinWorkspace(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, "/workspaces/"+workspaceID, http.StatusSeeOther)
+}
+
+func (h *Handler) syncWorkspaceEmbedding(ctx context.Context, workspaceID string) {
+	if !semantic.Enabled() {
+		return
+	}
+
+	if err := semantic.UpsertWorkspaceEmbeddingByID(ctx, h.db, workspaceID); err != nil {
+		slog.Error("failed to upsert workspace embedding", "workspace_id", workspaceID, "error", err)
+	}
+}
+
+func userWorkspaceCorpus(ctx context.Context, db *sql.DB, userID string) (string, error) {
+	var headline, about, skills sql.NullString
+	err := db.QueryRowContext(ctx,
+		`SELECT COALESCE(u.headline, ''),
+		        COALESCE(u.about, ''),
+		        COALESCE(string_agg(s.name, ' '), '')
+		 FROM users u
+		 LEFT JOIN skills s ON s.user_id = u.id
+		 WHERE u.id = $1
+		 GROUP BY u.id, u.headline, u.about`,
+		userID,
+	).Scan(&headline, &about, &skills)
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(strings.Join([]string{headline.String, about.String, skills.String}, "\n")), nil
 }
 
 func (h *Handler) addNote(w http.ResponseWriter, r *http.Request) {

@@ -16,6 +16,36 @@
       {{if .UserID}}
       <div class="navbar-utility">
         <button type="button" id="tools-toggle-btn" class="toolbar-btn toolbar-btn-primary shell-fab shell-fab-left" data-shell-toggle="drawer-toggle" aria-controls="profile-drawer" aria-expanded="false" aria-label="Open all tools menu"><span aria-hidden="true">☰</span></button>
+        <form method="POST" action="/settings/matching-mode" class="inline">
+          <input type="hidden" name="mode" value="{{if .MatchingEnabled}}off{{else}}on{{end}}" />
+          <input type="hidden" name="return_to" value="{{.CurrentPath}}" />
+          <button type="submit" class="toolbar-btn" aria-label="Toggle matching mode">
+            Matching: {{if .MatchingEnabled}}On{{else}}Off{{end}}
+          </button>
+        </form>
+        <details class="nav-dropdown">
+          <summary class="nav-summary" aria-haspopup="true" aria-expanded="false">
+            <span>Location: {{.LocationLabel}}</span>
+          </summary>
+          <div class="nav-dropdown-content" aria-label="Location preferences">
+            <form method="POST" action="/settings/location-types" class="toolbar-menu-form">
+              <input type="hidden" name="return_to" value="{{.CurrentPath}}" />
+              <label>
+                <input type="checkbox" name="remote" {{if .LocationRemote}}checked{{end}} />
+                Remote
+              </label>
+              <label>
+                <input type="checkbox" name="hybrid" {{if .LocationHybrid}}checked{{end}} />
+                Hybrid
+              </label>
+              <label>
+                <input type="checkbox" name="onsite" {{if .LocationOnsite}}checked{{end}} />
+                On-Site
+              </label>
+              <button type="submit" class="btn-link">Apply</button>
+            </form>
+          </div>
+        </details>
         <details class="nav-dropdown notif-dropdown">
           <summary class="nav-summary nav-notif" id="notif-trigger" aria-haspopup="true" aria-expanded="false">
             <span>Notifications</span>

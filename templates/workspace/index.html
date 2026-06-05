@@ -23,13 +23,14 @@
     <div class="profile-card">
         <div class="ws-tabs" role="tablist" aria-label="Workspace tabs">
             <a href="/workspaces?tab=mine{{if .SearchQuery}}&q={{.SearchQuery}}{{end}}" class="ws-tab {{if eq .ActiveTab "mine"}}active{{end}}" role="tab" aria-selected="{{if eq .ActiveTab "mine"}}true{{else}}false{{end}}">My Workspace</a>
-            <a href="/workspaces?tab=recommended{{if .SearchQuery}}&q={{.SearchQuery}}{{end}}" class="ws-tab {{if eq .ActiveTab "recommended"}}active{{end}}" role="tab" aria-selected="{{if eq .ActiveTab "recommended"}}true{{else}}false{{end}}">Recommended Wokspaces</a>
+            <a href="/workspaces?tab=recommended{{if .SearchQuery}}&q={{.SearchQuery}}{{end}}" class="ws-tab {{if eq .ActiveTab "recommended"}}active{{end}}" role="tab" aria-selected="{{if eq .ActiveTab "recommended"}}true{{else}}false{{end}}">Recommended Workspaces</a>
             <a href="/workspaces?tab=search{{if .SearchQuery}}&q={{.SearchQuery}}{{end}}" class="ws-tab {{if eq .ActiveTab "search"}}active{{end}}" role="tab" aria-selected="{{if eq .ActiveTab "search"}}true{{else}}false{{end}}">Search Workspaces</a>
             <a href="/workspaces?tab=create{{if .SearchQuery}}&q={{.SearchQuery}}{{end}}" class="ws-tab {{if eq .ActiveTab "create"}}active{{end}}" role="tab" aria-selected="{{if eq .ActiveTab "create"}}true{{else}}false{{end}}">Create a Workspace</a>
         </div>
 
         {{if eq .ActiveTab "recommended"}}
         <h2 style="margin-bottom:12px;">Recommended Workspaces</h2>
+        <p class="ws-meta" style="margin-bottom:12px;">Recommended by related skills and profile context when semantic matching is enabled.</p>
         {{if .RecommendedWorkspaces}}
         {{range .RecommendedWorkspaces}}
         <div class="ws-item">
@@ -43,6 +44,7 @@
         {{end}}
         {{else if eq .ActiveTab "search"}}
         <h2 style="margin-bottom:12px;">Search Workspaces</h2>
+        <p class="ws-meta" style="margin-bottom:12px;">Search relevance uses semantic similarity when enabled.</p>
         <form class="ws-create" method="GET" action="/workspaces">
             <input type="hidden" name="tab" value="search" />
             <label for="ws-search" class="sr-only">Search workspaces</label>

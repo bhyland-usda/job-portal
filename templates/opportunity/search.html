@@ -4,10 +4,13 @@
 <div class="posting-layout">
     <div class="profile-card">
         <h2>Browse Opportunities</h2>
+        {{if .ResultMode}}
+        <p class="text-muted">{{.ResultMode}}</p>
+        {{end}}
         <form method="GET" action="/opportunities/search" class="posting-search-form" role="search" aria-label="Browse opportunities">
             <div class="posting-search-row">
             <label for="posting-search-q" class="sr-only">Search opportunities</label>
-                <input type="text" id="posting-search-q" name="q" value="{{.Query}}" placeholder="Search by title, description, or skill..." class="search-input" />
+                <input type="text" id="posting-search-q" name="q" value="{{.Query}}" placeholder="Search by title, description, or skill (leave blank to browse with filters)..." class="search-input" />
                 <label for="posting-search-type" class="sr-only">Filter by type</label>
                 <select id="posting-search-type" name="type">
                     <option value="">All Types</option>
@@ -15,6 +18,24 @@
                     <option value="detail" {{if eq .Type "detail"}}selected{{end}}>Detail</option>
                 </select>
                 <button type="submit" class="btn btn-primary">Search</button>
+            </div>
+            <div class="posting-search-location-filters" role="group" aria-label="Location Type Filters">
+                <span class="posting-search-location-label">Location Type</span>
+                <label class="posting-search-location-toggle" for="location-type-remote">
+                    <input id="location-type-remote" type="checkbox" name="location_type" value="remote" {{if .SearchLocationRemote}}checked{{end}} />
+                    <span class="location-switch" aria-hidden="true"></span>
+                    <span class="location-toggle-text">Remote</span>
+                </label>
+                <label class="posting-search-location-toggle" for="location-type-hybrid">
+                    <input id="location-type-hybrid" type="checkbox" name="location_type" value="hybrid" {{if .SearchLocationHybrid}}checked{{end}} />
+                    <span class="location-switch" aria-hidden="true"></span>
+                    <span class="location-toggle-text">Hybrid</span>
+                </label>
+                <label class="posting-search-location-toggle" for="location-type-onsite">
+                    <input id="location-type-onsite" type="checkbox" name="location_type" value="onsite" {{if .SearchLocationOnsite}}checked{{end}} />
+                    <span class="location-switch" aria-hidden="true"></span>
+                    <span class="location-toggle-text">On-Site</span>
+                </label>
             </div>
         </form>
     </div>
@@ -34,7 +55,7 @@
     </div>
     {{end}}
     {{else}}
-    {{if or .Query .Type}}
+    {{if .HasSearchCriteria}}
     <p class="empty-state">No opportunities found matching your search.</p>
     {{else}}
     <p class="empty-state">No active opportunities yet.</p>

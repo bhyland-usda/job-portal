@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 
 	"github.com/bhyland-usda/job-portal/internal/middleware"
+	"github.com/bhyland-usda/job-portal/internal/semantic"
 )
 
 // testPages parses the real posting templates (with layouts) so handler tests
@@ -509,5 +511,65 @@ func TestHandleEditRejectsCloseDateAfterStartDate(t *testing.T) {
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("unmet expectations: %v", err)
+	}
+}
+
+func TestGetMatchedPostingsSemanticPath(t *testing.T) {
+	t.Setenv("SEMANTIC_MATCHING_ENABLED", "true")
+
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("failed to create mock db: %v", err)
+	}
+	defer db.Close()
+
+	corpus := "Data Engineer\nBuilding ETL\npython sql"
+	vec := semantic.ToPGVectorLiteral(semantic.GenerateEmbedding(corpus))
+
+	mock.ExpectQuery(`SELECT COALESCE\(u.headline, ''\),`).
+		WithArgs("user-1").
+		WillReturnRows(sqlmock.NewRows([]string{"headline", "about", "skills"}).AddRow("Data Engineer", "Building ETL", "python sql"))
+
+	mock.ExpectQuery(`JOIN semantic_embeddings se`).
+		WithArgs(semantic.EntityTypeOpportunity, vec).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "author_id", "author_name", "title", "description", "type", "location", "department", "status", "created_at",
+		}).AddRow(
+			"posting-1", "author-1", "Ada Lovelace", "Data Modernization", "Build data pipeline", "project", "Remote", "OCIO", "active", time.Now(),
+		))
+
+	postings, err := GetMatchedPostings(db, context.Background(), "user-1", true, semantic.DefaultLocationTypePreference())
+	if err != nil {
+		t.Fatalf("GetMatchedPostings returned error: %v", err)
+	}
+	if len(postings) != 1 || postings[0].ID != "posting-1" {
+		t.Fatalf("unexpected semantic postings result: %+v", postings)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet expectations: %v", err)
+	}
+
+	_ = os.Unsetenv("SEMANTIC_MATCHING_ENABLED")
+}
+
+func TestLocationTypeWhereClauseUsesInferenceFallback(t *testing.T) {
+	pref := semantic.LocationTypePreference{Remote: true, Hybrid: true}
+	clause, args, next := locationTypeWhereClause(pref, 3)
+
+	if clause == "" {
+		t.Fatalf("expected non-empty SQL clause")
+	}
+	if !strings.Contains(clause, "NULLIF(p.location_type, '')") {
+		t.Fatalf("expected clause to normalize empty location_type, got: %s", clause)
+	}
+	if !strings.Contains(clause, "LIKE '%remote%'") || !strings.Contains(clause, "LIKE '%hybrid%'") {
+		t.Fatalf("expected clause to include location text inference, got: %s", clause)
+	}
+	if len(args) != 2 || args[0] != "remote" || args[1] != "hybrid" {
+		t.Fatalf("unexpected args: %#v", args)
+	}
+	if next != 5 {
+		t.Fatalf("expected next arg index 5, got %d", next)
 	}
 }

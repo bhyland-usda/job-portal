@@ -50,6 +50,7 @@ import (
 	"github.com/bhyland-usda/job-portal/internal/posts"
 	"github.com/bhyland-usda/job-portal/internal/resume"
 	"github.com/bhyland-usda/job-portal/internal/search"
+	"github.com/bhyland-usda/job-portal/internal/semantic"
 	"github.com/bhyland-usda/job-portal/internal/spotlight"
 	"github.com/bhyland-usda/job-portal/internal/user"
 	"github.com/bhyland-usda/job-portal/internal/verification"
@@ -105,6 +106,7 @@ func main() {
 		"resume_view.html":              template.Must(template.ParseFiles("templates/resume/view.html")),
 		"admin_users.html":              parseTemplate("admin/users.html"),
 		"admin_audit.html":              parseTemplate("admin/audit.html"),
+		"admin_semantic.html":           parseTemplate("admin/semantic.html"),
 		"posting_create.html":           parseTemplate("opportunity/create.html"),
 		"posting_view.html":             parseTemplate("opportunity/view.html"),
 		"posting_edit.html":             parseTemplate("opportunity/edit.html"),
@@ -280,6 +282,50 @@ func main() {
 	moderationHandler.RegisterRoutes(mux, requireAuth, requireAdmin)
 	dataExportHandler.RegisterRoutes(mux, requireAuth)
 	aupHandler.RegisterRoutes(mux, requireAuth)
+	mux.Handle("POST /settings/matching-mode", requireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "Bad request", http.StatusBadRequest)
+			return
+		}
+
+		mode := strings.ToLower(strings.TrimSpace(r.FormValue("mode")))
+		enabled := mode == "on" || mode == "1" || mode == "true"
+		semantic.SetPreferenceCookie(w, r, enabled)
+
+		returnTo := strings.TrimSpace(r.FormValue("return_to"))
+		if returnTo == "" {
+			returnTo = r.Header.Get("Referer")
+		}
+		if !strings.HasPrefix(returnTo, "/") {
+			returnTo = "/feed"
+		}
+		http.Redirect(w, r, returnTo, http.StatusSeeOther)
+	})))
+	mux.Handle("POST /settings/location-types", requireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "Bad request", http.StatusBadRequest)
+			return
+		}
+
+		pref := semantic.LocationTypePreference{
+			Remote: r.FormValue("remote") != "",
+			Hybrid: r.FormValue("hybrid") != "",
+			Onsite: r.FormValue("onsite") != "",
+		}
+		if len(pref.Selected()) == 0 {
+			pref = semantic.DefaultLocationTypePreference()
+		}
+		semantic.SetLocationTypePreferenceCookie(w, r, pref)
+
+		returnTo := strings.TrimSpace(r.FormValue("return_to"))
+		if returnTo == "" {
+			returnTo = r.Header.Get("Referer")
+		}
+		if !strings.HasPrefix(returnTo, "/") {
+			returnTo = "/feed"
+		}
+		http.Redirect(w, r, returnTo, http.StatusSeeOther)
+	})))
 
 	// Root: landing page for guests, redirect to feed for logged-in users
 	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {

@@ -1,0 +1,94 @@
+{{define "title"}}Admin - Semantic Health{{end}}
+
+{{define "content"}}
+<style>
+.semantic-layout { max-width: 1100px; margin: 0 auto; }
+.semantic-header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+.semantic-header h2 { margin: 0; }
+.semantic-note { color: var(--text-muted, #666); font-size: 14px; }
+.semantic-card { background: var(--bg-card, #fff); border: 1px solid var(--border, #e0e0e0); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+.semantic-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.semantic-table th, .semantic-table td { padding: 8px 10px; border-bottom: 1px solid var(--border, #ececec); text-align: left; }
+.semantic-table th { font-size: 12px; text-transform: uppercase; color: var(--text-muted, #777); letter-spacing: .4px; }
+.semantic-status { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+.semantic-status.enabled { background: #e4f7ea; color: #1f7a3a; }
+.semantic-status.disabled { background: #f6e8e8; color: #8c2f2f; }
+</style>
+
+<div class="semantic-layout">
+  <div class="semantic-header">
+    <h2>Semantic Health</h2>
+    <div>
+      {{if .Enabled}}
+      <span class="semantic-status enabled">Enabled</span>
+      {{else}}
+      <span class="semantic-status disabled">Disabled</span>
+      {{end}}
+    </div>
+  </div>
+
+  <p class="semantic-note">Coverage for opportunities and workspaces backed by semantic embeddings. Use this page to verify backfill completeness and detect stale entities after edits.</p>
+
+  <div class="semantic-card">
+    <h3>Coverage</h3>
+    <table class="semantic-table">
+      <thead>
+        <tr>
+          <th scope="col">Entity</th>
+          <th scope="col">Total</th>
+          <th scope="col">Embedded</th>
+          <th scope="col">Missing</th>
+          <th scope="col">Stale</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Coverage}}
+        <tr>
+          <td>{{.Label}}</td>
+          <td>{{.Total}}</td>
+          <td>{{.Embedded}}</td>
+          <td>{{.Missing}}</td>
+          <td>{{.Stale}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="semantic-card">
+    <h3>Stale or Missing Samples</h3>
+    {{if .Samples}}
+    <table class="semantic-table">
+      <thead>
+        <tr>
+          <th scope="col">Type</th>
+          <th scope="col">Name</th>
+          <th scope="col">Reason</th>
+          <th scope="col">Updated</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Samples}}
+        <tr>
+          <td>{{.EntityType}}</td>
+          <td>
+            {{if eq .EntityType "opportunity"}}
+            <a href="/opportunities/{{.EntityID}}" class="title-link">{{.Name}}</a>
+            {{else}}
+            <a href="/workspaces/{{.EntityID}}" class="title-link">{{.Name}}</a>
+            {{end}}
+          </td>
+          <td>{{.Reason}}</td>
+          <td>{{.UpdatedAt.Format "Jan 2, 2006 3:04 PM"}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+    {{else}}
+    <p class="semantic-note">No stale or missing entities found.</p>
+    {{end}}
+  </div>
+</div>
+{{end}}
+
+{{template "base" .}}

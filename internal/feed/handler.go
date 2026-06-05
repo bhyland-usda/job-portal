@@ -17,6 +17,7 @@ import (
 	"github.com/bhyland-usda/job-portal/internal/middleware"
 	"github.com/bhyland-usda/job-portal/internal/notification"
 	"github.com/bhyland-usda/job-portal/internal/opportunity"
+	"github.com/bhyland-usda/job-portal/internal/semantic"
 	"github.com/yuin/goldmark"
 )
 
@@ -172,7 +173,7 @@ func (h *Handler) showFeed(w http.ResponseWriter, r *http.Request) {
 			posts[i].Comments = comments
 		}
 	} else if tab == "postings" {
-		matchedPostings, err = opportunity.GetMatchedPostings(h.db, r.Context(), userID)
+		matchedPostings, err = opportunity.GetMatchedPostings(h.db, r.Context(), userID, semantic.EnabledForRequest(r), semantic.LocationTypePreferenceForRequest(r))
 		if err != nil {
 			slog.Error("failed to load postings", "error", err)
 		}

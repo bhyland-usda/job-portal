@@ -11,6 +11,7 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/bhyland-usda/job-portal/internal/middleware"
+	"github.com/bhyland-usda/job-portal/internal/semantic"
 )
 
 func setupMockDB(t *testing.T) (*sql.DB, sqlmock.Sqlmock) {
@@ -361,5 +362,64 @@ func TestLoadNotesNewestFirst(t *testing.T) {
 
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("unmet expectations: %v", err)
+	}
+}
+
+func TestGetMatchedWorkspacesSemanticPath(t *testing.T) {
+	t.Setenv("SEMANTIC_MATCHING_ENABLED", "true")
+
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	corpus := "Platform Engineer\nAutomation\nkubernetes terraform"
+	vec := semantic.ToPGVectorLiteral(semantic.GenerateEmbedding(corpus))
+	now := time.Now()
+
+	mock.ExpectQuery(`SELECT COALESCE\(u.headline, ''\),`).
+		WithArgs("user-1").
+		WillReturnRows(sqlmock.NewRows([]string{"headline", "about", "skills"}).AddRow("Platform Engineer", "Automation", "kubernetes terraform"))
+
+	mock.ExpectQuery(`JOIN semantic_embeddings se`).
+		WithArgs("user-1", semantic.EntityTypeWorkspace, vec).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "description", "created_by", "created_at", "member_count"}).
+			AddRow("ws-9", "Platform Guild", "Cloud enablement", "user-2", now, 7))
+
+	workspaces, err := GetMatchedWorkspaces(db, context.Background(), "user-1", true)
+	if err != nil {
+		t.Fatalf("GetMatchedWorkspaces returned error: %v", err)
+	}
+	if len(workspaces) != 1 || workspaces[0].ID != "ws-9" {
+		t.Fatalf("unexpected semantic workspaces result: %+v", workspaces)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet expectations: %v", err)
+	}
+}
+
+func TestSearchWorkspacesSemanticPath(t *testing.T) {
+	t.Setenv("SEMANTIC_MATCHING_ENABLED", "true")
+
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	vec := semantic.ToPGVectorLiteral(semantic.GenerateEmbedding("automation workspace"))
+	now := time.Now()
+
+	mock.ExpectQuery(`JOIN semantic_embeddings se`).
+		WithArgs("user-1", semantic.EntityTypeWorkspace, vec).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "description", "created_by", "created_at", "member_count", "is_member"}).
+			AddRow("ws-3", "Automation Lab", "CI/CD + infra", "user-3", now, 4, false))
+
+	workspaces, err := SearchWorkspaces(db, context.Background(), "user-1", "automation workspace", true)
+	if err != nil {
+		t.Fatalf("SearchWorkspaces returned error: %v", err)
+	}
+	if len(workspaces) != 1 || workspaces[0].ID != "ws-3" {
+		t.Fatalf("unexpected semantic search result: %+v", workspaces)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet expectations: %v", err)
 	}
 }
