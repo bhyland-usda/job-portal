@@ -61,10 +61,6 @@ func expectDigestQueries(mock sqlmock.Sqlmock, userID string,
 		WillReturnRows(postingRows)
 }
 
-func newDigestRequest(userID string) *httptest.ResponseRecorder {
-	return httptest.NewRecorder()
-}
-
 // TestShowDigestRendersAllSections verifies the digest renders populated data
 // across every section.
 func TestShowDigestRendersAllSections(t *testing.T) {

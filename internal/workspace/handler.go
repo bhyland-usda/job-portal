@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"context"
 	"database/sql"
 	"html/template"
 	"log/slog"
@@ -18,6 +19,7 @@ type Workspace struct {
 	CreatedBy   string
 	MemberCount int
 	CreatedAt   time.Time
+	IsMember    bool
 }
 
 type Member struct {
@@ -36,8 +38,12 @@ type Note struct {
 
 type ListPage struct {
 	middleware.BaseData
-	Workspaces []Workspace
-	Error      string
+	Workspaces            []Workspace
+	RecommendedWorkspaces []Workspace
+	SearchQuery           string
+	SearchResults         []Workspace
+	ActiveTab             string
+	Error                 string
 }
 
 type ViewPage struct {
@@ -45,6 +51,7 @@ type ViewPage struct {
 	Workspace Workspace
 	Members   []Member
 	Notes     []Note
+	IsMember  bool
 }
 
 type Handler struct {
@@ -60,6 +67,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, requireAuth func(http.Handl
 	mux.Handle("GET /workspaces", requireAuth(http.HandlerFunc(h.listWorkspaces)))
 	mux.Handle("POST /workspaces", requireAuth(http.HandlerFunc(h.handleCreate)))
 	mux.Handle("GET /workspaces/{id}", requireAuth(http.HandlerFunc(h.showWorkspace)))
+	mux.Handle("POST /workspaces/{id}/join", requireAuth(http.HandlerFunc(h.joinWorkspace)))
 	mux.Handle("POST /workspaces/{id}/notes", requireAuth(http.HandlerFunc(h.addNote)))
 	mux.Handle("POST /workspaces/{id}/members", requireAuth(http.HandlerFunc(h.addMember)))
 }
@@ -76,6 +84,11 @@ func (h *Handler) isMember(r *http.Request, workspaceID, userID string) (bool, e
 
 func (h *Handler) listWorkspaces(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r.Context())
+	searchQuery := strings.TrimSpace(r.URL.Query().Get("q"))
+	activeTab := strings.TrimSpace(r.URL.Query().Get("tab"))
+	if activeTab != "recommended" && activeTab != "search" && activeTab != "create" {
+		activeTab = "mine"
+	}
 
 	rows, err := h.db.QueryContext(r.Context(),
 		`SELECT ws.id, ws.name, ws.description, ws.created_by, ws.created_at,
@@ -105,7 +118,17 @@ func (h *Handler) listWorkspaces(w http.ResponseWriter, r *http.Request) {
 		slog.Error("failed to iterate workspaces", "error", err)
 	}
 
-	data := ListPage{BaseData: middleware.NewBaseData(r), Workspaces: workspaces}
+	recommendedWorkspaces, err := GetMatchedWorkspaces(h.db, r.Context(), userID)
+	if err != nil {
+		slog.Error("failed to load workspace recommendations", "error", err)
+	}
+
+	searchResults, err := SearchWorkspaces(h.db, r.Context(), userID, searchQuery)
+	if err != nil {
+		slog.Error("failed to search workspaces", "error", err)
+	}
+
+	data := ListPage{BaseData: middleware.NewBaseData(r), Workspaces: workspaces, RecommendedWorkspaces: recommendedWorkspaces, SearchQuery: searchQuery, SearchResults: searchResults, ActiveTab: activeTab}
 	if err := h.pages["workspaces.html"].ExecuteTemplate(w, "base", data); err != nil {
 		slog.Error("failed to render workspaces", "error", err)
 	}
@@ -171,6 +194,13 @@ func (h *Handler) handleCreate(w http.ResponseWriter, r *http.Request) {
 // populating the user's workspaces.
 func (h *Handler) listWorkspacesWithData(w http.ResponseWriter, r *http.Request, data *ListPage) {
 	userID := middleware.GetUserID(r.Context())
+	searchQuery := strings.TrimSpace(r.URL.Query().Get("q"))
+	data.SearchQuery = searchQuery
+	activeTab := strings.TrimSpace(r.URL.Query().Get("tab"))
+	if activeTab != "recommended" && activeTab != "search" && activeTab != "create" {
+		activeTab = "mine"
+	}
+	data.ActiveTab = activeTab
 
 	rows, err := h.db.QueryContext(r.Context(),
 		`SELECT ws.id, ws.name, ws.description, ws.created_by, ws.created_at,
@@ -191,6 +221,20 @@ func (h *Handler) listWorkspacesWithData(w http.ResponseWriter, r *http.Request,
 		}
 	}
 
+	recommendedWorkspaces, err := GetMatchedWorkspaces(h.db, r.Context(), userID)
+	if err != nil {
+		slog.Error("failed to load workspace recommendations", "error", err)
+	} else {
+		data.RecommendedWorkspaces = recommendedWorkspaces
+	}
+
+	searchResults, err := SearchWorkspaces(h.db, r.Context(), userID, searchQuery)
+	if err != nil {
+		slog.Error("failed to search workspaces", "error", err)
+	} else {
+		data.SearchResults = searchResults
+	}
+
 	if err := h.pages["workspaces.html"].ExecuteTemplate(w, "base", *data); err != nil {
 		slog.Error("failed to render workspaces", "error", err)
 	}
@@ -204,10 +248,6 @@ func (h *Handler) showWorkspace(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		slog.Error("failed to check workspace membership", "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-	if !member {
-		http.NotFound(w, r)
 		return
 	}
 
@@ -285,11 +325,110 @@ func (h *Handler) showWorkspace(w http.ResponseWriter, r *http.Request) {
 		Workspace: ws,
 		Members:   members,
 		Notes:     notes,
+		IsMember:  member,
 	}
 
 	if err := h.pages["workspace_view.html"].ExecuteTemplate(w, "base", data); err != nil {
 		slog.Error("failed to render workspace", "error", err)
 	}
+}
+
+// GetMatchedWorkspaces returns workspaces whose title or description match at
+// least one skill on the current user's profile.
+func GetMatchedWorkspaces(db *sql.DB, ctx context.Context, userID string) ([]Workspace, error) {
+	rows, err := db.QueryContext(ctx,
+		`SELECT ws.id, ws.name, ws.description, ws.created_by, ws.created_at,
+			(SELECT COUNT(*) FROM workspace_members wm WHERE wm.workspace_id = ws.id) AS member_count
+		 FROM workspaces ws
+		 WHERE NOT EXISTS (
+		 	SELECT 1 FROM workspace_members m
+		 	WHERE m.workspace_id = ws.id AND m.user_id = $1
+		 )
+		 AND EXISTS (
+		 	SELECT 1 FROM skills s
+		 	WHERE s.user_id = $1
+		 	  AND (
+		 		LOWER(ws.name) LIKE '%' || LOWER(s.name) || '%'
+		 		OR LOWER(COALESCE(ws.description, '')) LIKE '%' || LOWER(s.name) || '%'
+		 	  )
+		 )
+		 ORDER BY ws.created_at DESC
+		 LIMIT 50`,
+		userID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var workspaces []Workspace
+	for rows.Next() {
+		var ws Workspace
+		if err := rows.Scan(&ws.ID, &ws.Name, &ws.Description, &ws.CreatedBy, &ws.CreatedAt, &ws.MemberCount); err != nil {
+			continue
+		}
+		workspaces = append(workspaces, ws)
+	}
+	return workspaces, rows.Err()
+}
+
+// SearchWorkspaces returns non-member workspaces matching a free-text query.
+func SearchWorkspaces(db *sql.DB, ctx context.Context, userID, query string) ([]Workspace, error) {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return nil, nil
+	}
+
+	likePattern := "%" + query + "%"
+	rows, err := db.QueryContext(ctx,
+		`SELECT ws.id, ws.name, ws.description, ws.created_by, ws.created_at,
+			(SELECT COUNT(*) FROM workspace_members wm WHERE wm.workspace_id = ws.id) AS member_count,
+			EXISTS(
+				SELECT 1 FROM workspace_members wm
+				WHERE wm.workspace_id = ws.id AND wm.user_id = $1
+			) AS is_member
+		 FROM workspaces ws
+		 WHERE (
+		 	LOWER(ws.name) LIKE LOWER($2)
+		 	OR LOWER(COALESCE(ws.description, '')) LIKE LOWER($3)
+		 )
+		 ORDER BY is_member DESC, ws.created_at DESC
+		 LIMIT 50`,
+		userID, likePattern, likePattern,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var workspaces []Workspace
+	for rows.Next() {
+		var ws Workspace
+		if err := rows.Scan(&ws.ID, &ws.Name, &ws.Description, &ws.CreatedBy, &ws.CreatedAt, &ws.MemberCount, &ws.IsMember); err != nil {
+			continue
+		}
+		workspaces = append(workspaces, ws)
+	}
+	return workspaces, rows.Err()
+}
+
+func (h *Handler) joinWorkspace(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r.Context())
+	workspaceID := r.PathValue("id")
+
+	_, err := h.db.ExecContext(r.Context(),
+		`INSERT INTO workspace_members (workspace_id, user_id)
+		 VALUES ($1, $2)
+		 ON CONFLICT DO NOTHING`,
+		workspaceID, userID,
+	)
+	if err != nil {
+		slog.Error("failed to join workspace", "error", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/workspaces/"+workspaceID, http.StatusSeeOther)
 }
 
 func (h *Handler) addNote(w http.ResponseWriter, r *http.Request) {

@@ -11,9 +11,66 @@
 .ws-item { padding: 16px 0; border-bottom: 1px solid var(--border); }
 .ws-item:last-child { border-bottom: none; }
 .ws-meta { font-size: 13px; color: var(--text-muted); }
+.ws-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+.ws-tab {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius);
+    text-decoration: none; color: inherit; background: transparent; font-weight: 600;
+}
+.ws-tab.active { background: var(--btn-primary-bg, #0b5fff); color: #fff; border-color: var(--btn-primary-bg, #0b5fff); }
 </style>
 <div class="ws-layout">
-    <div class="profile-card" style="margin-bottom:16px;">
+    <div class="profile-card">
+        <div class="ws-tabs" role="tablist" aria-label="Workspace tabs">
+            <a href="/workspaces?tab=mine{{if .SearchQuery}}&q={{.SearchQuery}}{{end}}" class="ws-tab {{if eq .ActiveTab "mine"}}active{{end}}" role="tab" aria-selected="{{if eq .ActiveTab "mine"}}true{{else}}false{{end}}">My Workspace</a>
+            <a href="/workspaces?tab=recommended{{if .SearchQuery}}&q={{.SearchQuery}}{{end}}" class="ws-tab {{if eq .ActiveTab "recommended"}}active{{end}}" role="tab" aria-selected="{{if eq .ActiveTab "recommended"}}true{{else}}false{{end}}">Recommended Wokspaces</a>
+            <a href="/workspaces?tab=search{{if .SearchQuery}}&q={{.SearchQuery}}{{end}}" class="ws-tab {{if eq .ActiveTab "search"}}active{{end}}" role="tab" aria-selected="{{if eq .ActiveTab "search"}}true{{else}}false{{end}}">Search Workspaces</a>
+            <a href="/workspaces?tab=create{{if .SearchQuery}}&q={{.SearchQuery}}{{end}}" class="ws-tab {{if eq .ActiveTab "create"}}active{{end}}" role="tab" aria-selected="{{if eq .ActiveTab "create"}}true{{else}}false{{end}}">Create a Workspace</a>
+        </div>
+
+        {{if eq .ActiveTab "recommended"}}
+        <h2 style="margin-bottom:12px;">Recommended Workspaces</h2>
+        {{if .RecommendedWorkspaces}}
+        {{range .RecommendedWorkspaces}}
+        <div class="ws-item">
+            <h3 style="margin-bottom:4px;"><a href="/workspaces/{{.ID}}" class="title-link">{{.Name}}</a></h3>
+            {{if .Description}}<p style="color:var(--text-muted);margin-bottom:4px;">{{.Description}}</p>{{end}}
+            <span class="ws-meta">{{.MemberCount}} {{if eq .MemberCount 1}}member{{else}}members{{end}}</span>
+        </div>
+        {{end}}
+        {{else}}
+        <p class="empty-state">No workspace matches yet. Add more skills to your profile to improve recommendations.</p>
+        {{end}}
+        {{else if eq .ActiveTab "search"}}
+        <h2 style="margin-bottom:12px;">Search Workspaces</h2>
+        <form class="ws-create" method="GET" action="/workspaces">
+            <input type="hidden" name="tab" value="search" />
+            <label for="ws-search" class="sr-only">Search workspaces</label>
+            <input type="text" id="ws-search" name="q" value="{{.SearchQuery}}" placeholder="Search by workspace name or description" />
+            <button type="submit" class="btn btn-outline">Search</button>
+        </form>
+        {{if .SearchQuery}}
+        <div style="margin-top:12px;">
+            <h3 style="margin-bottom:8px;">Search Results</h3>
+            {{if .SearchResults}}
+            {{range .SearchResults}}
+            <div class="ws-item">
+                <h3 style="margin-bottom:4px;"><a href="/workspaces/{{.ID}}" class="title-link">{{.Name}}</a></h3>
+                {{if .Description}}<p style="color:var(--text-muted);margin-bottom:4px;">{{.Description}}</p>{{end}}
+                <span class="ws-meta">{{.MemberCount}} {{if eq .MemberCount 1}}member{{else}}members{{end}}</span>
+                {{if .IsMember}}
+                <span class="ws-meta" style="margin-left:8px;">Member</span>
+                {{else}}
+                <span class="ws-meta" style="margin-left:8px;">Not a member</span>
+                {{end}}
+            </div>
+            {{end}}
+            {{else}}
+            <p class="empty-state">No workspaces found for "{{.SearchQuery}}".</p>
+            {{end}}
+        </div>
+        {{end}}
+        {{else if eq .ActiveTab "create"}}
         <h2 style="margin-bottom:12px;">Create a Workspace</h2>
         {{if .Error}}<p style="color:var(--danger,#c0392b);margin-bottom:8px;">{{.Error}}</p>{{end}}
         <form class="ws-create" method="POST" action="/workspaces">
@@ -23,9 +80,7 @@
             <textarea id="ws-description" name="description" placeholder="What's this workspace for? (optional)" rows="2"></textarea>
             <button type="submit" class="btn btn-primary">Create Workspace</button>
         </form>
-    </div>
-
-    <div class="profile-card">
+        {{else}}
         <h2 style="margin-bottom:12px;">My Workspaces</h2>
         {{if .Workspaces}}
         {{range .Workspaces}}
@@ -37,6 +92,7 @@
         {{end}}
         {{else}}
         <p class="empty-state">You aren't in any workspaces yet. Create one above to get started!</p>
+        {{end}}
         {{end}}
     </div>
 </div>

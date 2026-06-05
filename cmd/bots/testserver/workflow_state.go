@@ -1,13 +1,15 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"sort"
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	articlepkg "github.com/bhyland-usda/job-portal/internal/article"
 	bookmarkpkg "github.com/bhyland-usda/job-portal/internal/bookmark"
@@ -16,8 +18,8 @@ import (
 	grouppkg "github.com/bhyland-usda/job-portal/internal/group"
 	mentorshippkg "github.com/bhyland-usda/job-portal/internal/mentorship"
 	moderationpkg "github.com/bhyland-usda/job-portal/internal/moderation"
-	pollpkg "github.com/bhyland-usda/job-portal/internal/poll"
 	postingpkg "github.com/bhyland-usda/job-portal/internal/opportunity"
+	pollpkg "github.com/bhyland-usda/job-portal/internal/poll"
 	searchpkg "github.com/bhyland-usda/job-portal/internal/search"
 	userpkg "github.com/bhyland-usda/job-portal/internal/user"
 	workspacepkg "github.com/bhyland-usda/job-portal/internal/workspace"
@@ -429,7 +431,7 @@ func (s *fixtureState) bookmarkTitleLocked(targetType, targetID string) string {
 	case "article":
 		return "Building agency-wide analytics partnerships"
 	default:
-		return strings.Title(targetType) + " " + targetID
+		return cases.Title(language.English).String(targetType) + " " + targetID
 	}
 }
 
@@ -651,15 +653,13 @@ func (s *fixtureState) handleConnectionRequest(w http.ResponseWriter, r *http.Re
 	defer s.mu.Unlock()
 
 	key := s.connectionKey(current.ID, targetID)
-	conn, ok := s.connections[key]
-	if !ok {
-		conn = &fixtureConnection{
+	if _, ok := s.connections[key]; !ok {
+		s.connections[key] = &fixtureConnection{
 			RequesterID: current.ID,
 			AddresseeID: targetID,
 			Status:      "pending",
 			UpdatedAt:   s.nextTimeLocked(),
 		}
-		s.connections[key] = conn
 		s.addNotificationLocked(targetID, "/connections", current, current.FirstName+" "+current.LastName+" sent you a connection request.")
 	}
 
@@ -1657,19 +1657,6 @@ func (s *fixtureState) addNotificationLocked(userID, clickURL string, sender fix
 	}
 	s.nextNotificationID++
 	s.notifications[userID] = append([]fixtureNotification{notification}, s.notifications[userID]...)
-}
-
-func (s *fixtureState) exportStateJSON() string {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	payload := map[string]any{
-		"notifications": s.notifications,
-		"connections":   s.connections,
-		"activities":    s.activities,
-	}
-	data, _ := json.Marshal(payload)
-	return string(data)
 }
 
 func (s *fixtureState) profileView(current fixtureUser, profileID string) userpkg.ProfileView {

@@ -21,10 +21,16 @@
         <h2>{{.Workspace.Name}}</h2>
         {{if .Workspace.Description}}<p style="color:var(--text-muted);margin:8px 0;">{{.Workspace.Description}}</p>{{end}}
         <span class="wsv-meta">{{.Workspace.MemberCount}} {{if eq .Workspace.MemberCount 1}}member{{else}}members{{end}}</span>
+        {{if not .IsMember}}
+        <form method="POST" action="/workspaces/{{.Workspace.ID}}/join" style="margin-top:10px;">
+            <button type="submit" class="btn btn-primary">Join Workspace</button>
+        </form>
+        {{end}}
     </div>
 
     <div class="wsv-grid">
         <div>
+            {{if .IsMember}}
             <div class="profile-card" style="margin-bottom:16px;">
                 <h3 style="margin-bottom:8px;">Add a Note</h3>
                 <form class="wsv-form" method="POST" action="/workspaces/{{.Workspace.ID}}/notes">
@@ -33,6 +39,11 @@
                     <button type="submit" class="btn btn-primary">Post Note</button>
                 </form>
             </div>
+            {{else}}
+            <div class="profile-card" style="margin-bottom:16px;">
+                <p class="empty-state">Join this workspace to post notes and add members.</p>
+            </div>
+            {{end}}
 
             <div class="profile-card">
                 <h3 style="margin-bottom:12px;">Notes</h3>
@@ -53,6 +64,7 @@
         </div>
 
         <div>
+            {{if .IsMember}}
             <div class="profile-card" style="margin-bottom:16px;">
                 <h3 style="margin-bottom:8px;">Add a Member</h3>
                 <form class="wsv-form" method="POST" action="/workspaces/{{.Workspace.ID}}/members">
@@ -61,6 +73,7 @@
                     <button type="submit" class="btn btn-primary" aria-label="Add member">Add</button>
                 </form>
             </div>
+            {{end}}
 
             <div class="profile-card">
                 <h3 style="margin-bottom:8px;">Members</h3>

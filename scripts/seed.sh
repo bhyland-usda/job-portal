@@ -626,7 +626,7 @@ EOSQL
 echo "  Polls seeded."
 
 ###############################################################################
-echo "[14/23] Seeding groups..."
+echo "[14/23] Seeding groups and workspaces..."
 ###############################################################################
 run_sql <<'EOSQL'
 DO $$
@@ -694,6 +694,92 @@ BEGIN
 END $$;
 EOSQL
 echo "  Groups seeded."
+
+run_sql <<'EOSQL'
+DO $$
+DECLARE wid UUID; cid UUID; mid UUID;
+BEGIN
+  SELECT id INTO cid FROM users WHERE email = 'barry.allen@usda.gov';
+  IF cid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM workspaces WHERE name = 'Rapid Delivery Guild') THEN
+    INSERT INTO workspaces (id, name, description, created_by)
+    VALUES (gen_random_uuid(), 'Rapid Delivery Guild', 'Engineers focused on agile project management, leadership, Go, Docker, Linux, and reliable delivery practices across USDA.', cid)
+    RETURNING id INTO wid;
+
+    INSERT INTO workspace_members (workspace_id, user_id) VALUES (wid, cid) ON CONFLICT DO NOTHING;
+    FOR mid IN SELECT id FROM users WHERE email IN ('wally.west@usda.gov','dick.grayson@usda.gov','felicity.smoak@usda.gov','cisco.ramon@usda.gov','peter.parker@usda.gov') LOOP
+      INSERT INTO workspace_members (workspace_id, user_id) VALUES (wid, mid) ON CONFLICT DO NOTHING;
+    END LOOP;
+
+    INSERT INTO workspace_notes (id, workspace_id, author_id, body) VALUES
+      (gen_random_uuid(), wid, cid, 'Welcome to the Rapid Delivery Guild. Share release checklists, runbooks, and postmortems here.'),
+      (gen_random_uuid(), wid, (SELECT id FROM users WHERE email='felicity.smoak@usda.gov'), 'Pinned topic for this sprint: deployment rollback drills and monitoring baselines.');
+  END IF;
+
+  SELECT id INTO cid FROM users WHERE email = 'ororo.munroe@usda.gov';
+  IF cid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM workspaces WHERE name = 'Climate Data Lab') THEN
+    INSERT INTO workspaces (id, name, description, created_by)
+    VALUES (gen_random_uuid(), 'Climate Data Lab', 'Cross-discipline workspace for data analysis, Python, AI, strategic planning, and policy analysis for climate resilience.', cid)
+    RETURNING id INTO wid;
+
+    INSERT INTO workspace_members (workspace_id, user_id) VALUES (wid, cid) ON CONFLICT DO NOTHING;
+    FOR mid IN SELECT id FROM users WHERE email IN ('kara.danvers@usda.gov','hank.mccoy@usda.gov','alec.holland@usda.gov','hal.jordan@usda.gov','james.logan@usda.gov') LOOP
+      INSERT INTO workspace_members (workspace_id, user_id) VALUES (wid, mid) ON CONFLICT DO NOTHING;
+    END LOOP;
+
+    INSERT INTO workspace_notes (id, workspace_id, author_id, body) VALUES
+      (gen_random_uuid(), wid, cid, 'Starting thread: climate risk indicators we can standardize across agencies this quarter.'),
+      (gen_random_uuid(), wid, (SELECT id FROM users WHERE email='kara.danvers@usda.gov'), 'I will post a first draft model card template by Friday.');
+  END IF;
+
+  SELECT id INTO cid FROM users WHERE email = 'charles.xavier@usda.gov';
+  IF cid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM workspaces WHERE name = 'Research Methods Studio') THEN
+    INSERT INTO workspaces (id, name, description, created_by)
+    VALUES (gen_random_uuid(), 'Research Methods Studio', 'Shared workspace for policy analysis, strategic planning, leadership development, communication, and reproducible methods with Python and Rust tooling.', cid)
+    RETURNING id INTO wid;
+
+    INSERT INTO workspace_members (workspace_id, user_id) VALUES (wid, cid) ON CONFLICT DO NOTHING;
+    FOR mid IN SELECT id FROM users WHERE email IN ('jean.grey@usda.gov','scott.summers@usda.gov','emma.frost@usda.gov','forge@usda.gov','gwen.stacy@usda.gov') LOOP
+      INSERT INTO workspace_members (workspace_id, user_id) VALUES (wid, mid) ON CONFLICT DO NOTHING;
+    END LOOP;
+
+    INSERT INTO workspace_notes (id, workspace_id, author_id, body) VALUES
+      (gen_random_uuid(), wid, cid, 'Please upload current study protocols and note where reproducibility checks are still needed.');
+  END IF;
+
+  SELECT id INTO cid FROM users WHERE email = 'sara.lance@usda.gov';
+  IF cid IS NOT NULL AND NOT EXISTS (SELECT 1 FROM workspaces WHERE name = 'Incident Readiness Cell') THEN
+    INSERT INTO workspaces (id, name, description, created_by)
+    VALUES (gen_random_uuid(), 'Incident Readiness Cell', 'Planning workspace for leadership, strategic planning, communication, teamwork, and incident response coordination exercises.', cid)
+    RETURNING id INTO wid;
+
+    INSERT INTO workspace_members (workspace_id, user_id) VALUES (wid, cid) ON CONFLICT DO NOTHING;
+    FOR mid IN SELECT id FROM users WHERE email IN ('john.diggle@usda.gov','lyla.michaels@usda.gov','kate.kane@usda.gov','john.jones@usda.gov','barbara.gordon@usda.gov') LOOP
+      INSERT INTO workspace_members (workspace_id, user_id) VALUES (wid, mid) ON CONFLICT DO NOTHING;
+    END LOOP;
+
+    INSERT INTO workspace_notes (id, workspace_id, author_id, body) VALUES
+      (gen_random_uuid(), wid, cid, 'Next tabletop: comms outage + severe weather overlap. Draft your runbook updates before Tuesday.');
+  END IF;
+
+  -- Keep seeded workspace descriptions aligned with skill-matching keywords on reruns.
+  UPDATE workspaces
+  SET description = 'Engineers focused on agile project management, leadership, Go, Docker, Linux, and reliable delivery practices across USDA.'
+  WHERE name = 'Rapid Delivery Guild';
+
+  UPDATE workspaces
+  SET description = 'Cross-discipline workspace for data analysis, Python, AI, strategic planning, and policy analysis for climate resilience.'
+  WHERE name = 'Climate Data Lab';
+
+  UPDATE workspaces
+  SET description = 'Shared workspace for policy analysis, strategic planning, leadership development, communication, and reproducible methods with Python and Rust tooling.'
+  WHERE name = 'Research Methods Studio';
+
+  UPDATE workspaces
+  SET description = 'Planning workspace for leadership, strategic planning, communication, teamwork, and incident response coordination exercises.'
+  WHERE name = 'Incident Readiness Cell';
+END $$;
+EOSQL
+echo "  Workspaces seeded."
 
 ###############################################################################
 echo "[15/23] Extracting hashtags..."
@@ -1117,6 +1203,28 @@ SELECT '  Accomplishments:' || COUNT(*) FROM accomplishments;
 SELECT '  Polls:          ' || COUNT(*) FROM polls;
 SELECT '  Groups:         ' || COUNT(*) FROM interest_groups;
 SELECT '  Group Members:  ' || COUNT(*) FROM group_members;
+SELECT '  Workspaces:     ' || COUNT(*) FROM workspaces;
+SELECT '  Workspace Members:' || COUNT(*) FROM workspace_members;
+SELECT '  Workspace Notes:' || COUNT(*) FROM workspace_notes;
+SELECT '  Bryan Skills:   ' || COUNT(*)
+FROM skills s
+JOIN users u ON u.id = s.user_id
+WHERE u.email = 'bryan.hyland@usda.gov';
+SELECT '  Bryan WS Matches:' || COUNT(*)
+FROM workspaces w
+JOIN users u ON u.email = 'bryan.hyland@usda.gov'
+WHERE NOT EXISTS (
+  SELECT 1 FROM workspace_members wm
+  WHERE wm.workspace_id = w.id AND wm.user_id = u.id
+)
+AND EXISTS (
+  SELECT 1 FROM skills s
+  WHERE s.user_id = u.id
+    AND (
+    LOWER(w.name) LIKE '%' || LOWER(s.name) || '%'
+    OR LOWER(COALESCE(w.description, '')) LIKE '%' || LOWER(s.name) || '%'
+    )
+);
 SELECT '  Conversations:  ' || COUNT(*) FROM conversations;
 SELECT '  Messages:       ' || COUNT(*) FROM messages;
 SELECT '  Endorsements:   ' || COUNT(*) FROM skill_endorsements;

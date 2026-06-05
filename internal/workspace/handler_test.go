@@ -3,10 +3,14 @@ package workspace
 import (
 	"context"
 	"database/sql"
+	"html/template"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/bhyland-usda/job-portal/internal/middleware"
 )
 
 func setupMockDB(t *testing.T) (*sql.DB, sqlmock.Sqlmock) {
@@ -63,6 +67,120 @@ func TestListWorkspacesQuery(t *testing.T) {
 	}
 	if ws.ID != "ws-1" || ws.Name != "Alpha" || ws.MemberCount != 2 {
 		t.Errorf("unexpected workspace: %+v", ws)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("unmet expectations: %v", err)
+	}
+}
+
+// TestListWorkspacesWithRecommendations verifies the workspace list page also
+// loads recommended workspaces matched from the current user's skills.
+func TestListWorkspacesWithRecommendations(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	now := time.Now()
+	mock.ExpectQuery("SELECT ws.id, ws.name, ws.description, ws.created_by, ws.created_at").
+		WithArgs("user-1").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "description", "created_by", "created_at", "member_count"}).
+			AddRow("ws-1", "Alpha", "First", "user-1", now, 2))
+	mock.ExpectQuery("SELECT ws.id, ws.name, ws.description, ws.created_by, ws.created_at").
+		WithArgs("user-1").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "description", "created_by", "created_at", "member_count"}).
+			AddRow("ws-2", "Gamma", "Skills match", "user-2", now, 4))
+
+	tmpl := template.Must(template.New("workspaces.html").Parse(`{{define "base"}}recommended:{{range .RecommendedWorkspaces}}{{.Name}} {{end}}my:{{range .Workspaces}}{{.Name}} {{end}}{{end}}`))
+	h := NewHandler(db, map[string]*template.Template{"workspaces.html": tmpl})
+
+	req := httptest.NewRequest(http.MethodGet, "/workspaces", nil)
+	req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, "user-1"))
+	rec := httptest.NewRecorder()
+
+	data := ListPage{}
+	h.listWorkspacesWithData(rec, req, &data)
+
+	if body := rec.Body.String(); body != "recommended:Gamma my:Alpha " {
+		t.Fatalf("unexpected body: %q", body)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("unmet expectations: %v", err)
+	}
+}
+
+func TestListWorkspacesWithSearchResults(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	now := time.Now()
+	mock.ExpectQuery("SELECT ws.id, ws.name, ws.description, ws.created_by, ws.created_at").
+		WithArgs("user-1").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "description", "created_by", "created_at", "member_count"}).
+			AddRow("ws-1", "Alpha", "First", "user-1", now, 2))
+	mock.ExpectQuery("SELECT ws.id, ws.name, ws.description, ws.created_by, ws.created_at").
+		WithArgs("user-1").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "description", "created_by", "created_at", "member_count"}).
+			AddRow("ws-2", "Gamma", "Skills match", "user-2", now, 4))
+	mock.ExpectQuery("SELECT ws.id, ws.name, ws.description, ws.created_by, ws.created_at").
+		WithArgs("user-1", "%python%", "%python%").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "description", "created_by", "created_at", "member_count", "is_member"}).
+			AddRow("ws-3", "Python Guild", "Code + data", "user-3", now, 8, false))
+
+	tmpl := template.Must(template.New("workspaces.html").Parse(`{{define "base"}}q={{.SearchQuery}};search:{{range .SearchResults}}{{.Name}} {{end}}{{end}}`))
+	h := NewHandler(db, map[string]*template.Template{"workspaces.html": tmpl})
+
+	req := httptest.NewRequest(http.MethodGet, "/workspaces?q=python", nil)
+	req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, "user-1"))
+	rec := httptest.NewRecorder()
+
+	data := ListPage{}
+	h.listWorkspacesWithData(rec, req, &data)
+
+	if body := rec.Body.String(); body != "q=python;search:Python Guild " {
+		t.Fatalf("unexpected body: %q", body)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("unmet expectations: %v", err)
+	}
+}
+
+func TestShowWorkspaceAllowsNonMembers(t *testing.T) {
+	db, mock := setupMockDB(t)
+	defer db.Close()
+
+	now := time.Now()
+	mock.ExpectQuery("SELECT EXISTS").
+		WithArgs("ws-9", "user-1").
+		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+	mock.ExpectQuery("SELECT ws.id, ws.name, ws.description, ws.created_by, ws.created_at").
+		WithArgs("ws-9").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "description", "created_by", "created_at", "member_count"}).
+			AddRow("ws-9", "Open Workspace", "Visible to everyone", "user-2", now, 2))
+	mock.ExpectQuery(`SELECT wm.user_id, CONCAT\(u.first_name, ' ', u.last_name\), wm.joined_at`).
+		WithArgs("ws-9").
+		WillReturnRows(sqlmock.NewRows([]string{"user_id", "name", "joined_at"}).
+			AddRow("user-2", "Jane Doe", now))
+	mock.ExpectQuery(`SELECT n.id, n.author_id, CONCAT\(u.first_name, ' ', u.last_name\), n.body, n.created_at`).
+		WithArgs("ws-9").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "author_id", "name", "body", "created_at"}))
+
+	tmpl := template.Must(template.New("workspace_view.html").Parse(`{{define "base"}}{{.Workspace.Name}}{{end}}`))
+	h := NewHandler(db, map[string]*template.Template{"workspace_view.html": tmpl})
+
+	req := httptest.NewRequest(http.MethodGet, "/workspaces/ws-9", nil)
+	req.SetPathValue("id", "ws-9")
+	req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, "user-1"))
+	rec := httptest.NewRecorder()
+
+	h.showWorkspace(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", rec.Code)
+	}
+	if body := rec.Body.String(); body != "Open Workspace" {
+		t.Fatalf("unexpected body: %q", body)
 	}
 
 	if err := mock.ExpectationsWereMet(); err != nil {
