@@ -1224,7 +1224,24 @@ def _iter_cases(suite):
             yield test
 
 
+def _is_ci_visual_sweep_enabled() -> bool:
+    # Keep the heavy visual sweep local by default; allow explicit CI opt-in.
+    ci_flag = (os.getenv('CI') or '').strip().lower() in {'1', 'true', 'yes', 'on'}
+    override = (os.getenv('PLAYWRIGHT_RUN_VISUAL_SWEEP_IN_CI') or '').strip().lower()
+    if not ci_flag:
+        return True
+    return override in {'1', 'true', 'yes', 'on'}
+
+
 def load_tests(loader, tests, pattern):
+    if not _is_ci_visual_sweep_enabled():
+        def _ci_skip_placeholder():
+            raise unittest.SkipTest(
+                'visual audit sweep is disabled in CI; run locally or set PLAYWRIGHT_RUN_VISUAL_SWEEP_IN_CI=1'
+            )
+
+        return loader.suiteClass([unittest.FunctionTestCase(_ci_skip_placeholder)])
+
     _install_generated_interaction_tests()
 
     allowed_prefixes = {
