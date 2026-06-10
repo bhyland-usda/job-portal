@@ -1,22 +1,10 @@
 # Known Bugs — USDA JobPortal
 
-_Last updated: 2026-05-29_
+_Last updated: 2026-06-08_
 
 ## Open
 
-- Security (temporary regression)
-  - To keep avatar and multipart uploads working in local HTTP-only dev, same-origin middleware now allows unsafe requests when both `Origin` and `Referer` are missing, deferring enforcement to CSRF token checks.
-  - Risk: request-origin enforcement is weaker in this fallback path than the prior strict lock-down.
-  - Follow-up: once real HTTPS/proxy infrastructure is available, re-enable strict origin/referrer enforcement for all unsafe methods and validate with end-to-end tests in production-like networking.
-
-- Feed Page
-  - Clicking share doesn't really have a function in the first place.
-  - Saving a social post, and then clicking on it in the Saved Page just takes the user back to the feed page, not the post itself.
-  - Attaching a file when writing a new social post doesn't show anything to say it's been attached successfully. There should be the files name or a small preview.
-  - Adding a comment on a post refreshes the page, it should just add the comment and only refresh that post's comment section.
-- Notifications are not sent to the manager when someone applies to their post.
-- Too many clicks for managers to get to the applicants of their postings.
-- Postings need to have a workflow of when applicants can no longer apply without closing it.
+- No open critical or high-priority functional bugs are currently tracked in this file.
 
 ---
 
@@ -43,6 +31,12 @@ _Last updated: 2026-05-29_
 
 | Issue | Resolution |
 |-------|------------|
+| Settings preference endpoints accepted protocol-relative redirect targets (open redirect risk) | `cmd/server/main.go` now uses `middleware.SafeRedirectTarget(...)` for both matching-mode and location-type setting redirects, aligning with other hardened handlers |
+| Same-origin middleware allowed unsafe requests with missing `Origin`/`Referer` in some configurations | `internal/middleware/security.go` now blocks all unsafe requests missing both headers, and tests were updated to enforce strict behavior |
+| Saved post links in Bookmarks did not reliably deep-link to the saved post | Bookmarked post URLs now include both `highlight` and `#post-{id}` anchors so users land on the exact post context |
+| Social composer gave no feedback when a file was selected | Added live attachment filename feedback in the composer (`#attachment-selected`) with progressive enhancement in `static/js/feed.js` |
+| Submitting a comment on feed posts caused full-page refreshes | Added asynchronous comment submission in `static/js/feed.js` with per-post incremental refresh (`updateSinglePost`) |
+| Managers needed extra navigation steps to reach applicants | Added direct "View Applicants" shortcuts on posting cards in feed/search and on My Posts listings |
 | A 1:1 message was routed into an existing **group** conversation that included the recipient | `findDirectConversation` now restricts the lookup to conversations with exactly two participants; fixed in both `startConversation` and `startGroupConversation` |
 | No DB-level guard against duplicate 1:1 conversations | Migration `048`: canonical `conversations.direct_key` + partial unique index; create paths set it, with graceful race recovery |
 | Dropdown controls across admin/posting/org chart/leaderboard forms were inconsistent (hard to open, value changes not reflected, accidental refreshes) | Standardized explicit submit + dirty-state behavior, removed auto-submit dropdowns, added strict Playwright coverage that verifies select values actually change on option selection |

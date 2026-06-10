@@ -215,20 +215,20 @@ Before running tests, ensure:
 
 | ID | Feature | Preconditions | Steps | Expected Result | Pass/Fail |
 |----|---------|---------------|-------|-----------------|-----------|
-| POST-001 | Manager creates a posting | Logged in as manager | 1. Navigate to `/postings/create` 2. Fill in title, description, type (project/detail), location, department, skills (comma-separated) 3. Submit | Posting created, redirected to `/postings/{id}` showing the posting with skills listed | [ ] |
-| POST-002 | Employee cannot create posting | Logged in as employee | 1. Navigate to `/postings/create` | Access denied (403 Forbidden) | [ ] |
+| POST-001 | Manager creates a posting | Logged in as manager | 1. Navigate to `/opportunities/create` 2. Fill in title, description, type (project/detail), location, department, skills (comma-separated) 3. Submit | Posting created, redirected to `/opportunities/{id}` showing the posting with skills listed | [ ] |
+| POST-002 | Employee cannot create posting | Logged in as employee | 1. Navigate to `/opportunities/create` | Access denied (403 Forbidden) | [ ] |
 | POST-003 | Posting appears in matched feed | Employee has skills matching posting's skills | 1. Navigate to `/feed?tab=postings` | Posting appears in the Postings tab | [ ] |
 | POST-004 | Posting does NOT appear for non-matching | Employee has NO matching skills | 1. Navigate to `/feed?tab=postings` | Posting does NOT appear | [ ] |
-| POST-005 | Browse all postings | Logged in | 1. Navigate to `/postings/search` | Search page displays, can see active postings | [ ] |
-| POST-006 | Search postings by keyword | Active postings exist | 1. On `/postings/search`, enter a search query 2. Submit | Matching postings shown (searches title, description, skills) | [ ] |
+| POST-005 | Browse all postings | Logged in | 1. Navigate to `/opportunities/search` | Search page displays, can see active postings | [ ] |
+| POST-006 | Search postings by keyword | Active postings exist | 1. On `/opportunities/search`, enter a search query 2. Submit | Matching postings shown (searches title, description, skills) | [ ] |
 | POST-007 | Search postings by type | Active postings of both types exist | 1. Search with type filter "project" | Only project-type postings shown | [ ] |
-| POST-008 | Employee applies to posting | Logged in as employee, viewing active posting | 1. Navigate to `/postings/{id}/apply` 2. Write a cover letter 3. Submit | Application submitted; redirected to posting view | [ ] |
+| POST-008 | Employee applies to posting | Logged in as employee, viewing active posting | 1. Navigate to `/opportunities/{id}/apply` 2. Fill in both application responses 3. Submit | Application submitted; redirected to posting view | [ ] |
 | POST-009 | Duplicate application blocked | Already applied to posting | 1. Try to apply again | Error "You have already applied to this posting" | [ ] |
-| POST-010 | Application to closed posting | Posting status is "closed" | 1. Navigate to `/postings/{id}/apply` | Error "This posting is no longer accepting applications" | [ ] |
-| POST-011 | Manager views applications | Logged in as posting author | 1. Navigate to `/postings/{id}/applications` | List of all applications with applicant names, cover letters, statuses | [ ] |
+| POST-010 | Application to closed posting | Posting status is "closed" | 1. Navigate to `/opportunities/{id}/apply` | Error "This posting is no longer accepting applications" | [ ] |
+| POST-011 | Manager views applications | Logged in as posting author | 1. Navigate to `/opportunities/{id}/applications` | List of all applications with applicant names and statuses | [ ] |
 | POST-012 | Manager changes application status | Viewing applications | 1. Change an application status to "shortlisted", "accepted", or "rejected" | Status updated; page refreshes showing new status | [ ] |
-| POST-013 | Manager closes a posting | Logged in as posting author | 1. Click close on `/postings/{id}/close` | Posting status changed to "closed" | [ ] |
-| POST-014 | Closed posting shows status | Posting is closed | 1. View the posting at `/postings/{id}` | Status displays as "closed" | [ ] |
+| POST-013 | Manager closes a posting | Logged in as posting author | 1. Click close on `/opportunities/{id}/close` | Posting status changed to "closed" | [ ] |
+| POST-014 | Closed posting shows status | Posting is closed | 1. View the posting at `/opportunities/{id}` | Status displays as "closed" | [ ] |
 | POST-015 | My Posts -- postings tab | Logged in as manager with postings | 1. Navigate to `/my-posts?tab=postings` | Shows list of own postings with title, type, status, match count, date | [ ] |
 
 ---
@@ -506,7 +506,7 @@ Before running tests, ensure:
 | SEC-002 | Cannot edit another user's experience | Logged in as User A | 1. POST to `/profile/experience/{userB-exp-id}/edit` | HTTP 404 (WHERE user_id clause prevents access) | [ ] |
 | SEC-003 | Cannot delete another user's resume | Logged in as User A | 1. POST to `/resumes/{userB-resume-id}/delete` | No deletion (WHERE user_id clause) | [ ] |
 | SEC-004 | Cannot access others' conversations | Logged in as User A | 1. GET `/messages/chat/{conv-id-not-participant}` | HTTP 403 Forbidden | [ ] |
-| SEC-005 | Manager role required for postings | Logged in as employee | 1. POST to `/postings/create` | HTTP 403 Forbidden | [ ] |
+| SEC-005 | Manager role required for postings | Logged in as employee | 1. POST to `/opportunities/create` | HTTP 403 Forbidden | [ ] |
 | SEC-006 | Admin role required for FOIA | Logged in as manager (not admin) | 1. GET `/admin/foia` | HTTP 403 Forbidden | [ ] |
 | SEC-007 | Avatar content type sniffing | Upload image with wrong extension but valid image bytes | 1. Upload a JPEG renamed to .txt | Server detects content type via magic bytes; upload succeeds if it is a valid image | [ ] |
 | SEC-008 | XSS in post content | Logged in | 1. Create a post with `<script>alert('xss')</script>` | Script tags are escaped by Go html/template; no alert fires | [ ] |

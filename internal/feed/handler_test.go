@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -151,29 +152,95 @@ func TestPostContentTrim(t *testing.T) {
 	}
 }
 
-// TestShareCommentaryBug documents BUG-005.
-func TestShareCommentaryBug(t *testing.T) {
-	// The share form in feed.html has no input field for commentary
-	// This test documents that the handler EXPECTS commentary but the UI doesn't provide it
-	t.Log("BUG-005: Share/Repost form has no commentary input field")
-	t.Log("Handler reads r.FormValue('commentary') but form doesn't have that field")
-	t.Log("Result: All shares have empty commentary")
+// TestSharePostCreatesVisibleFeedPost verifies a share now creates both a
+// shared_posts row and a normal feed post so the share appears in timelines.
+func TestSharePostCreatesVisibleFeedPost(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("failed to create mock db: %v", err)
+	}
+	defer db.Close()
+
+	mock.ExpectQuery(`SELECT content FROM posts WHERE id = \$1`).
+		WithArgs("post-1").
+		WillReturnRows(sqlmock.NewRows([]string{"content"}).AddRow("original post body"))
+
+	mock.ExpectBegin()
+	mock.ExpectExec(`INSERT INTO shared_posts \(user_id, original_post_id, commentary\) VALUES \(\$1, \$2, \$3\)`).
+		WithArgs("user-7", "post-1", "Check this out").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(`INSERT INTO posts \(user_id, content, scheduled_at\) VALUES \(\$1, \$2, \$3\)`).
+		WithArgs("user-7", "Check this out\n\n---\noriginal post body", nil).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+
+	// notifyPostAuthor lookup.
+	mock.ExpectQuery(`SELECT user_id FROM posts WHERE id = \$1`).
+		WithArgs("post-1").
+		WillReturnRows(sqlmock.NewRows([]string{"user_id"}).AddRow("author-1"))
+	mock.ExpectQuery(`SELECT first_name, last_name FROM users WHERE id = \$1`).
+		WithArgs("user-7").
+		WillReturnRows(sqlmock.NewRows([]string{"first_name", "last_name"}).AddRow("Ada", "Lovelace"))
+	mock.ExpectQuery(`SELECT enabled FROM notification_preferences`).
+		WithArgs("author-1", "feed").
+		WillReturnError(sql.ErrNoRows)
+	mock.ExpectExec(`INSERT INTO notifications \(user_id, sender_id, type, message\)`).
+		WithArgs("author-1", "user-7", "feed", "Ada Lovelace shared your post").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	h := &Handler{db: db, notif: notification.NewHandler(db, nil), broker: NewBroker()}
+
+	form := url.Values{}
+	form.Set("commentary", "Check this out")
+	req := httptest.NewRequest("POST", "/feed/post-1/share", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.SetPathValue("id", "post-1")
+	req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, "user-7"))
+	rec := httptest.NewRecorder()
+
+	h.sharePost(rec, req)
+
+	if rec.Code != 303 {
+		t.Fatalf("expected 303 redirect, got %d; body=%s", rec.Code, rec.Body.String())
+	}
+	if loc := rec.Header().Get("Location"); loc != "/feed" {
+		t.Fatalf("expected redirect to /feed, got %q", loc)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet expectations: %v", err)
+	}
 }
 
-// TestAttachmentDisplayBug documents BUG-004.
-func TestAttachmentDisplayBug(t *testing.T) {
-	// getSocialFeed query doesn't load attachments
-	// feed.html template doesn't render attachments
-	t.Log("BUG-004: File attachments uploaded but never displayed")
-	t.Log("getSocialFeed() query doesn't join post_attachments table")
-	t.Log("feed.html template doesn't render .Attachments array")
+func TestFeedTemplateRendersAttachments(t *testing.T) {
+	b, err := os.ReadFile("../../templates/feed/feed.html")
+	if err != nil {
+		t.Fatalf("read feed template: %v", err)
+	}
+	s := string(b)
+
+	for _, want := range []string{"{{if .Attachments}}", "post-attachments", "/feed/attachment/{{.ID}}"} {
+		if !strings.Contains(s, want) {
+			t.Fatalf("expected feed template to contain %q", want)
+		}
+	}
 }
 
-// TestBookmarkUIBug documents BUG-003.
-func TestBookmarkUIBug(t *testing.T) {
-	// No bookmark buttons exist in any template
-	t.Log("BUG-003: Bookmark backend works but NO UI buttons exist")
-	t.Log("Checked: feed.html, posting/view.html, article/view.html — none have bookmark forms")
+func TestBookmarkButtonsPresentAcrossPrimaryViews(t *testing.T) {
+	templates := []string{
+		"../../templates/feed/feed.html",
+		"../../templates/opportunity/view.html",
+		"../../templates/article/view.html",
+	}
+	for _, path := range templates {
+		b, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read template %s: %v", path, err)
+		}
+		s := string(b)
+		if !strings.Contains(s, "bookmark-btn") {
+			t.Fatalf("expected bookmark control in %s", path)
+		}
+	}
 }
 
 // TestGetSocialFeedExcludesFutureScheduled verifies the social feed query filters
@@ -212,7 +279,7 @@ func TestGetSocialFeedExcludesFutureScheduled(t *testing.T) {
 	h := &Handler{db: db}
 
 	req := httptest.NewRequest("GET", "/feed", nil)
-	posts, err := h.getSocialFeed(req, "user-7")
+	posts, err := h.getSocialFeed(req, "user-7", "")
 	if err != nil {
 		t.Fatalf("getSocialFeed returned error: %v", err)
 	}
@@ -221,6 +288,65 @@ func TestGetSocialFeedExcludesFutureScheduled(t *testing.T) {
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("unmet expectations (query likely missing scheduled_at filter): %v", err)
+	}
+}
+
+// TestGetSocialFeedIncludesHighlightedPost verifies a highlighted post deep-link
+// is loaded when it is not already in the default feed slice.
+func TestGetSocialFeedIncludesHighlightedPost(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("failed to create mock db: %v", err)
+	}
+	defer db.Close()
+
+	created := time.Date(2026, 1, 2, 0, 0, 0, 0, time.UTC)
+
+	// Base feed is empty (e.g. highlighted post older than top 50 or from a
+	// connected user outside the default window).
+	mock.ExpectQuery(`FROM posts p`).
+		WithArgs("user-7").
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "user_id", "first_name", "last_name", "avatar_url", "headline",
+			"content", "created_at",
+			"like_count", "comment_count", "liked_by_user", "reaction_type", "bookmarked",
+		}))
+
+	// Highlighted post query should load exactly one authorized post.
+	mock.ExpectQuery(`WHERE p.id = \$2`).
+		WithArgs("user-7", "post-42").
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "user_id", "first_name", "last_name", "avatar_url", "headline",
+			"content", "created_at",
+			"like_count", "comment_count", "liked_by_user", "reaction_type", "bookmarked",
+		}).AddRow(
+			"post-42", "author-2", "Grace", "Hopper", "", "Engineer",
+			"older post", created,
+			0, 0, false, "", true,
+		))
+
+	// Attachment query for the highlighted post.
+	mock.ExpectQuery(`FROM post_attachments WHERE post_id = \$1`).
+		WithArgs("post-42").
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "original_name", "content_type", "file_size", "file_category",
+		}))
+
+	h := &Handler{db: db}
+	req := httptest.NewRequest("GET", "/feed?tab=social&highlight=post-42", nil)
+
+	posts, err := h.getSocialFeed(req, "user-7", "post-42")
+	if err != nil {
+		t.Fatalf("getSocialFeed returned error: %v", err)
+	}
+	if len(posts) != 1 {
+		t.Fatalf("expected 1 post (highlight only), got %d", len(posts))
+	}
+	if posts[0].ID != "post-42" {
+		t.Fatalf("expected highlighted post id post-42, got %s", posts[0].ID)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("unmet expectations: %v", err)
 	}
 }
 

@@ -62,7 +62,7 @@
                                 <span class="draft-kind-badge">Type: Social Feed</span>
                                 <span>{{.CreatedAt.Format "Jan 2, 2006"}}</span>
                             </div>
-                            <p class="my-post-content">{{if .RenderedContent}}{{.RenderedContent}}{{else}}{{.Content}}{{end}}</p>
+                            <div class="my-post-content">{{if .RenderedContent}}{{.RenderedContent}}{{else}}<p>{{.Content}}</p>{{end}}</div>
                             <div class="my-post-actions">
                                 <form method="POST" action="/feed/drafts/{{.ID}}/publish" class="inline">
                                     <button type="submit" class="btn-link">Publish</button>
@@ -89,7 +89,7 @@
                                 <span class="draft-kind-badge">Type: Social Feed</span>
                                 <span>Created {{.CreatedAt.Format "Jan 2, 2006"}}</span>
                             </div>
-                            <p class="my-post-content">{{if .RenderedContent}}{{.RenderedContent}}{{else}}{{.Content}}{{end}}</p>
+                            <div class="my-post-content">{{if .RenderedContent}}{{.RenderedContent}}{{else}}<p>{{.Content}}</p>{{end}}</div>
                             <div class="my-post-meta">
                                 <span class="scheduled-badge">&#128337; Scheduled for {{.ScheduledAt.Format "Jan 2, 2006 3:04 PM"}}</span>
                             </div>

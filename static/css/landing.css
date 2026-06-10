@@ -7,22 +7,38 @@
     --primary-hover: #003562;
     --green: #005941;
     --green-light: #e6f2ec;
+    --career: #b45309;
+    --knowledge: #7b1fa2;
+    --identifier-bg: var(--primary);
+    --signin-hover-bg: rgba(0, 71, 133, 0.08);
     --bg: #f4f3f0;
+    --bg-card: #ffffff;
+    --bg-soft: #f8fafc;
     --text: #1b1b1b;
     --text-muted: #6b6b6b;
     --border: #d4d2cd;
+    --on-primary: #ffffff;
+    --hero-shell-shadow: 0 14px 32px rgba(0, 71, 133, 0.08);
+    --card-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    --card-hover-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    --icon-connect-bg: rgba(0, 71, 133, 0.1);
+    --icon-opportunity-bg: rgba(0, 89, 65, 0.1);
+    --dark-card-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+    --dark-connect-bg: rgba(47, 110, 165, 0.24);
+    --dark-opportunity-bg: rgba(92, 184, 138, 0.2);
+    --dark-signin-hover-bg: rgba(47, 110, 165, 0.2);
 }
 
 body {
     font-family: "Source Sans 3", "Source Sans Pro", "Helvetica Neue", Helvetica, Arial, sans-serif;
-    background: #fff;
+    background: var(--bg-card);
     color: var(--text);
     line-height: 1.6;
 }
 
 /* Header */
 .landing-header {
-    background: #fff;
+    background: var(--bg-card);
     border-bottom: 3px solid var(--primary);
     position: sticky;
     top: 0;
@@ -30,8 +46,8 @@ body {
 }
 
 .landing-identifier {
-    background: var(--primary);
-    color: #fff;
+    background: var(--identifier-bg);
+    color: var(--on-primary);
 }
 
 .landing-identifier-inner {
@@ -95,7 +111,7 @@ body {
 }
 
 .btn-signin:hover {
-    background: rgba(0, 71, 133, 0.08);
+    background: var(--signin-hover-bg);
 }
 
 .btn-join {
@@ -103,7 +119,7 @@ body {
     border: none;
     border-radius: 999px;
     background: var(--primary);
-    color: #fff;
+    color: var(--on-primary);
     font-size: 14px;
     font-weight: 600;
     text-decoration: none;
@@ -182,22 +198,22 @@ body {
     width: 100%;
     max-width: 420px;
     aspect-ratio: 4 / 3;
-    background: linear-gradient(180deg, #ffffff 0%, var(--bg) 100%);
+    background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg) 100%);
     border: 1px solid var(--border);
     border-radius: 18px;
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px;
     padding: 24px;
-    box-shadow: 0 14px 32px rgba(0, 71, 133, 0.08);
+    box-shadow: var(--hero-shell-shadow);
 }
 
 .hero-card {
-    background: #fff;
+    background: var(--bg-card);
     border-radius: 10px;
     padding: 16px;
     border: 1px solid var(--border);
-    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    box-shadow: var(--card-shadow);
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -216,8 +232,8 @@ body {
     margin-bottom: 8px;
 }
 
-.hero-card-icon.blue { background: rgba(0, 71, 133, 0.1); color: var(--primary); }
-.hero-card-icon.green { background: rgba(0, 89, 65, 0.1); color: var(--green); }
+.hero-card-icon.blue { background: var(--icon-connect-bg); color: var(--primary); }
+.hero-card-icon.green { background: var(--icon-opportunity-bg); color: var(--green); }
 
 .hero-card-label {
     font-size: 12px;
@@ -267,17 +283,17 @@ body {
 }
 
 .feature-card {
-    background: #fff;
+    background: var(--bg-card);
     border-radius: 12px;
     padding: 32px 24px;
     text-align: center;
     border: 1px solid var(--border);
-    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    box-shadow: var(--card-shadow);
     transition: box-shadow 0.2s, transform 0.2s;
 }
 
 .feature-card:hover {
-    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    box-shadow: var(--card-hover-shadow);
     transform: translateY(-2px);
 }
 
@@ -292,10 +308,10 @@ body {
     font-size: 24px;
 }
 
-.feature-icon.fc-connect { background: rgba(0, 71, 133, 0.1); color: var(--primary); }
-.feature-icon.fc-opportunity { background: rgba(0, 89, 65, 0.1); color: var(--green); }
-.feature-icon.fc-career { background: rgba(180, 83, 9, 0.1); color: #b45309; }
-.feature-icon.fc-knowledge { background: rgba(156, 39, 176, 0.1); color: #7b1fa2; }
+.feature-icon.fc-connect { background: var(--icon-connect-bg); color: var(--primary); }
+.feature-icon.fc-opportunity { background: var(--icon-opportunity-bg); color: var(--green); }
+.feature-icon.fc-career { background: color-mix(in srgb, var(--career) 12%, transparent); color: var(--career); }
+.feature-icon.fc-knowledge { background: color-mix(in srgb, var(--knowledge) 12%, transparent); color: var(--knowledge); }
 
 .feature-card h3 {
     font-size: 17px;
@@ -313,7 +329,7 @@ body {
 .cta {
     padding: 80px 24px;
     text-align: center;
-    background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+    background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-soft) 100%);
 }
 
 .cta h2 {
@@ -346,6 +362,45 @@ body {
 .landing-footer p {
     font-size: 13px;
     color: var(--text-muted);
+}
+
+.dark-mode {
+    --primary: #2f6ea5;
+    --primary-hover: #255a89;
+    --green: #5cb88a;
+    --green-light: rgba(92, 184, 138, 0.18);
+    --career: #d4b44a;
+    --knowledge: #b48ce8;
+    --identifier-bg: #163a64;
+    --bg: #161b22;
+    --bg-card: #1e1e1e;
+    --bg-soft: #222a35;
+    --text: #dedede;
+    --text-muted: #a8a8a8;
+    --border: #3a3a3a;
+    --on-primary: #f3f8ff;
+    --icon-connect-bg: var(--dark-connect-bg);
+    --icon-opportunity-bg: var(--dark-opportunity-bg);
+}
+
+.dark-mode .hero-illustration,
+.dark-mode .hero-card,
+.dark-mode .feature-card {
+    box-shadow: var(--dark-card-shadow);
+}
+
+.dark-mode .hero-card-icon.blue,
+.dark-mode .feature-icon.fc-connect {
+    background: var(--dark-connect-bg);
+}
+
+.dark-mode .hero-card-icon.green,
+.dark-mode .feature-icon.fc-opportunity {
+    background: var(--dark-opportunity-bg);
+}
+
+.dark-mode .btn-signin:hover {
+    background: var(--dark-signin-hover-bg);
 }
 
 /* Responsive */

@@ -201,6 +201,7 @@ func main() {
 	resumeHandler := resume.NewHandler(db, pages)
 	adminHandler := admin.NewHandler(db, pages)
 	opportunityHandler := opportunity.NewHandler(db, pages)
+	opportunityHandler.SetNotificationHandler(notificationHandler)
 	postsHandler := posts.NewHandler(db, pages)
 	accomplishmentHandler := accomplishment.NewHandler(db, pages)
 	bookmarkHandler := bookmark.NewHandler(db, pages)
@@ -296,10 +297,11 @@ func main() {
 		if returnTo == "" {
 			returnTo = r.Header.Get("Referer")
 		}
-		if !strings.HasPrefix(returnTo, "/") {
-			returnTo = "/feed"
-		}
+		returnTo = middleware.SafeRedirectTarget(returnTo, "/feed")
 		http.Redirect(w, r, returnTo, http.StatusSeeOther)
+	})))
+	mux.Handle("GET /settings/matching-mode", requireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/feed", http.StatusSeeOther)
 	})))
 	mux.Handle("POST /settings/location-types", requireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if err := r.ParseForm(); err != nil {
@@ -321,10 +323,11 @@ func main() {
 		if returnTo == "" {
 			returnTo = r.Header.Get("Referer")
 		}
-		if !strings.HasPrefix(returnTo, "/") {
-			returnTo = "/feed"
-		}
+		returnTo = middleware.SafeRedirectTarget(returnTo, "/feed")
 		http.Redirect(w, r, returnTo, http.StatusSeeOther)
+	})))
+	mux.Handle("GET /settings/location-types", requireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/feed", http.StatusSeeOther)
 	})))
 
 	// Root: landing page for guests, redirect to feed for logged-in users
@@ -344,7 +347,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.Port,
-		Handler:      middleware.WithErrorPages(middleware.RequireCSRFTokens(mux), errorPages),
+		Handler:      middleware.WithErrorPages(middleware.WithSecurityHeaders(middleware.RequireCSRFTokens(mux)), errorPages),
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  120 * time.Second,

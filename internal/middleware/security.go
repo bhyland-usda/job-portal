@@ -15,13 +15,12 @@ func RequireSameOriginUnsafeMethods(next http.Handler) http.Handler {
 			return
 		}
 
-		host := canonicalHost(r.Host)
+		expectedOrigin := requestOrigin(r)
 		origin := strings.TrimSpace(r.Header.Get("Origin"))
 		referer := strings.TrimSpace(r.Referer())
 
 		if origin != "" {
-			u, err := url.Parse(origin)
-			if err != nil || canonicalHost(u.Host) != host {
+			if !matchesRequestOrigin(origin, expectedOrigin) {
 				http.Error(w, "Forbidden", http.StatusForbidden)
 				return
 			}
@@ -30,8 +29,7 @@ func RequireSameOriginUnsafeMethods(next http.Handler) http.Handler {
 		}
 
 		if referer != "" {
-			u, err := url.Parse(referer)
-			if err != nil || canonicalHost(u.Host) != host {
+			if !matchesRequestOrigin(referer, expectedOrigin) {
 				http.Error(w, "Forbidden", http.StatusForbidden)
 				return
 			}
@@ -39,11 +37,20 @@ func RequireSameOriginUnsafeMethods(next http.Handler) http.Handler {
 			return
 		}
 
-		// Some legitimate browser POST flows (notably multipart form submissions)
-		// may omit both Origin and Referer. In that case, defer protection to the
-		// strict CSRF token middleware.
-		next.ServeHTTP(w, r)
+		// Unsafe requests without either header are denied.
+		http.Error(w, "Forbidden", http.StatusForbidden)
 	})
+}
+
+func matchesRequestOrigin(raw, expected string) bool {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return false
+	}
+	if u.Scheme == "" || u.Host == "" {
+		return false
+	}
+	return canonicalOrigin(u.Scheme, u.Host) == expected
 }
 
 // SafeRedirectTarget ensures redirects remain in-app.
@@ -76,4 +83,24 @@ func canonicalHost(h string) string {
 		return h[:i]
 	}
 	return h
+}
+
+func requestOrigin(r *http.Request) string {
+	scheme := "http"
+	if r.TLS != nil {
+		scheme = "https"
+	}
+	if forwarded := strings.ToLower(strings.TrimSpace(r.Header.Get("X-Forwarded-Proto"))); forwarded != "" {
+		scheme = forwarded
+	}
+	return canonicalOrigin(scheme, r.Host)
+}
+
+func canonicalOrigin(scheme, host string) string {
+	scheme = strings.ToLower(strings.TrimSpace(scheme))
+	host = strings.ToLower(strings.TrimSpace(host))
+	if scheme == "" || host == "" {
+		return ""
+	}
+	return scheme + "://" + host
 }

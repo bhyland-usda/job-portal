@@ -1,6 +1,6 @@
 # USDA JobPortal — Feature Roadmap & Development Report
 
-_Last updated: 2026-05-23_
+_Last updated: 2026-06-08_
 
 ## Executive Summary
 
@@ -34,6 +34,8 @@ The platform is built with Go, PostgreSQL, and Redis, containerized with Docker 
 - Hashtags, trending, real-time updates via SSE
 - @mentions in posts/comments with profile links + mention notifications
 - Shared URL link previews
+- Saved-post deep links now jump directly to the highlighted post context
+- Composer attachment selection feedback + asynchronous comment submission (no full-page reload)
 
 ### Connections & Networking
 - Connection requests (send/accept/reject), bidirectional unique constraint
@@ -65,6 +67,7 @@ The platform is built with Go, PostgreSQL, and Redis, containerized with Docker 
 - Application flow: apply → shortlist → accept/reject
 - Detail/project **outcomes** and per-employee **detail history**
 - "My Posts" management; close-posting workflow
+- Direct "View Applicants" shortcuts from feed/search/my-posts posting cards
 
 ### Career Development
 - Mentorship matching, accomplishments tracking + export, resume builder, onboarding checklist
@@ -81,6 +84,12 @@ The platform is built with Go, PostgreSQL, and Redis, containerized with Docker 
 ### Platform & Branding
 - Public landing page, USDA branding, dark mode, mobile responsive, realistic demo seed data
 - Section 508 basics (focus states, contrast)
+
+### Security Hardening
+- CSRF middleware + strict same-origin checks for unsafe methods
+- Redirect target hardening across settings and action handlers via `SafeRedirectTarget`
+- Feed attachment authorization checks; avatar route requires authentication
+- SSRF defenses on link previews (host/IP validation, blocked redirect following)
 
 ---
 
@@ -113,12 +122,8 @@ The platform is built with Go, PostgreSQL, and Redis, containerized with Docker 
 | Feature | Description | Value |
 |---------|-------------|-------|
 | MFA (Production) | TOTP two-factor | Security requirement |
-| Content Moderation | Flag/report with admin review | Platform safety |
-| Personal Data Export | User data export | Policy compliance |
-| Session Management | Active sessions view, remote logout | Security |
 | PII Redaction Warning | Detect sensitive data before posting | Data protection |
 | Privacy Controls | Profile visibility settings | User trust |
-| Acceptable Use Policy | Governance framework | Compliance |
 | Accessibility (full 508) | Full ARIA + keyboard-navigation audit | Federal requirement |
 
 ### Integration

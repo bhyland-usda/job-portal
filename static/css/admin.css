@@ -14,7 +14,7 @@
 
 .admin-users-subtitle {
     margin: 0;
-    color: var(--text-muted, #666);
+    color: var(--text-muted);
 }
 
 .admin-users-table {
@@ -75,8 +75,8 @@
 }
 
 .role-employee {
-    background: #e8e8e8;
-    color: #555;
+    background: var(--neutral-badge-bg);
+    color: var(--neutral-badge-text);
 }
 
 .role-manager {
@@ -85,7 +85,7 @@
 }
 
 .role-admin {
-    background: #f5e0e0;
+    background: var(--danger-bg);
     color: var(--error);
 }
 
@@ -111,16 +111,16 @@
 
 /* Dark mode role badges */
 .dark-mode .role-employee {
-    background: rgba(60, 60, 60, 0.3);
-    color: #909090;
+    background: var(--neutral-badge-bg);
+    color: var(--neutral-badge-text);
 }
 
 .dark-mode .role-manager {
-    background: rgba(0, 71, 133, 0.2);
+    background: var(--primary-light);
     color: var(--primary);
 }
 
 .dark-mode .role-admin {
-    background: rgba(200, 50, 50, 0.15);
+    background: var(--danger-bg);
     color: var(--error);
 }

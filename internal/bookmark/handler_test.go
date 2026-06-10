@@ -2,6 +2,7 @@ package bookmark
 
 import (
 	"context"
+	"os"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -41,5 +42,16 @@ func TestHandleAddRejectsExternalRefererRedirect(t *testing.T) {
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("unmet expectations: %v", err)
+	}
+}
+
+func TestBookmarkTemplatePostLinksUseFeedHighlight(t *testing.T) {
+	b, err := os.ReadFile("../../templates/bookmark/index.html")
+	if err != nil {
+		t.Fatalf("read bookmark template: %v", err)
+	}
+	s := string(b)
+	if !strings.Contains(s, "/feed?tab=social&amp;highlight={{.TargetID}}") {
+		t.Fatalf("expected post bookmark deep-link to feed highlight in template")
 	}
 }

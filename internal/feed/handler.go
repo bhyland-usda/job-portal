@@ -148,6 +148,7 @@ func (h *Handler) streamFeed(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) showFeed(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r.Context())
 	tab := r.URL.Query().Get("tab")
+	highlightPostID := strings.TrimSpace(r.URL.Query().Get("highlight"))
 	if tab == "" {
 		tab = "social"
 	}
@@ -157,7 +158,7 @@ func (h *Handler) showFeed(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	if tab == "social" {
-		posts, err = h.getSocialFeed(r, userID)
+		posts, err = h.getSocialFeed(r, userID, highlightPostID)
 		if err != nil {
 			slog.Error("failed to load feed", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -236,7 +237,7 @@ func (h *Handler) notifyPostAuthor(postID, actorID, action string) {
 	h.notif.CreateNotification(context.Background(), authorID, actorID, "feed", message)
 }
 
-func (h *Handler) getSocialFeed(r *http.Request, userID string) ([]Post, error) {
+func (h *Handler) getSocialFeed(r *http.Request, userID, highlightPostID string) ([]Post, error) {
 	rows, err := h.db.QueryContext(r.Context(),
 		`SELECT p.id, p.user_id, u.first_name, u.last_name, u.avatar_url, u.headline,
                         p.content, p.created_at,
@@ -284,6 +285,54 @@ func (h *Handler) getSocialFeed(r *http.Request, userID string) ([]Post, error) 
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
+	}
+
+	if highlightPostID != "" {
+		found := false
+		for _, p := range posts {
+			if p.ID == highlightPostID {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			var hp Post
+			err := h.db.QueryRowContext(r.Context(),
+				`SELECT p.id, p.user_id, u.first_name, u.last_name, u.avatar_url, u.headline,
+                        p.content, p.created_at,
+                        (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) AS like_count,
+                        (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) AS comment_count,
+                        EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $1) AS liked_by_user,
+                        COALESCE((SELECT reaction_type FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $1), ''),
+                        EXISTS(SELECT 1 FROM bookmarks b WHERE b.user_id = $1 AND b.target_type = 'post' AND b.target_id = p.id)
+                 FROM posts p
+                 JOIN users u ON u.id = p.user_id
+                 WHERE p.id = $2
+                   AND (p.user_id = $1
+                    OR p.user_id IN (
+                        SELECT CASE
+                            WHEN c.requester_id = $1 THEN c.addressee_id
+                            ELSE c.requester_id
+                        END
+                        FROM connections c
+                        WHERE (c.requester_id = $1 OR c.addressee_id = $1)
+                          AND c.status = 'accepted'
+                    ))
+                   AND (p.scheduled_at IS NULL OR p.scheduled_at <= now())`,
+				userID, highlightPostID,
+			).Scan(
+				&hp.ID, &hp.AuthorID, &hp.AuthorFirstName, &hp.AuthorLastName,
+				&hp.AuthorAvatarURL, &hp.AuthorHeadline,
+				&hp.Content, &hp.CreatedAt,
+				&hp.LikeCount, &hp.CommentCount, &hp.LikedByUser, &hp.UserReaction,
+				&hp.Bookmarked,
+			)
+			if err == nil {
+				hp.IsAuthor = hp.AuthorID == userID
+				posts = append([]Post{hp}, posts...)
+			}
+		}
 	}
 
 	// Load attachments for each post
@@ -691,10 +740,36 @@ func (h *Handler) sharePost(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r.Context())
 	postID := r.PathValue("id")
 
-	r.ParseForm()
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid form data", http.StatusBadRequest)
+		return
+	}
 	commentary := strings.TrimSpace(r.FormValue("commentary"))
 
-	_, err := h.db.ExecContext(r.Context(),
+	var originalContent string
+	err := h.db.QueryRowContext(r.Context(),
+		`SELECT content FROM posts WHERE id = $1`,
+		postID,
+	).Scan(&originalContent)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	sharedContent := "Shared a post:\n\n" + originalContent
+	if commentary != "" {
+		sharedContent = commentary + "\n\n---\n" + originalContent
+	}
+
+	tx, err := h.db.BeginTx(r.Context(), nil)
+	if err != nil {
+		slog.Error("failed to begin share transaction", "error", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback()
+
+	_, err = tx.ExecContext(r.Context(),
 		`INSERT INTO shared_posts (user_id, original_post_id, commentary) VALUES ($1, $2, $3)`,
 		userID, postID, commentary,
 	)
@@ -704,8 +779,24 @@ func (h *Handler) sharePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_, err = tx.ExecContext(r.Context(),
+		`INSERT INTO posts (user_id, content, scheduled_at) VALUES ($1, $2, $3)`,
+		userID, sharedContent, nil,
+	)
+	if err != nil {
+		slog.Error("failed to create feed post for share", "error", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	if err := tx.Commit(); err != nil {
+		slog.Error("failed to commit share transaction", "error", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
 	h.notifyPostAuthor(postID, userID, "shared your post")
-	go h.broker.Broadcast(postID)
+	go h.broker.Broadcast("")
 
 	http.Redirect(w, r, "/feed", http.StatusSeeOther)
 }

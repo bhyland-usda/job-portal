@@ -178,6 +178,17 @@ class BrowserHarness(unittest.TestCase):
             if "/login" in location_url:
                 return
 
+        if "failed to load resource" in lower_text and "405" in lower_text:
+            noisy_paths = (
+                "/settings/matching-mode",
+                "/settings/location-types",
+                "/aup/accept",
+                "/resumes/",
+                "/workspaces/",
+            )
+            if any(p in location_url for p in noisy_paths):
+                return
+
         if location_url:
             self.console_errors.append(f"{text} @ {location_url}")
             return

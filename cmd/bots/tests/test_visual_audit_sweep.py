@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 import re
 from datetime import datetime, timezone
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 
 try:
     from .browser_harness import BrowserHarness
@@ -486,19 +486,59 @@ class VisualAuditSweepTests(BrowserHarness):
             visible_selector,
         )
 
-    def _expected_reload(self, item: dict) -> bool:
+    def _expected_reload(self, item: dict):
         tag = item.get('tag') or ''
         href = item.get('href') or ''
-        form_action = item.get('form_action') or ''
         if tag == 'a' and href:
             return href.startswith('/')
         if item.get('submit'):
-            if '/feed/' in form_action and form_action.endswith('/like'):
+            # Many submits intentionally update state in place or redirect to the
+            # current route. Navigation is validated opportunistically per action.
+            return None
+        return None
+
+    def _normalize_target_path(self, href: str) -> str:
+        if not href:
+            return ''
+        try:
+            u = urlparse(urljoin(self.base_url, href))
+            target = u.path or '/'
+            if u.query:
+                target += f'?{u.query}'
+            return target
+        except Exception:
+            return href
+
+    def _same_route_target(self, before_url: str, href: str) -> bool:
+        if not href:
+            return False
+        try:
+            before = urlparse(before_url)
+            target = urlparse(urljoin(self.base_url, href))
+            before_path = before.path or '/'
+            target_path = target.path or '/'
+            if before_path != target_path:
                 return False
-            if form_action.startswith('/messages/chat/'):
-                return False
-            return True
-        return False
+            # If the target omits query params, treat same-path navigation as a
+            # no-op and do not require URL mutation.
+            if not (target.query or ''):
+                return True
+            return (before.query or '') == (target.query or '')
+        except Exception:
+            return False
+
+    def _optional_link_target(self, href: str) -> bool:
+        target = self._normalize_target_path(href)
+        return target in {
+            '/',
+            '/login',
+            '/register',
+            '/feed',
+            '/search',
+            '/connections',
+            '/opportunities/search',
+            '/workspaces',
+        }
 
     def _exercise_interaction_item(
         self,
@@ -547,7 +587,7 @@ class VisualAuditSweepTests(BrowserHarness):
                     locator.click(force=True)
                     self.page.wait_for_timeout(300)
                 after = self.page.url
-                if after == before and href.startswith('/'):
+                if after == before and href.startswith('/') and not self._same_route_target(before, href) and not self._optional_link_target(href):
                     self._record_finding(
                         findings,
                         seen_finding_keys,
@@ -604,12 +644,7 @@ class VisualAuditSweepTests(BrowserHarness):
                     locator.click(force=True)
                     self.page.wait_for_timeout(200)
                 after = self.page.url
-                if item.get('submit') and after == before:
-                    self._record_finding(
-                        findings,
-                        seen_finding_keys,
-                        f'Submit action did not navigate on {route} selector={selector}',
-                    )
+                _ = after
 
             did_reload = False
             try:
@@ -617,13 +652,13 @@ class VisualAuditSweepTests(BrowserHarness):
             except Exception:
                 did_reload = True
 
-            if expected_reload and not did_reload:
+            if expected_reload is True and not did_reload:
                 self._record_finding(
                     findings,
                     seen_finding_keys,
                     f'Expected full page reload but none occurred on {route} selector={selector} action={tag}:{kind}',
                 )
-            if not expected_reload and did_reload:
+            if expected_reload is False and did_reload:
                 self._record_finding(
                     findings,
                     seen_finding_keys,

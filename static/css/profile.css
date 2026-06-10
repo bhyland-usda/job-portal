@@ -221,7 +221,7 @@
   height: 40px;
   border-radius: 50%;
   background: var(--primary);
-  color: #fff;
+  color: var(--on-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -259,8 +259,8 @@
 
 /* Follow */
 .follow-btn { padding: 6px 16px; border: 1px solid var(--primary); border-radius: 20px; background: none; color: var(--primary); cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; }
-.follow-btn:hover { background: var(--primary); color: #fff; }
-.follow-btn.following { background: var(--primary); color: #fff; }
+.follow-btn:hover { background: var(--primary); color: var(--on-primary); }
+.follow-btn.following { background: var(--primary); color: var(--on-primary); }
 
 /* Verified badge */
 .verified-badge { color: var(--accent); font-size: 12px; font-weight: 600; }

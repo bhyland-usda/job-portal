@@ -5,6 +5,18 @@
 
   var evtSource = new EventSource('/feed/events');
   var expandedPosts = new Set();
+  var attachmentInput = document.getElementById('attachment');
+  var attachmentSelected = document.getElementById('attachment-selected');
+
+  if (attachmentInput && attachmentSelected) {
+    attachmentInput.addEventListener('change', function() {
+      if (!attachmentInput.files || attachmentInput.files.length === 0) {
+        attachmentSelected.textContent = '';
+        return;
+      }
+      attachmentSelected.textContent = attachmentInput.files[0].name;
+    });
+  }
 
   function getPostId(postEl) {
     var match = postEl.innerHTML.match(/\/feed\/([0-9a-f-]+)\/like/);
@@ -208,6 +220,33 @@
       var match = form.action.match(/\/feed\/([^/]+)\/like$/);
       if (match && match[1]) {
         updateSinglePost(match[1]);
+      }
+    }).catch(function() {});
+  });
+
+  // Submit comments asynchronously so adding a comment does not reload page.
+  document.addEventListener('submit', function(e) {
+    var form = e.target.closest('.comment-submit-form');
+    if (!form) return;
+
+    e.preventDefault();
+
+    var commentInput = form.querySelector('input[name="content"]');
+    var content = commentInput ? (commentInput.value || '').trim() : '';
+    if (!content) return;
+
+    fetch(form.action, {
+      method: 'POST',
+      credentials: 'same-origin',
+      body: new FormData(form)
+    }).then(function(resp) {
+      if (!resp.ok) return;
+      if (commentInput) commentInput.value = '';
+      var match = form.action.match(/\/feed\/([^/]+)\/comment$/);
+      if (match && match[1]) {
+        var postId = match[1];
+        expandedPosts.add(postId);
+        updateSinglePost(postId);
       }
     }).catch(function() {});
   });

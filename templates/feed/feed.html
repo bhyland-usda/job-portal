@@ -17,6 +17,7 @@
         <button type="submit" class="btn btn-primary">Post</button>
         <label for="attachment" class="composer-attach" title="Attach file" aria-label="Attach file"><span aria-hidden="true">&#128206;</span></label>
         <input type="file" id="attachment" name="attachment" hidden />
+        <span id="attachment-selected" class="composer-attachment-selected" aria-live="polite"></span>
       </div>
     </form>
   </div>
@@ -47,9 +48,7 @@
       </form>
       {{end}}
     </div>
-    <div class="post-content">
-      <p>{{if .RenderedContent}}{{.RenderedContent}}{{else}}{{.Content}}{{end}}</p>
-    </div>
+    <div class="post-content">{{if .RenderedContent}}{{.RenderedContent}}{{else}}<p>{{.Content}}</p>{{end}}</div>
     {{if .Preview}}
     <a class="link-preview" href="{{.Preview.URL}}" target="_blank" rel="noopener noreferrer">
       {{if .Preview.ImageURL}}<img class="link-preview-img" src="{{.Preview.ImageURL}}" alt="" loading="lazy" />{{end}}
@@ -146,18 +145,18 @@
     {{if .Comments}}
     <div class="post-comments" id="post-comments-{{.ID}}">
       {{range .Comments}}
-      <div class="comment">
+        <div class="comment">
         <a href="/profile/{{.AuthorID}}" class="comment-author">
           <strong>{{.AuthorFirstName}} {{.AuthorLastName}}</strong>
         </a>
-        <p>{{if .RenderedContent}}{{.RenderedContent}}{{else}}{{.Content}}{{end}}</p>
+          <div class="comment-body">{{if .RenderedContent}}{{.RenderedContent}}{{else}}<p>{{.Content}}</p>{{end}}</div>
       </div>
       {{end}}
     </div>
     {{end}}
 
     <div class="comment-form">
-      <form method="POST" action="/feed/{{.ID}}/comment">
+      <form method="POST" action="/feed/{{.ID}}/comment" class="comment-submit-form">
         <label for="comment-content-{{.ID}}" class="sr-only">Write a comment</label>
         <input type="text" id="comment-content-{{.ID}}" name="content" placeholder="Write a comment..." required />
         <button type="submit" class="btn btn-small">Reply</button>
@@ -189,6 +188,11 @@
     {{if .Department}}<p class="posting-dept">{{.Department}}</p>{{end}}
     {{if .Location}}<p class="posting-location">{{.Location}}</p>{{end}}
     <p class="posting-desc">{{.Description}}</p>
+    {{if eq $.UserID .AuthorID}}
+    <div class="posting-card-actions">
+      <a href="/opportunities/{{.ID}}/applications" class="btn btn-small btn-outline">View Applicants</a>
+    </div>
+    {{end}}
   </div>
   {{end}}
   {{else}}

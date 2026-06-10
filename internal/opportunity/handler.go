@@ -15,6 +15,7 @@ import (
 	"github.com/bhyland-usda/job-portal/internal/attachment"
 	"github.com/bhyland-usda/job-portal/internal/badge"
 	"github.com/bhyland-usda/job-portal/internal/middleware"
+	"github.com/bhyland-usda/job-portal/internal/notification"
 	"github.com/bhyland-usda/job-portal/internal/semantic"
 	"github.com/bhyland-usda/job-portal/internal/skillgraph"
 )
@@ -158,10 +159,15 @@ type HistoryPage struct {
 type Handler struct {
 	db    *sql.DB
 	pages map[string]*template.Template
+	notif *notification.Handler
 }
 
 func NewHandler(db *sql.DB, pages map[string]*template.Template) *Handler {
 	return &Handler{db: db, pages: pages}
+}
+
+func (h *Handler) SetNotificationHandler(notif *notification.Handler) {
+	h.notif = notif
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux, requireAuth, requireManager func(http.Handler) http.Handler) {
@@ -1003,6 +1009,16 @@ func (h *Handler) handleApply(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if p.HasApplicationCloseDate {
+		nowDate := time.Now().UTC().Truncate(24 * time.Hour)
+		closeDate := p.ApplicationCloseDate.UTC().Truncate(24 * time.Hour)
+
+		if nowDate.After(closeDate) {
+			http.Error(w, "This opportunity is no longer accepting applications", http.StatusBadRequest)
+			return
+		}
+	}
+
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
@@ -1043,6 +1059,25 @@ func (h *Handler) handleApply(w http.ResponseWriter, r *http.Request) {
 		slog.Error("failed to submit application", "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
+	}
+
+	if h.notif != nil && p.AuthorID != "" && p.AuthorID != userID {
+		var firstName, lastName string
+		if err := h.db.QueryRowContext(r.Context(),
+			`SELECT first_name, last_name FROM users WHERE id = $1`,
+			userID,
+		).Scan(&firstName, &lastName); err != nil {
+			slog.Error("failed to load applicant name for notification", "error", err)
+		} else {
+			name := strings.TrimSpace(firstName + " " + lastName)
+			if name == "" {
+				name = "A user"
+			}
+			msg := fmt.Sprintf("%s applied to your opportunity: %s", name, p.Title)
+			if err := h.notif.CreateNotification(r.Context(), p.AuthorID, userID, "opportunity_application", msg); err != nil {
+				slog.Error("failed to create application notification", "error", err)
+			}
+		}
 	}
 
 	http.Redirect(w, r, "/opportunities/"+postingID, http.StatusSeeOther)

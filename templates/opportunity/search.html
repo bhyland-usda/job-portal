@@ -52,6 +52,11 @@
         {{if .Department}}<p class="posting-dept">{{.Department}}</p>{{end}}
         {{if .Location}}<p class="posting-location">{{.Location}}</p>{{end}}
         <p class="posting-desc">{{.Description}}</p>
+        {{if eq $.UserID .AuthorID}}
+        <div class="posting-card-actions">
+            <a href="/opportunities/{{.ID}}/applications" class="btn btn-small btn-outline">View Applicants</a>
+        </div>
+        {{end}}
     </div>
     {{end}}
     {{else}}

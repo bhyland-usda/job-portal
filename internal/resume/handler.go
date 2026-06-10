@@ -41,6 +41,9 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, requireAuth func(http.Handl
 	mux.Handle("POST /resumes/upload", requireAuth(http.HandlerFunc(h.handleUpload)))
 	mux.Handle("GET /resumes/{id}/download", requireAuth(http.HandlerFunc(h.handleDownload)))
 	mux.Handle("POST /resumes/{id}/delete", requireAuth(http.HandlerFunc(h.handleDelete)))
+	mux.Handle("GET /resumes/{id}/delete", requireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/resumes", http.StatusSeeOther)
+	})))
 	mux.Handle("GET /resumes/generate", requireAuth(http.HandlerFunc(h.generateResume)))
 }
 

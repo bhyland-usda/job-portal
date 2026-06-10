@@ -3,6 +3,7 @@ package opportunity
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"html/template"
 	"net/http/httptest"
 	"net/url"
@@ -14,6 +15,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 
 	"github.com/bhyland-usda/job-portal/internal/middleware"
+	"github.com/bhyland-usda/job-portal/internal/notification"
 	"github.com/bhyland-usda/job-portal/internal/semantic"
 )
 
@@ -571,5 +573,118 @@ func TestLocationTypeWhereClauseUsesInferenceFallback(t *testing.T) {
 	}
 	if next != 5 {
 		t.Fatalf("expected next arg index 5, got %d", next)
+	}
+}
+
+func TestHandleApplyRejectsPastApplicationCloseDate(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("failed to create mock db: %v", err)
+	}
+	defer db.Close()
+
+	mock.ExpectQuery(`SELECT p.id, p.author_id,`).
+		WithArgs("posting-1").
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "author_id", "author_name", "title", "description", "type",
+			"location", "department", "status", "created_at",
+			"outcome", "outcome_status", "completed_at",
+			"start_date", "duration_days", "reporting_manager_name", "reporting_manager_email",
+			"location_type", "application_close_date", "number_of_people", "learning_outcomes",
+		}).AddRow(
+			"posting-1", "manager-1", "Manager User", "Data Detail", "desc", "detail",
+			"Remote", "OCIO", "active", time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+			nil, nil, nil,
+			time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC), 30, "Manager", "manager@example.gov",
+			"remote", time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC), 1, "outcomes",
+		))
+
+	h := NewHandler(db, testPages())
+
+	form := url.Values{}
+	form.Set("selection_why", "Good fit")
+	form.Set("project_tackle_approach", "I will start with discovery")
+
+	req := httptest.NewRequest("POST", "/opportunities/posting-1/apply", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.SetPathValue("id", "posting-1")
+	req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, "user-1"))
+	rec := httptest.NewRecorder()
+
+	h.handleApply(rec, req)
+
+	if rec.Code != 400 {
+		t.Fatalf("expected 400 for past close date, got %d; body=%s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "no longer accepting applications") {
+		t.Fatalf("expected close-date error message, got: %s", rec.Body.String())
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet expectations: %v", err)
+	}
+}
+
+func TestHandleApplyCreatesManagerNotification(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("failed to create mock db: %v", err)
+	}
+	defer db.Close()
+
+	mock.ExpectQuery(`SELECT p.id, p.author_id,`).
+		WithArgs("posting-1").
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "author_id", "author_name", "title", "description", "type",
+			"location", "department", "status", "created_at",
+			"outcome", "outcome_status", "completed_at",
+			"start_date", "duration_days", "reporting_manager_name", "reporting_manager_email",
+			"location_type", "application_close_date", "number_of_people", "learning_outcomes",
+		}).AddRow(
+			"posting-1", "manager-1", "Manager User", "Data Detail", "desc", "detail",
+			"Remote", "OCIO", "active", time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+			nil, nil, nil,
+			time.Date(2026, 6, 30, 0, 0, 0, 0, time.UTC), 30, "Manager", "manager@example.gov",
+			"remote", time.Date(2099, 1, 1, 0, 0, 0, 0, time.UTC), 1, "outcomes",
+		))
+
+	mock.ExpectExec(`INSERT INTO posting_applications`).
+		WithArgs("posting-1", "user-1", "Good fit", "Good fit", "I will start with discovery").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	mock.ExpectQuery(`SELECT first_name, last_name FROM users WHERE id = \$1`).
+		WithArgs("user-1").
+		WillReturnRows(sqlmock.NewRows([]string{"first_name", "last_name"}).AddRow("Ada", "Lovelace"))
+
+	mock.ExpectQuery(`SELECT enabled FROM notification_preferences`).
+		WithArgs("manager-1", "opportunity_application").
+		WillReturnError(sql.ErrNoRows)
+
+	mock.ExpectExec(`INSERT INTO notifications`).
+		WithArgs("manager-1", "user-1", "opportunity_application", "Ada Lovelace applied to your opportunity: Data Detail").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	h := NewHandler(db, testPages())
+	h.SetNotificationHandler(notification.NewHandler(db, nil))
+
+	form := url.Values{}
+	form.Set("selection_why", "Good fit")
+	form.Set("project_tackle_approach", "I will start with discovery")
+
+	req := httptest.NewRequest("POST", "/opportunities/posting-1/apply", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.SetPathValue("id", "posting-1")
+	req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, "user-1"))
+	rec := httptest.NewRecorder()
+
+	h.handleApply(rec, req)
+
+	if rec.Code != 303 {
+		t.Fatalf("expected 303 redirect, got %d; body=%s", rec.Code, rec.Body.String())
+	}
+	if loc := rec.Header().Get("Location"); loc != "/opportunities/posting-1" {
+		t.Fatalf("expected redirect to posting view, got %q", loc)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet expectations: %v", err)
 	}
 }

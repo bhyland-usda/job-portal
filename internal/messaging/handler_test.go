@@ -8,40 +8,34 @@ import (
 	"time"
 )
 
-// TestReadReceiptEpochBug verifies BUG-002: read receipts should not show "Read"
-// when the other person has never opened the conversation.
-func TestReadReceiptEpochBug(t *testing.T) {
-	// The bug: othersLastRead defaults to '1970-01-01' which is not Go's zero time,
-	// so the check !othersLastRead.IsZero() returns true, making all messages show "Read"
+func TestReadReceiptEpochTreatedAsUnread(t *testing.T) {
 	epoch := time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
+	sent := time.Now().UTC()
 
-	if !epoch.IsZero() {
-		// This confirms the bug: 1970-01-01 is NOT zero in Go
-		// Go's zero time is 0001-01-01 00:00:00 UTC
-		t.Log("CONFIRMED BUG-002: time.Date(1970,1,1,...) is NOT zero in Go")
-		t.Log("The COALESCE('epoch') fallback produces a non-zero time")
-		t.Log("This means all messages incorrectly show 'Read' when other user hasn't opened chat")
-	}
-
-	// The fix should check for epoch explicitly:
-	isUnread := epoch.Year() <= 1970
-	if !isUnread {
-		t.Error("Expected epoch time to be detected as 'unread'")
+	if isRead(true, sent, epoch) {
+		t.Fatal("expected epoch last-read sentinel to be treated as unread")
 	}
 }
 
-// TestTypingIndicatorEventType verifies BUG-001: typing events should be
-// distinguishable from message events in the SSE stream.
 func TestTypingIndicatorEventType(t *testing.T) {
-	// The bug: both typing and message events use the same broker.Notify()
-	// which sends struct{} — the client can't tell them apart.
-	//
-	// The fix should either:
-	// a) Use a different SSE event type: "event: typing\ndata: {}\n\n"
-	// b) Use a separate channel/field in the broker notification
-	t.Log("BUG-001: Typing and message notifications use the same broker channel")
-	t.Log("Both produce identical 'data: update\\n\\n' SSE events")
-	t.Log("Client has no way to distinguish typing from new message")
+	b := NewBroker()
+	ch := b.Subscribe("user-1")
+	defer b.Unsubscribe("user-1")
+
+	b.Notify("user-1")
+	msgEv := <-ch
+	b.NotifyTyping("user-1")
+	typingEv := <-ch
+
+	if msgEv != EventMessage {
+		t.Fatalf("expected EventMessage, got %q", msgEv)
+	}
+	if typingEv != EventTyping {
+		t.Fatalf("expected EventTyping, got %q", typingEv)
+	}
+	if msgEv == typingEv {
+		t.Fatal("message and typing events must be distinct")
+	}
 }
 
 // TestChatMessageJSON verifies the chat message JSON response format.

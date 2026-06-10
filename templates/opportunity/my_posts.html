@@ -50,9 +50,14 @@
       </div>
       {{if eq .Status "active"}}
       <div class="my-post-actions">
+        <a href="/opportunities/{{.ID}}/applications" class="btn-link">View Applicants</a>
         <form method="POST" action="/opportunities/{{.ID}}/close" class="inline">
           <button type="submit" class="btn-link btn-danger">Close</button>
         </form>
+      </div>
+      {{else}}
+      <div class="my-post-actions">
+        <a href="/opportunities/{{.ID}}/applications" class="btn-link">View Applicants</a>
       </div>
       {{end}}
     </div>

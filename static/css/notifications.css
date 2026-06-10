@@ -72,7 +72,7 @@
     height: 36px;
     border-radius: 50%;
     background: var(--primary);
-    color: #fff !important;
+    color: var(--on-primary) !important;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -89,9 +89,9 @@
 
 .notif-item .notif-avatar:hover {
     background: var(--primary);
-    border-color: rgba(255, 255, 255, 0.32);
-    box-shadow: 0 0 0 2px rgba(0, 71, 133, 0.22);
-    color: #fff !important;
+    border-color: color-mix(in srgb, var(--on-primary) 35%, transparent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 30%, transparent);
+    color: var(--on-primary) !important;
 }
 
 .notif-item .notif-avatar img {
@@ -162,7 +162,7 @@
 .notif-read-icon.is-read {
     color: var(--primary);
     background: var(--primary-light);
-    border-color: rgba(0, 71, 133, 0.18);
+    border-color: color-mix(in srgb, var(--primary) 18%, transparent);
 }
 
 .notif-read-icon.is-read:hover {
@@ -187,7 +187,7 @@
 
 .notif-delete-btn:hover {
     color: var(--error);
-    border-color: rgba(181, 9, 9, 0.25);
-    background: rgba(181, 9, 9, 0.08);
+    border-color: color-mix(in srgb, var(--error) 28%, transparent);
+    background: color-mix(in srgb, var(--error) 10%, transparent);
     transform: translateY(-1px);
 }

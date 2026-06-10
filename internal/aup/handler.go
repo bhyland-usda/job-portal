@@ -27,6 +27,9 @@ func NewHandler(db *sql.DB, pages map[string]*template.Template) *Handler {
 func (h *Handler) RegisterRoutes(mux *http.ServeMux, requireAuth func(http.Handler) http.Handler) {
 	mux.Handle("GET /aup", requireAuth(http.HandlerFunc(h.showPolicy)))
 	mux.Handle("POST /aup/accept", requireAuth(http.HandlerFunc(h.handleAccept)))
+	mux.Handle("GET /aup/accept", requireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/aup", http.StatusSeeOther)
+	})))
 }
 
 func (h *Handler) showPolicy(w http.ResponseWriter, r *http.Request) {

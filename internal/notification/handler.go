@@ -49,6 +49,7 @@ var notifPrefTypes = []struct {
 	{"kudos", "Kudos received"},
 	{"mentorship", "Mentorship updates"},
 	{"feedback", "Feedback requests & responses"},
+	{"opportunity_application", "Opportunity applications"},
 }
 
 type prefRow struct {
@@ -228,6 +229,8 @@ func (h *Handler) handleClick(w http.ResponseWriter, r *http.Request) {
 		} else {
 			http.Redirect(w, r, "/feed", http.StatusSeeOther)
 		}
+	case "opportunity_application":
+		http.Redirect(w, r, "/my-posts?tab=postings", http.StatusSeeOther)
 	default:
 		http.Redirect(w, r, "/feed", http.StatusSeeOther)
 	}

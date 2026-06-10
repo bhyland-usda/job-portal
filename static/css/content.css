@@ -190,7 +190,7 @@
 
 .filter-link.active {
   background: var(--primary);
-  color: #fff;
+  color: var(--on-primary);
   border-color: var(--primary);
 }
 
@@ -332,5 +332,3 @@
 }
 
 /* Dark mode period badges */
-.dark-mode .period-quarterly { background: rgba(0,71,133,0.2); color: var(--primary); }
-.dark-mode .period-yearly { background: rgba(0,89,65,0.2); color: var(--accent); }

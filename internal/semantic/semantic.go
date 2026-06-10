@@ -291,16 +291,27 @@ func BuildOpportunitySourceText(ctx context.Context, db *sql.DB, opportunityID s
 // BuildWorkspaceSourceText loads and assembles the text corpus used for a
 // workspace embedding.
 func BuildWorkspaceSourceText(ctx context.Context, db *sql.DB, workspaceID string) (string, error) {
-	var name, description sql.NullString
+	var name, description, meetingFrequency, primaryAudience, howToJoin sql.NullString
 	err := db.QueryRowContext(ctx,
-		`SELECT name, COALESCE(description, '') FROM workspaces WHERE id = $1`,
+		`SELECT name,
+		        COALESCE(description, ''),
+		        COALESCE(meeting_frequency, ''),
+		        COALESCE(primary_audience, ''),
+		        COALESCE(how_to_join, '')
+		 FROM workspaces WHERE id = $1`,
 		workspaceID,
-	).Scan(&name, &description)
+	).Scan(&name, &description, &meetingFrequency, &primaryAudience, &howToJoin)
 	if err != nil {
 		return "", err
 	}
 
-	return strings.TrimSpace(strings.Join([]string{name.String, description.String}, "\n")), nil
+	return strings.TrimSpace(strings.Join([]string{
+		name.String,
+		description.String,
+		meetingFrequency.String,
+		primaryAudience.String,
+		howToJoin.String,
+	}, "\n")), nil
 }
 
 // UpsertOpportunityEmbeddingByID regenerates and stores the embedding for one

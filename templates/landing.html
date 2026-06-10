@@ -5,7 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>USDA JobPortal</title>
-    <link rel="stylesheet" href="/static/css/landing.css?v=1">
+        <script>
+            if (localStorage.getItem('dark') === 'true') {
+                document.documentElement.classList.add('dark-mode');
+            }
+        </script>
+        <link rel="stylesheet" href="/static/css/landing.css?v=5">
 </head>
 <body>
     <header class="landing-header">

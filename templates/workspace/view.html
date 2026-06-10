@@ -15,12 +15,58 @@
 .wsv-member { padding: 8px 0; border-bottom: 1px solid var(--border); }
 .wsv-member:last-child { border-bottom: none; }
 .wsv-meta { font-size: 12px; color: var(--text-muted); }
+.wsv-kv { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 12px; }
+.wsv-kv div { border: 1px solid var(--border); border-radius: var(--radius); padding: 8px; }
+.wsv-kv strong { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; }
+.wsv-search-wrap { position: relative; margin-bottom: 8px; }
+.wsv-search-results {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 4px);
+    background: var(--bg-card, #fff);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    z-index: 20;
+    max-height: 220px;
+    overflow-y: auto;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+}
+.wsv-search-results button {
+    width: 100%;
+    text-align: left;
+    border: none;
+    background: transparent;
+    padding: 8px 10px;
+    cursor: pointer;
+}
+.wsv-search-results button:hover { background: rgba(0, 0, 0, 0.04); }
+.wsv-search-option-name { display: block; font-weight: 600; }
+.wsv-search-option-meta { display: block; font-size: 12px; color: var(--text-muted); }
 </style>
 <div class="wsv-layout">
     <div class="profile-card" style="margin-bottom:16px;">
         <h2>{{.Workspace.Name}}</h2>
         {{if .Workspace.Description}}<p style="color:var(--text-muted);margin:8px 0;">{{.Workspace.Description}}</p>{{end}}
         <span class="wsv-meta">{{.Workspace.MemberCount}} {{if eq .Workspace.MemberCount 1}}member{{else}}members{{end}}</span>
+        <div class="wsv-kv">
+            <div>
+                <strong>Owner(s)</strong>
+                {{if .Workspace.OwnerNames}}{{.Workspace.OwnerNames}}{{else}}<span class="wsv-meta">Not set</span>{{end}}
+            </div>
+            <div>
+                <strong>Meeting Frequency</strong>
+                {{if .Workspace.MeetingFrequency}}{{.Workspace.MeetingFrequency}}{{else}}<span class="wsv-meta">Not set</span>{{end}}
+            </div>
+            <div>
+                <strong>Primary Audience (who should join)</strong>
+                {{if .Workspace.PrimaryAudience}}{{.Workspace.PrimaryAudience}}{{else}}<span class="wsv-meta">Not set</span>{{end}}
+            </div>
+            <div>
+                <strong>How to Join</strong>
+                {{if .Workspace.HowToJoin}}{{.Workspace.HowToJoin}}{{else}}<span class="wsv-meta">Not set</span>{{end}}
+            </div>
+        </div>
         {{if not .IsMember}}
         <form method="POST" action="/workspaces/{{.Workspace.ID}}/join" style="margin-top:10px;">
             <button type="submit" class="btn btn-primary">Join Workspace</button>
@@ -61,15 +107,75 @@
                 <p class="empty-state">No notes yet. Start the conversation!</p>
                 {{end}}
             </div>
+
+            <div class="profile-card" style="margin-top:16px;">
+                <h3 style="margin-bottom:12px;">Upcoming Meetings</h3>
+                {{if .Meetings}}
+                {{range .Meetings}}
+                <div class="wsv-note">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:4px;gap:8px;">
+                        <strong>{{.Title}}</strong>
+                        <span class="wsv-meta">{{.MeetingAt.Format "Jan 2, 2006 3:04 PM"}}</span>
+                    </div>
+                    {{if .Description}}<p style="margin-bottom:6px;white-space:pre-wrap;">{{.Description}}</p>{{end}}
+                    {{if .Location}}<p class="wsv-meta" style="margin-bottom:4px;">Location: {{.Location}}</p>{{end}}
+                    {{if .JoinURL}}<p class="wsv-meta">Join: <a href="{{.JoinURL}}" target="_blank" rel="noopener">{{.JoinURL}}</a></p>{{end}}
+                </div>
+                {{end}}
+                {{else}}
+                <p class="empty-state">No meetings scheduled yet.</p>
+                {{end}}
+            </div>
         </div>
 
         <div>
+            {{if .IsWorkspaceManager}}
+            <div class="profile-card" style="margin-bottom:16px;">
+                <h3 style="margin-bottom:8px;">Manage Workspace Details</h3>
+                <form class="wsv-form" method="POST" action="/workspaces/{{.Workspace.ID}}/settings">
+                    <label for="wsv-frequency" class="sr-only">Meeting frequency</label>
+                    <input type="text" id="wsv-frequency" name="meeting_frequency" value="{{.Workspace.MeetingFrequency}}" placeholder="Meeting frequency" />
+                    <label for="wsv-audience" class="sr-only">Primary audience</label>
+                    <input type="text" id="wsv-audience" name="primary_audience" value="{{.Workspace.PrimaryAudience}}" placeholder="Primary audience" />
+                    <label for="wsv-howtojoin" class="sr-only">How to join</label>
+                    <textarea id="wsv-howtojoin" name="how_to_join" rows="3" placeholder="How to join">{{.Workspace.HowToJoin}}</textarea>
+                    <button type="submit" class="btn btn-primary">Save Details</button>
+                </form>
+            </div>
+
+            <div class="profile-card" style="margin-bottom:16px;">
+                <h3 style="margin-bottom:8px;">Schedule a Meeting</h3>
+                <form class="wsv-form" method="POST" action="/workspaces/{{.Workspace.ID}}/meetings">
+                    <label for="wsv-meeting-title" class="sr-only">Meeting title</label>
+                    <input type="text" id="wsv-meeting-title" name="title" placeholder="Meeting title" required />
+                    <label for="wsv-meeting-at" class="sr-only">Meeting date and time</label>
+                    <input type="datetime-local" id="wsv-meeting-at" name="meeting_at" required />
+                    <label for="wsv-meeting-location" class="sr-only">Location</label>
+                    <input type="text" id="wsv-meeting-location" name="location" placeholder="Location (room, Teams, Zoom, etc.)" />
+                    <label for="wsv-meeting-url" class="sr-only">Join URL</label>
+                    <input type="text" id="wsv-meeting-url" name="join_url" placeholder="Join URL" />
+                    <label for="wsv-meeting-description" class="sr-only">Description</label>
+                    <textarea id="wsv-meeting-description" name="description" placeholder="Agenda or context" rows="3"></textarea>
+                    <button type="submit" class="btn btn-primary">Publish Meeting</button>
+                </form>
+            </div>
+            {{end}}
+
             {{if .IsMember}}
             <div class="profile-card" style="margin-bottom:16px;">
                 <h3 style="margin-bottom:8px;">Add a Member</h3>
                 <form class="wsv-form" method="POST" action="/workspaces/{{.Workspace.ID}}/members">
-                    <label for="wsv-member-id" class="sr-only">User ID</label>
-                    <input type="text" id="wsv-member-id" name="user_id" placeholder="User ID" required />
+                    <label for="wsv-member-search" class="sr-only">Search by user name</label>
+                    <div class="wsv-search-wrap">
+                        <input type="text" id="wsv-member-search" placeholder="Search by name (type at least 2 letters)" autocomplete="off" required />
+                        <div id="wsv-member-results" class="wsv-search-results" hidden></div>
+                    </div>
+                    <input type="hidden" id="wsv-member-id" name="user_id" required />
+                    <label for="wsv-member-role" class="sr-only">Member role</label>
+                    <select id="wsv-member-role" name="role" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;">
+                        <option value="member" selected>Member</option>
+                        {{if .IsWorkspaceManager}}<option value="moderator">Moderator</option>{{end}}
+                    </select>
                     <button type="submit" class="btn btn-primary" aria-label="Add member">Add</button>
                 </form>
             </div>
@@ -86,6 +192,90 @@
         </div>
     </div>
 </div>
+<script>
+(function () {
+    var searchInput = document.getElementById('wsv-member-search');
+    var hiddenUserID = document.getElementById('wsv-member-id');
+    var resultsBox = document.getElementById('wsv-member-results');
+    var searchURL = '/workspaces/{{.Workspace.ID}}/member-search';
+    if (!searchInput || !hiddenUserID || !resultsBox) return;
+
+    var activeRequest = null;
+
+    function clearResults() {
+        resultsBox.innerHTML = '';
+        resultsBox.hidden = true;
+    }
+
+    function renderResults(items) {
+        resultsBox.innerHTML = '';
+        if (!items || items.length === 0) {
+            clearResults();
+            return;
+        }
+
+        items.forEach(function (item) {
+            var button = document.createElement('button');
+            button.type = 'button';
+
+            var nameEl = document.createElement('span');
+            nameEl.className = 'wsv-search-option-name';
+            nameEl.textContent = item.name;
+
+            var metaBits = [];
+            if (item.email) metaBits.push(item.email);
+            if (item.department) metaBits.push(item.department);
+            var metaEl = document.createElement('span');
+            metaEl.className = 'wsv-search-option-meta';
+            metaEl.textContent = metaBits.join(' • ');
+
+            button.appendChild(nameEl);
+            button.appendChild(metaEl);
+
+            button.addEventListener('click', function () {
+                searchInput.value = item.name;
+                hiddenUserID.value = item.id;
+                clearResults();
+            });
+            resultsBox.appendChild(button);
+        });
+
+        resultsBox.hidden = false;
+    }
+
+    searchInput.addEventListener('input', function () {
+        var q = searchInput.value.trim();
+        hiddenUserID.value = '';
+        if (q.length < 2) {
+            clearResults();
+            return;
+        }
+
+        if (activeRequest && typeof activeRequest.abort === 'function') {
+            activeRequest.abort();
+        }
+        activeRequest = new AbortController();
+
+        fetch(searchURL + '?q=' + encodeURIComponent(q), {
+            credentials: 'same-origin',
+            signal: activeRequest.signal
+        }).then(function (resp) {
+            if (!resp.ok) return [];
+            return resp.json();
+        }).then(function (items) {
+            renderResults(items || []);
+        }).catch(function () {
+            clearResults();
+        });
+    });
+
+    document.addEventListener('click', function (e) {
+        if (!resultsBox.contains(e.target) && e.target !== searchInput) {
+            clearResults();
+        }
+    });
+})();
+</script>
 {{end}}
 
 {{template "base" .}}

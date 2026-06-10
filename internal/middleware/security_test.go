@@ -58,15 +58,41 @@ func TestRequireSameOriginUnsafeMethods(t *testing.T) {
 		}
 	}
 
-	// Missing Origin/Referer is allowed and deferred to CSRF middleware.
+	// Same host but different port is blocked.
+	{
+		passed = false
+		req := httptest.NewRequest(http.MethodPost, "http://localhost:8080/feed", nil)
+		req.Host = "localhost:8080"
+		req.Header.Set("Origin", "http://localhost:3000")
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		if rec.Code != http.StatusForbidden || passed {
+			t.Fatalf("expected cross-port POST to be blocked, code=%d passed=%v", rec.Code, passed)
+		}
+	}
+
+	// Same host and port but different scheme is blocked.
+	{
+		passed = false
+		req := httptest.NewRequest(http.MethodPost, "http://localhost:8080/feed", nil)
+		req.Host = "localhost:8080"
+		req.Header.Set("Origin", "https://localhost:8080")
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		if rec.Code != http.StatusForbidden || passed {
+			t.Fatalf("expected cross-scheme POST to be blocked, code=%d passed=%v", rec.Code, passed)
+		}
+	}
+
+	// Missing Origin/Referer is blocked.
 	{
 		passed = false
 		req := httptest.NewRequest(http.MethodPost, "http://localhost:8080/feed", nil)
 		req.Host = "localhost:8080"
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, req)
-		if rec.Code != http.StatusNoContent || !passed {
-			t.Fatalf("expected no-origin POST to pass through, code=%d passed=%v", rec.Code, passed)
+		if rec.Code != http.StatusForbidden || passed {
+			t.Fatalf("expected no-origin POST to be blocked, code=%d passed=%v", rec.Code, passed)
 		}
 	}
 }

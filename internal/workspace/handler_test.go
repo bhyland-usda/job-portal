@@ -45,11 +45,20 @@ func TestListWorkspacesQuery(t *testing.T) {
 	now := time.Now()
 	mock.ExpectQuery("SELECT ws.id, ws.name, ws.description, ws.created_by, ws.created_at").
 		WithArgs("user-1").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "description", "created_by", "created_at", "member_count"}).
-			AddRow("ws-1", "Alpha", "First", "user-1", now, 2))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "description", "created_by", "created_at", "meeting_frequency", "primary_audience", "how_to_join", "owner_names", "member_count"}).
+			AddRow("ws-1", "Alpha", "First", "user-1", now, "Weekly", "Engineers", "Teams", "Jane Doe", 2))
 
 	rows, err := db.QueryContext(context.Background(),
 		`SELECT ws.id, ws.name, ws.description, ws.created_by, ws.created_at,
+			COALESCE(ws.meeting_frequency, ''),
+			COALESCE(ws.primary_audience, ''),
+			COALESCE(ws.how_to_join, ''),
+			COALESCE((
+				SELECT string_agg(TRIM(CONCAT(u.first_name, ' ', u.last_name)), ', ' ORDER BY u.first_name, u.last_name)
+				FROM workspace_members wm2
+				JOIN users u ON u.id = wm2.user_id
+				WHERE wm2.workspace_id = ws.id AND wm2.role = 'owner'
+			), ''),
 			(SELECT COUNT(*) FROM workspace_members wm WHERE wm.workspace_id = ws.id) AS member_count
 		 FROM workspaces ws
 		 JOIN workspace_members m ON m.workspace_id = ws.id AND m.user_id = $1
@@ -63,7 +72,7 @@ func TestListWorkspacesQuery(t *testing.T) {
 	if !rows.Next() {
 		t.Fatal("expected one row")
 	}
-	if err := rows.Scan(&ws.ID, &ws.Name, &ws.Description, &ws.CreatedBy, &ws.CreatedAt, &ws.MemberCount); err != nil {
+	if err := rows.Scan(&ws.ID, &ws.Name, &ws.Description, &ws.CreatedBy, &ws.CreatedAt, &ws.MeetingFrequency, &ws.PrimaryAudience, &ws.HowToJoin, &ws.OwnerNames, &ws.MemberCount); err != nil {
 		t.Fatalf("scan failed: %v", err)
 	}
 	if ws.ID != "ws-1" || ws.Name != "Alpha" || ws.MemberCount != 2 {
@@ -84,12 +93,12 @@ func TestListWorkspacesWithRecommendations(t *testing.T) {
 	now := time.Now()
 	mock.ExpectQuery("SELECT ws.id, ws.name, ws.description, ws.created_by, ws.created_at").
 		WithArgs("user-1").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "description", "created_by", "created_at", "member_count"}).
-			AddRow("ws-1", "Alpha", "First", "user-1", now, 2))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "description", "created_by", "created_at", "meeting_frequency", "primary_audience", "how_to_join", "owner_names", "member_count"}).
+			AddRow("ws-1", "Alpha", "First", "user-1", now, "Weekly", "Engineers", "Teams", "Jane Doe", 2))
 	mock.ExpectQuery("SELECT ws.id, ws.name, ws.description, ws.created_by, ws.created_at").
 		WithArgs("user-1").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "description", "created_by", "created_at", "member_count"}).
-			AddRow("ws-2", "Gamma", "Skills match", "user-2", now, 4))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "description", "created_by", "created_at", "meeting_frequency", "primary_audience", "how_to_join", "owner_names", "member_count"}).
+			AddRow("ws-2", "Gamma", "Skills match", "user-2", now, "Biweekly", "Data Team", "Channel", "John Smith", 4))
 
 	tmpl := template.Must(template.New("workspaces.html").Parse(`{{define "base"}}recommended:{{range .RecommendedWorkspaces}}{{.Name}} {{end}}my:{{range .Workspaces}}{{.Name}} {{end}}{{end}}`))
 	h := NewHandler(db, map[string]*template.Template{"workspaces.html": tmpl})
@@ -117,16 +126,16 @@ func TestListWorkspacesWithSearchResults(t *testing.T) {
 	now := time.Now()
 	mock.ExpectQuery("SELECT ws.id, ws.name, ws.description, ws.created_by, ws.created_at").
 		WithArgs("user-1").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "description", "created_by", "created_at", "member_count"}).
-			AddRow("ws-1", "Alpha", "First", "user-1", now, 2))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "description", "created_by", "created_at", "meeting_frequency", "primary_audience", "how_to_join", "owner_names", "member_count"}).
+			AddRow("ws-1", "Alpha", "First", "user-1", now, "Weekly", "Engineers", "Teams", "Jane Doe", 2))
 	mock.ExpectQuery("SELECT ws.id, ws.name, ws.description, ws.created_by, ws.created_at").
 		WithArgs("user-1").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "description", "created_by", "created_at", "member_count"}).
-			AddRow("ws-2", "Gamma", "Skills match", "user-2", now, 4))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "description", "created_by", "created_at", "meeting_frequency", "primary_audience", "how_to_join", "owner_names", "member_count"}).
+			AddRow("ws-2", "Gamma", "Skills match", "user-2", now, "Biweekly", "Data Team", "Channel", "John Smith", 4))
 	mock.ExpectQuery("SELECT ws.id, ws.name, ws.description, ws.created_by, ws.created_at").
-		WithArgs("user-1", "%python%", "%python%").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "description", "created_by", "created_at", "member_count", "is_member"}).
-			AddRow("ws-3", "Python Guild", "Code + data", "user-3", now, 8, false))
+		WithArgs("user-1", "%python%", "%python%", "%python%").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "description", "created_by", "created_at", "meeting_frequency", "primary_audience", "how_to_join", "owner_names", "member_count", "is_member"}).
+			AddRow("ws-3", "Python Guild", "Code + data", "user-3", now, "Monthly", "Developers", "Invite", "Alex Roe", 8, false))
 
 	tmpl := template.Must(template.New("workspaces.html").Parse(`{{define "base"}}q={{.SearchQuery}};search:{{range .SearchResults}}{{.Name}} {{end}}{{end}}`))
 	h := NewHandler(db, map[string]*template.Template{"workspaces.html": tmpl})
@@ -155,10 +164,13 @@ func TestShowWorkspaceAllowsNonMembers(t *testing.T) {
 	mock.ExpectQuery("SELECT EXISTS").
 		WithArgs("ws-9", "user-1").
 		WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(false))
+	mock.ExpectQuery("SELECT role FROM workspace_members").
+		WithArgs("ws-9", "user-1").
+		WillReturnError(sql.ErrNoRows)
 	mock.ExpectQuery("SELECT ws.id, ws.name, ws.description, ws.created_by, ws.created_at").
 		WithArgs("ws-9").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "description", "created_by", "created_at", "member_count"}).
-			AddRow("ws-9", "Open Workspace", "Visible to everyone", "user-2", now, 2))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "description", "created_by", "created_at", "meeting_frequency", "primary_audience", "how_to_join", "owner_names", "member_count"}).
+			AddRow("ws-9", "Open Workspace", "Visible to everyone", "user-2", now, "Monthly", "All employees", "Open link", "Jane Doe", 2))
 	mock.ExpectQuery(`SELECT wm.user_id, CONCAT\(u.first_name, ' ', u.last_name\), wm.joined_at`).
 		WithArgs("ws-9").
 		WillReturnRows(sqlmock.NewRows([]string{"user_id", "name", "joined_at"}).
@@ -166,6 +178,9 @@ func TestShowWorkspaceAllowsNonMembers(t *testing.T) {
 	mock.ExpectQuery(`SELECT n.id, n.author_id, CONCAT\(u.first_name, ' ', u.last_name\), n.body, n.created_at`).
 		WithArgs("ws-9").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "author_id", "name", "body", "created_at"}))
+	mock.ExpectQuery(`SELECT m.id, m.title, COALESCE\(m.description, ''\), m.meeting_at`).
+		WithArgs("ws-9").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "title", "description", "meeting_at", "location", "join_url", "created_by", "created_by_name", "created_at"}))
 
 	tmpl := template.Must(template.New("workspace_view.html").Parse(`{{define "base"}}{{.Workspace.Name}}{{end}}`))
 	h := NewHandler(db, map[string]*template.Template{"workspace_view.html": tmpl})
@@ -197,7 +212,7 @@ func TestCreateWorkspaceInsertsAndAddsCreator(t *testing.T) {
 
 	mock.ExpectBegin()
 	mock.ExpectQuery("INSERT INTO workspaces").
-		WithArgs("Alpha", "First", "user-1").
+		WithArgs("Alpha", "First", "user-1", "Weekly", "Engineers", "Teams").
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow("ws-1"))
 	mock.ExpectExec("INSERT INTO workspace_members").
 		WithArgs("ws-1", "user-1").
@@ -211,8 +226,8 @@ func TestCreateWorkspaceInsertsAndAddsCreator(t *testing.T) {
 
 	var id string
 	if err := tx.QueryRowContext(context.Background(),
-		`INSERT INTO workspaces (name, description, created_by) VALUES ($1, $2, $3) RETURNING id`,
-		"Alpha", "First", "user-1").Scan(&id); err != nil {
+		`INSERT INTO workspaces (name, description, created_by, meeting_frequency, primary_audience, how_to_join) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+		"Alpha", "First", "user-1", "Weekly", "Engineers", "Teams").Scan(&id); err != nil {
 		t.Fatalf("insert workspace failed: %v", err)
 	}
 	if id != "ws-1" {
@@ -220,7 +235,7 @@ func TestCreateWorkspaceInsertsAndAddsCreator(t *testing.T) {
 	}
 
 	if _, err := tx.ExecContext(context.Background(),
-		`INSERT INTO workspace_members (workspace_id, user_id) VALUES ($1, $2)`,
+		`INSERT INTO workspace_members (workspace_id, user_id, role) VALUES ($1, $2, 'owner')`,
 		id, "user-1"); err != nil {
 		t.Fatalf("insert member failed: %v", err)
 	}
@@ -381,8 +396,8 @@ func TestGetMatchedWorkspacesSemanticPath(t *testing.T) {
 
 	mock.ExpectQuery(`JOIN semantic_embeddings se`).
 		WithArgs("user-1", semantic.EntityTypeWorkspace, vec).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "description", "created_by", "created_at", "member_count"}).
-			AddRow("ws-9", "Platform Guild", "Cloud enablement", "user-2", now, 7))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "description", "created_by", "created_at", "meeting_frequency", "primary_audience", "how_to_join", "owner_names", "member_count"}).
+			AddRow("ws-9", "Platform Guild", "Cloud enablement", "user-2", now, "Weekly", "Platform teams", "Teams link", "Jane Doe", 7))
 
 	workspaces, err := GetMatchedWorkspaces(db, context.Background(), "user-1", true)
 	if err != nil {
@@ -408,8 +423,8 @@ func TestSearchWorkspacesSemanticPath(t *testing.T) {
 
 	mock.ExpectQuery(`JOIN semantic_embeddings se`).
 		WithArgs("user-1", semantic.EntityTypeWorkspace, vec).
-		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "description", "created_by", "created_at", "member_count", "is_member"}).
-			AddRow("ws-3", "Automation Lab", "CI/CD + infra", "user-3", now, 4, false))
+		WillReturnRows(sqlmock.NewRows([]string{"id", "name", "description", "created_by", "created_at", "meeting_frequency", "primary_audience", "how_to_join", "owner_names", "member_count", "is_member"}).
+			AddRow("ws-3", "Automation Lab", "CI/CD + infra", "user-3", now, "Weekly", "Engineers", "Invite", "Alex Roe", 4, false))
 
 	workspaces, err := SearchWorkspaces(db, context.Background(), "user-1", "automation workspace", true)
 	if err != nil {

@@ -69,6 +69,13 @@
   font-size: 14px;
 }
 
+.posting-card-actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .posting-detail-header {
   display: flex;
   align-items: center;
@@ -82,8 +89,8 @@
   border-radius: 12px;
   font-size: 12px;
   font-weight: 600;
-  background: #e8e8e8;
-  color: #555;
+  background: var(--neutral-badge-bg);
+  color: var(--neutral-badge-text);
 }
 
 .posting-meta {
@@ -376,7 +383,7 @@
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--bg-card);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
   transition: transform 0.15s ease;
 }
@@ -389,7 +396,7 @@
 }
 
 .posting-search-location-toggle:has(input:checked) .location-switch {
-  background: color-mix(in srgb, var(--usda-blue) 80%, #3f89cf 20%);
+  background: var(--usda-blue-light);
 }
 
 .posting-search-location-toggle:has(input:checked) .location-switch::after {
@@ -406,28 +413,28 @@
 }
 
 .dark-mode .posting-search-location-toggle {
-  background: rgba(255, 255, 255, 0.03);
+  background: color-mix(in srgb, var(--bg-card) 80%, transparent);
   color: var(--text-secondary);
 }
 
 .dark-mode .location-switch {
-  background: rgba(255, 255, 255, 0.24);
+  background: color-mix(in srgb, var(--border) 75%, transparent);
 }
 
 .dark-mode .posting-search-location-toggle:hover {
-  border-color: #4d9ae0;
-  color: #d8e7f7;
-  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--primary);
+  color: var(--text);
+  background: var(--bg-hover);
 }
 
 .dark-mode .posting-search-location-toggle:has(input:checked) {
   border-color: var(--border);
-  background: rgba(255, 255, 255, 0.03);
+  background: color-mix(in srgb, var(--bg-card) 80%, transparent);
   color: var(--text-secondary);
 }
 
 .dark-mode .posting-search-location-toggle:has(input:checked) .location-switch {
-  background: #6aa8e3;
+  background: var(--primary);
 }
 
 @media (max-width: 768px) {
@@ -457,7 +464,7 @@
 }
 
 .posting-status-closed {
-  color: #555;
+  color: var(--text-secondary);
   font-weight: 600;
   font-size: 12px;
   text-transform: capitalize;
@@ -512,21 +519,11 @@
 
 /* Status badges */
 .status-badge { padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; text-transform: capitalize; }
-.status-pending { background: #fef7e0; color: #b45309; }
+.status-pending { background: var(--warning-bg); color: var(--warning-text); }
 .status-active { background: var(--accent-light); color: var(--accent); }
 .status-completed { background: var(--primary-light); color: var(--primary); }
 .status-accepted { background: var(--accent-light); color: var(--accent); }
-.status-rejected { background: #f5e0e0; color: var(--error); }
+.status-rejected { background: var(--danger-bg); color: var(--error); }
 .status-shortlisted { background: var(--primary-light); color: var(--primary); }
-.status-declined { background: #e8e8e8; color: #555; }
+.status-declined { background: var(--neutral-badge-bg); color: var(--neutral-badge-text); }
 
-/* Dark mode badges */
-.dark-mode .posting-type-project { background: rgba(0,71,133,0.2); color: var(--primary); }
-.dark-mode .posting-type-detail { background: rgba(0,89,65,0.2); color: var(--accent); }
-.dark-mode .status-pending { background: rgba(180,83,9,0.15); color: #e0a030; }
-.dark-mode .status-active { background: rgba(0,89,65,0.2); color: var(--accent); }
-.dark-mode .status-completed { background: rgba(0,71,133,0.2); color: var(--primary); }
-.dark-mode .status-accepted { background: rgba(0,89,65,0.2); color: var(--accent); }
-.dark-mode .status-rejected { background: rgba(200,50,50,0.15); color: var(--error); }
-.dark-mode .status-shortlisted { background: rgba(0,71,133,0.2); color: var(--primary); }
-.dark-mode .status-declined { background: rgba(60,60,60,0.3); color: #909090; }

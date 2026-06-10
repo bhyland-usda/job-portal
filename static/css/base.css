@@ -7,7 +7,7 @@
 /* ═══════════════════════════════════════════════
    USDA Official Brand Colors
    Extracted from official USDA logo SVG:
-   Blue: #004785  |  Green: #005941
+  Blue: USDA primary  |  Green: USDA accent
    Font: Source Sans Pro (per updated lockup guidance)
    ═══════════════════════════════════════════════ */
 
@@ -36,6 +36,9 @@
   --bg-hover: #f0eeeb;
   --bg-highlight: #e8edf5;
   --overlay-dim: rgba(255, 255, 255, 0.75);
+  --overlay-scrim: rgba(27, 27, 27, 0.45);
+  --overlay-modal: rgba(0, 0, 0, 0.5);
+  --overlay-strong: rgba(0, 0, 0, 0.7);
 
   /* Text */
   --text: #1b1b1b;
@@ -47,7 +50,17 @@
   --border-strong: #b0ada6;
   --error: #b50909;
   --success: #005440;
+  --success-bg: #d4edda;
+  --success-text: #155724;
   --warning: #c9a227;
+  --warning-bg: #fff4e0;
+  --warning-text: #8a5a00;
+  --danger-bg: #f5e0e0;
+  --danger-border: #e6b3b3;
+  --neutral-badge-bg: #e8e8e8;
+  --neutral-badge-text: #555555;
+  --on-primary: #ffffff;
+  --site-identifier-bg: var(--usda-blue);
   --radius: 6px;
   --app-header-height: 0px;
   --app-scrollbar-width: 0px;
@@ -136,7 +149,7 @@ body {
 
 .site-identifier {
   background: var(--usda-blue);
-  color: #fff;
+  color: var(--on-primary);
 }
 
 .site-identifier-inner {
@@ -149,7 +162,7 @@ body {
 }
 
 .navbar {
-  background: #ffffff;
+  background: var(--bg-card);
   border-bottom: 3px solid var(--usda-blue);
 }
 
@@ -230,12 +243,12 @@ body {
 
 .navbar-links a.btn,
 .navbar-links a.btn-primary {
-  color: #fff;
+  color: var(--on-primary);
 }
 
 .navbar-links a.btn:hover,
 .navbar-links a.btn-primary:hover {
-  color: #fff;
+  color: var(--on-primary);
 }
 
 .toolbar-btn,
@@ -274,13 +287,13 @@ body {
 .toolbar-btn-primary {
   background: var(--usda-blue);
   border-color: var(--usda-blue);
-  color: #fff;
+  color: var(--on-primary);
 }
 
 .toolbar-btn-primary:hover {
   background: var(--primary-hover);
   border-color: var(--primary-hover);
-  color: #fff;
+  color: var(--on-primary);
 }
 
 .shell-fab {
@@ -346,7 +359,7 @@ body.drawer-open #tools-toggle-btn {
   top: -6px;
   right: -4px;
   background: var(--error);
-  color: #fff;
+  color: var(--on-primary);
   font-size: 10px;
   font-weight: 700;
   padding: 1px 5px;
@@ -426,7 +439,7 @@ body.drawer-open #tools-toggle-btn {
   height: 32px;
   border-radius: 50%;
   background: var(--primary);
-  color: #fff;
+  color: var(--on-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -708,7 +721,7 @@ body.drawer-open #tools-toggle-btn {
   right: 0;
   bottom: 0;
   left: 0;
-  background: rgba(27, 27, 27, 0.45);
+  background: var(--overlay-scrim);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease;
@@ -819,7 +832,7 @@ body.chat-modal-open .chat-scrim {
 
 .btn-primary {
   background: var(--primary);
-  color: #fff;
+  color: var(--on-primary);
 }
 
 .btn-primary:hover {
@@ -844,7 +857,7 @@ body.chat-modal-open .chat-scrim {
 
 .btn-success {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-primary);
 }
 
 .btn-sm {
@@ -856,7 +869,7 @@ body.chat-modal-open .chat-scrim {
   padding: 6px 12px;
   font-size: 13px;
   background: var(--primary);
-  color: #fff;
+  color: var(--on-primary);
   border: none;
   border-radius: var(--radius);
   cursor: pointer;
@@ -894,7 +907,7 @@ body.chat-modal-open .chat-scrim {
 
 .btn-danger:hover {
   color: var(--error) !important;
-  background: rgba(181, 9, 9, 0.08);
+  background: color-mix(in srgb, var(--error) 10%, transparent);
 }
 
 .liked {
@@ -1041,7 +1054,7 @@ body.chat-modal-open .chat-scrim {
 
 .card-action:hover {
   background: var(--primary);
-  color: #fff;
+  color: var(--on-primary);
   padding: 4px 10px;
   border-radius: 4px;
 }
@@ -1055,9 +1068,9 @@ body.chat-modal-open .chat-scrim {
 }
 
 .alert-error {
-  background: #f0d0d0;
+  background: var(--danger-bg);
   color: var(--error);
-  border: 1px solid #f5c6c6;
+  border: 1px solid var(--danger-border);
 }
 
 /* Empty state */
@@ -1114,7 +1127,7 @@ body.chat-modal-open .chat-scrim {
 
 .tab.active {
   background: var(--primary);
-  color: #fff;
+  color: var(--on-primary);
   border-color: var(--primary);
 }
 
@@ -1137,15 +1150,17 @@ body.chat-modal-open .chat-scrim {
    DARK MODE — USDA-branded dark theme
 
    Layered surface elevation (not pure black):
-   Layer 0 (bg):        #121212  — page background
-   Layer 1 (card):      #1e1e1e  — cards, panels
-   Layer 2 (elevated):  #2a2a2a  — hover states, dropdowns
-   Layer 3 (input):     #2e2e2e  — input fields (lighter than cards)
+  Layer 0 (bg):        app background
+  Layer 1 (card):      cards, panels
+  Layer 2 (elevated):  hover states, dropdowns
+  Layer 3 (input):     input fields
 
    Desaturated brand colors for reduced eye strain.
    All text passes WCAG AA 4.5:1 on its background.
    ═══════════════════════════════════════════════ */
 .dark-mode {
+  color-scheme: dark;
+
   /* Desaturated brand colors */
   --primary: #2f6ea5;
   --primary-hover: #255a89;
@@ -1177,24 +1192,49 @@ body.chat-modal-open .chat-scrim {
   --border-strong: #505050;
   --error: #e85454;
   --success: #5cb88a;
+  --success-bg: rgba(60, 160, 110, 0.22);
+  --success-text: #8dd6b2;
   --warning: #d4b44a;
+  --warning-bg: rgba(180, 125, 20, 0.25);
+  --warning-text: #f0cf8a;
+  --danger-bg: rgba(200, 50, 50, 0.2);
+  --danger-border: rgba(232, 84, 84, 0.35);
+  --neutral-badge-bg: rgba(60, 60, 60, 0.3);
+  --neutral-badge-text: #a3a3a3;
+  --on-primary: #f3f8ff;
+  --site-identifier-bg: #163a64;
   --scrollbar-track: #1b222b;
   --scrollbar-thumb: #49637e;
   --scrollbar-thumb-hover: #6888a8;
 }
 
+.dark-mode table {
+  background: var(--bg-card);
+  color: var(--text);
+}
+
+.dark-mode th,
+.dark-mode td {
+  border-color: var(--border);
+}
+
+.dark-mode thead th {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
 .dark-mode .navbar {
-  background: #1a1a1a;
+  background: var(--bg-card);
   border-bottom-color: var(--border);
   box-shadow: 0 1px 4px rgba(0,0,0,0.3);
 }
 
 .dark-mode .site-identifier {
-  background: #163a64;
+  background: var(--site-identifier-bg);
 }
 
 .dark-mode .navbar-brand {
-  color: #dedede;
+  color: var(--text);
 }
 
 .dark-mode .navbar-brand-title {
@@ -1211,22 +1251,22 @@ body.chat-modal-open .chat-scrim {
 
 .dark-mode .navbar-links a,
 .dark-mode .navbar-app-link {
-  color: #a8a8a8;
+  color: var(--text-secondary);
 }
 
 .dark-mode .navbar-links a:hover,
 .dark-mode .navbar-app-link:hover {
-  color: #dedede;
+  color: var(--text);
 }
 
 .dark-mode .navbar-links a.btn,
 .dark-mode .navbar-links a.btn-primary {
-  color: #fff;
+  color: var(--on-primary);
 }
 
 .dark-mode .navbar-links a.btn:hover,
 .dark-mode .navbar-links a.btn-primary:hover {
-  color: #fff;
+  color: var(--on-primary);
 }
 
 .dark-mode .toolbar-btn,
@@ -1239,7 +1279,7 @@ body.chat-modal-open .chat-scrim {
 
 .dark-mode .toolbar-btn-primary {
   background: var(--usda-blue);
-  color: #fff;
+  color: var(--on-primary);
 }
 
 .dark-mode .toolbar-btn:hover,
@@ -1247,16 +1287,16 @@ body.chat-modal-open .chat-scrim {
 .dark-mode .avatar-trigger:hover,
 .dark-mode .nav-dropdown[open] > .nav-summary,
 .dark-mode .nav-dropdown[open] > .avatar-trigger {
-  background: #253041;
-  color: #dedede;
+  background: var(--bg-highlight);
+  color: var(--text);
 }
 
 .dark-mode .dark-toggle {
-  color: #808080;
+  color: var(--text-muted);
 }
 
 .dark-mode .dark-toggle:hover {
-  color: #dedede;
+  color: var(--text);
 }
 
 .dark-mode .profile-card {
@@ -1268,7 +1308,7 @@ body.chat-modal-open .chat-scrim {
 .dark-mode input,
 .dark-mode textarea,
 .dark-mode select {
-  background: var(--bg-input, #2e2e2e);
+  background: var(--bg-input);
   color: var(--text);
   border-color: var(--border-strong);
 }
@@ -1283,7 +1323,7 @@ body.chat-modal-open .chat-scrim {
 .dark-mode select:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--primary-light);
-  background: #353535;
+  background: var(--bg-input);
 }
 
 .dark-mode .btn-outline {
@@ -1302,8 +1342,8 @@ body.chat-modal-open .chat-scrim {
 }
 
 .dark-mode .alert-error {
-  background: rgba(248,81,73,0.1);
-  border-color: rgba(248,81,73,0.3);
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
 }
 
 .dark-mode .auth-card {
@@ -1313,12 +1353,12 @@ body.chat-modal-open .chat-scrim {
 
 .dark-mode .profile-drawer,
 .dark-mode .chat-drawer {
-  background: #1a1a1a;
+  background: var(--bg-card);
   border-color: var(--border);
 }
 
 .dark-mode .drawer-section-card {
-  background: #202020;
+  background: var(--bg-hover);
 }
 
 .dark-mode .drawer-link {
@@ -1331,7 +1371,7 @@ body.chat-modal-open .chat-scrim {
 }
 
 .dark-mode .nav-dropdown-content {
-  background: #1e1e1e;
+  background: var(--bg-card);
   border-color: var(--border);
   box-shadow: 0 6px 20px rgba(0,0,0,0.4);
 }
@@ -1349,7 +1389,7 @@ body.chat-modal-open .chat-scrim {
 }
 
 .dark-mode .site-footer {
-  background: #1a1a1a;
+  background: var(--bg-card);
   border-top-color: var(--border);
 }
 
@@ -1506,7 +1546,7 @@ body.chat-modal-open .chat-scrim {
   top: -48px;
   z-index: 1000;
   background: var(--primary);
-  color: #fff;
+  color: var(--on-primary);
   padding: 10px 16px;
   border-radius: var(--radius);
   font-weight: 600;
@@ -1517,7 +1557,7 @@ body.chat-modal-open .chat-scrim {
 .skip-link:focus,
 .skip-link:focus-visible {
   top: 8px;
-  outline: 3px solid #fff;
+  outline: 3px solid var(--on-primary);
   outline-offset: 2px;
 }
 

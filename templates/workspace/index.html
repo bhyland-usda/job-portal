@@ -11,6 +11,10 @@
 .ws-item { padding: 16px 0; border-bottom: 1px solid var(--border); }
 .ws-item:last-child { border-bottom: none; }
 .ws-meta { font-size: 13px; color: var(--text-muted); }
+.ws-table-wrap { overflow-x: auto; }
+.ws-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.ws-table th, .ws-table td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.ws-table th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
 .ws-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
 .ws-tab {
     display: inline-flex; align-items: center; justify-content: center;
@@ -76,22 +80,47 @@
         <h2 style="margin-bottom:12px;">Create a Workspace</h2>
         {{if .Error}}<p style="color:var(--danger,#c0392b);margin-bottom:8px;">{{.Error}}</p>{{end}}
         <form class="ws-create" method="POST" action="/workspaces">
-            <label for="ws-name" class="sr-only">Workspace name</label>
-            <input type="text" id="ws-name" name="name" placeholder="Workspace name" required />
+            <label for="ws-name" class="sr-only">Group name</label>
+            <input type="text" id="ws-name" name="name" placeholder="Group name" required />
             <label for="ws-description" class="sr-only">Workspace description</label>
-            <textarea id="ws-description" name="description" placeholder="What's this workspace for? (optional)" rows="2"></textarea>
+            <textarea id="ws-description" name="description" placeholder="Description" rows="2"></textarea>
+            <label for="ws-frequency" class="sr-only">Meeting frequency</label>
+            <input type="text" id="ws-frequency" name="meeting_frequency" placeholder="Meeting frequency (e.g., Weekly Wednesdays at 2 PM)" />
+            <label for="ws-audience" class="sr-only">Primary audience</label>
+            <input type="text" id="ws-audience" name="primary_audience" placeholder="Primary audience (who should join)" />
+            <label for="ws-join" class="sr-only">How to join</label>
+            <textarea id="ws-join" name="how_to_join" placeholder="How to join (meeting link, channel, invite process)" rows="2"></textarea>
             <button type="submit" class="btn btn-primary">Create Workspace</button>
         </form>
         {{else}}
         <h2 style="margin-bottom:12px;">My Workspaces</h2>
         {{if .Workspaces}}
-        {{range .Workspaces}}
-        <div class="ws-item">
-            <h3 style="margin-bottom:4px;"><a href="/workspaces/{{.ID}}" class="title-link">{{.Name}}</a></h3>
-            {{if .Description}}<p style="color:var(--text-muted);margin-bottom:4px;">{{.Description}}</p>{{end}}
-            <span class="ws-meta">{{.MemberCount}} {{if eq .MemberCount 1}}member{{else}}members{{end}}</span>
+        <div class="ws-table-wrap">
+            <table class="ws-table" aria-label="My workspace groups">
+                <thead>
+                    <tr>
+                        <th>Group Name</th>
+                        <th>Description</th>
+                        <th>Owner(s)</th>
+                        <th>Meeting Frequency</th>
+                        <th>Primary Audience (who should join)</th>
+                        <th>How to Join</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Workspaces}}
+                    <tr>
+                        <td><a href="/workspaces/{{.ID}}" class="title-link">{{.Name}}</a></td>
+                        <td>{{if .Description}}{{.Description}}{{else}}<span class="ws-meta">-</span>{{end}}</td>
+                        <td>{{if .OwnerNames}}{{.OwnerNames}}{{else}}<span class="ws-meta">-</span>{{end}}</td>
+                        <td>{{if .MeetingFrequency}}{{.MeetingFrequency}}{{else}}<span class="ws-meta">-</span>{{end}}</td>
+                        <td>{{if .PrimaryAudience}}{{.PrimaryAudience}}{{else}}<span class="ws-meta">-</span>{{end}}</td>
+                        <td>{{if .HowToJoin}}{{.HowToJoin}}{{else}}<span class="ws-meta">-</span>{{end}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
         </div>
-        {{end}}
         {{else}}
         <p class="empty-state">You aren't in any workspaces yet. Create one above to get started!</p>
         {{end}}

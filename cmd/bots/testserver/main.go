@@ -791,8 +791,56 @@ func main() {
 	mux.HandleFunc("POST /notifications/preferences", func(w http.ResponseWriter, r *http.Request) {
 		redirectBack(w, r, "/notifications/preferences?saved=1")
 	})
+	mux.HandleFunc("POST /settings/matching-mode", func(w http.ResponseWriter, r *http.Request) {
+		redirectBack(w, r, "/feed")
+	})
+	mux.HandleFunc("GET /settings/matching-mode", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/feed", http.StatusSeeOther)
+	})
+	mux.HandleFunc("POST /settings/location-types", func(w http.ResponseWriter, r *http.Request) {
+		redirectBack(w, r, "/feed")
+	})
+	mux.HandleFunc("GET /settings/location-types", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/feed", http.StatusSeeOther)
+	})
 	mux.HandleFunc("POST /settings/sessions/revoke", func(w http.ResponseWriter, r *http.Request) {
 		redirectBack(w, r, "/settings/sessions?revoked=1")
+	})
+	mux.HandleFunc("POST /resumes/{id}/delete", func(w http.ResponseWriter, r *http.Request) {
+		redirectBack(w, r, "/resumes")
+	})
+	mux.HandleFunc("GET /resumes/{id}/delete", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/resumes", http.StatusSeeOther)
+	})
+	mux.HandleFunc("POST /workspaces/{id}/join", func(w http.ResponseWriter, r *http.Request) {
+		redirectBack(w, r, "/workspaces/"+r.PathValue("id"))
+	})
+	mux.HandleFunc("GET /workspaces/{id}/join", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/workspaces/"+r.PathValue("id"), http.StatusSeeOther)
+	})
+	mux.HandleFunc("POST /profile/edit", func(w http.ResponseWriter, r *http.Request) {
+		redirectBack(w, r, "/profile/me")
+	})
+	mux.HandleFunc("POST /profile/experience/add", func(w http.ResponseWriter, r *http.Request) {
+		redirectBack(w, r, "/profile/me")
+	})
+	mux.HandleFunc("POST /profile/experience/{id}/edit", func(w http.ResponseWriter, r *http.Request) {
+		redirectBack(w, r, "/profile/me")
+	})
+	mux.HandleFunc("POST /profile/education/add", func(w http.ResponseWriter, r *http.Request) {
+		redirectBack(w, r, "/profile/me")
+	})
+	mux.HandleFunc("POST /profile/education/{id}/edit", func(w http.ResponseWriter, r *http.Request) {
+		redirectBack(w, r, "/profile/me")
+	})
+	mux.HandleFunc("POST /profile/skills/add", func(w http.ResponseWriter, r *http.Request) {
+		redirectBack(w, r, "/profile/me")
+	})
+	mux.HandleFunc("POST /profile/skills/{id}/delete", func(w http.ResponseWriter, r *http.Request) {
+		redirectBack(w, r, "/profile/me")
+	})
+	mux.HandleFunc("GET /aup/accept", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/aup", http.StatusSeeOther)
 	})
 	mux.HandleFunc("POST /bookmarks/add", func(w http.ResponseWriter, r *http.Request) {
 		workflowFixtures.handleBookmarkAdd(w, r)

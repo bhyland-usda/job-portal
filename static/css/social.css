@@ -219,7 +219,7 @@
   align-items: center;
   justify-content: center;
   background: var(--primary);
-  color: #fff;
+  color: var(--on-primary);
   font-size: 28px;
 }
 
@@ -270,7 +270,7 @@
 
 .badge-earned .badge-icon {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-primary);
 }
 
 .badge-name {
@@ -296,5 +296,5 @@
 }
 
 /* Dark mode badge items */
-.dark-mode .badge-earned { border-color: var(--accent); background: rgba(0,89,65,0.1); }
+.dark-mode .badge-earned { border-color: var(--accent); background: var(--accent-light); }
 .dark-mode .badge-earned .badge-icon { background: var(--accent); }
