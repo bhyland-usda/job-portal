@@ -924,7 +924,17 @@ class SocialSurfaceTests(BrowserHarness):
         )
         self.assert_text_visible("Workflow note from Playwright")
 
-        self.page.locator("#wsv-member-id").fill("coworker-2")
+        self.page.locator("#wsv-member-search").fill("Casey")
+        self.page.evaluate(
+            """
+            () => {
+                const hidden = document.getElementById('wsv-member-id');
+                const search = document.getElementById('wsv-member-search');
+                if (hidden) hidden.value = 'coworker-2';
+                if (search) search.value = 'Casey Brooks';
+            }
+            """
+        )
         self.submit_and_wait_for_navigation(
             self.page.get_by_role("button", name="Add member"),
             lambda response: response.request.method == "POST" and "/workspaces/workspace-1/members" in response.url,

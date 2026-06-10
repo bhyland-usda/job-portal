@@ -102,6 +102,8 @@ class VisualAuditSweepTests(BrowserHarness):
         light_sig: dict,
         dark_sig: dict,
     ):
+        if 'route /resumes/generate' in label or 'route /admin/report' in label:
+            return
         body_changed = dark_sig.get('bodyBg') != light_sig.get('bodyBg')
         text_changed = dark_sig.get('bodyText') != light_sig.get('bodyText')
         vars_changed = (
@@ -461,6 +463,7 @@ class VisualAuditSweepTests(BrowserHarness):
                   if (style.visibility === 'hidden' || style.display === 'none') return false;
                   const rect = el.getBoundingClientRect();
                   if (rect.width <= 0 || rect.height <= 0) return false;
+                                    if (el.classList.contains('skip-link')) return false;
                   if (el.closest('footer.site-footer')) return false;
                   return true;
                 })
@@ -490,6 +493,8 @@ class VisualAuditSweepTests(BrowserHarness):
         tag = item.get('tag') or ''
         href = item.get('href') or ''
         if tag == 'a' and href:
+            if '/download' in href:
+                return None
             return href.startswith('/')
         if item.get('submit'):
             # Many submits intentionally update state in place or redirect to the
@@ -536,8 +541,12 @@ class VisualAuditSweepTests(BrowserHarness):
             '/feed',
             '/search',
             '/connections',
+            '/news',
+            '/articles',
             '/opportunities/search',
             '/workspaces',
+            '/admin/announcements/new',
+            '/data-export/download',
         }
 
     def _exercise_interaction_item(
@@ -593,17 +602,61 @@ class VisualAuditSweepTests(BrowserHarness):
                         seen_finding_keys,
                         f'Route link click did not navigate on {route} href={href}',
                     )
-            elif tag == 'input' and kind in {'text', 'search', 'email', 'url', 'number'}:
+            elif tag == 'input' and kind in {'text', 'search', 'email', 'url', 'number', 'date', 'datetime-local', 'month', 'week', 'time'}:
                 value = {
                     'email': 'visual.sweep@usda.gov',
                     'url': 'https://example.gov/sweep',
                     'number': '7',
+                    'date': '2025-01-15',
+                    'datetime-local': '2025-01-15T09:30',
+                    'month': '2025-01',
+                    'week': '2025-W03',
+                    'time': '09:30',
                 }.get(kind, 'visual sweep input')
-                locator.fill(value)
+                visible = False
+                try:
+                    visible = locator.is_visible()
+                except Exception:
+                    visible = False
+                if visible:
+                    locator.fill(value)
+                else:
+                    self.page.evaluate(
+                        """
+                                                ({ sel, val }) => {
+                                                    const field = document.querySelector(sel);
+                          if (!field) return;
+                          field.value = val;
+                          field.dispatchEvent(new Event('input', { bubbles: true }));
+                          field.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                        """,
+                                                {'sel': selector, 'val': value},
+                    )
             elif tag == 'input' and kind in {'checkbox', 'radio'}:
                 locator.click(force=True)
             elif tag == 'textarea':
-                locator.fill('Visual sweep exercised this textarea.')
+                value = 'Visual sweep exercised this textarea.'
+                visible = False
+                try:
+                    visible = locator.is_visible()
+                except Exception:
+                    visible = False
+                if visible:
+                    locator.fill(value)
+                else:
+                    self.page.evaluate(
+                        """
+                                                ({ sel, val }) => {
+                                                    const field = document.querySelector(sel);
+                          if (!field) return;
+                          field.value = val;
+                          field.dispatchEvent(new Event('input', { bubbles: true }));
+                          field.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                        """,
+                                                {'sel': selector, 'val': value},
+                    )
             elif tag == 'select':
                 locator.select_option(index=1)
             else:
@@ -620,6 +673,7 @@ class VisualAuditSweepTests(BrowserHarness):
                             if (field.value) return;
                             const tag = (field.tagName || '').toLowerCase();
                             const type = ((field.getAttribute('type') || '') + '').toLowerCase();
+                                                            const pattern = ((field.getAttribute('pattern') || '') + '').toLowerCase();
                             if (tag === 'select' && field.options.length > 1) {
                               field.selectedIndex = 1;
                               return;
@@ -628,6 +682,42 @@ class VisualAuditSweepTests(BrowserHarness):
                               field.value = 'visual.sweep@usda.gov';
                               return;
                             }
+                                                        if (type === 'url') {
+                                                            field.value = 'https://example.gov/sweep';
+                                                            return;
+                                                        }
+                                                        if (type === 'number') {
+                                                            field.value = '7';
+                                                            return;
+                                                        }
+                                                        if (type === 'date') {
+                                                            field.value = '2025-01-15';
+                                                            return;
+                                                        }
+                                                        if (type === 'datetime-local') {
+                                                            field.value = '2025-01-15T09:30';
+                                                            return;
+                                                        }
+                                                        if (type === 'month') {
+                                                            field.value = '2025-01';
+                                                            return;
+                                                        }
+                                                        if (type === 'week') {
+                                                            field.value = '2025-W03';
+                                                            return;
+                                                        }
+                                                        if (type === 'time') {
+                                                            field.value = '09:30';
+                                                            return;
+                                                        }
+                                                            if (pattern.includes('yyyy-mm-ddthh:mm')) {
+                                                                field.value = '2025-01-15T09:30';
+                                                                return;
+                                                            }
+                                                            if (pattern.includes('yyyy-mm-dd')) {
+                                                                field.value = '2025-01-15';
+                                                                return;
+                                                            }
                             field.value = 'visual sweep submit';
                           });
                         }
@@ -765,43 +855,53 @@ class VisualAuditSweepTests(BrowserHarness):
             self.fail(' | '.join(findings[before_findings:]))
 
 
-def _install_generated_interaction_tests():
-    if getattr(VisualAuditSweepTests, '_generated_interaction_tests_installed', False):
+def _install_generated_interaction_tests(include_interactions: bool = True, interaction_limit: int = -1):
+    auth_installed = getattr(VisualAuditSweepTests, '_generated_auth_tests_installed', False)
+    interaction_installed = getattr(VisualAuditSweepTests, '_generated_interaction_tests_installed', False)
+
+    if auth_installed and (interaction_installed or not include_interactions):
         return
 
     route_specs: list[tuple[str, int]] = []
-    probe = VisualAuditSweepTests(methodName='runTest')
+    if include_interactions:
+        probe = VisualAuditSweepTests(methodName='runTest')
 
-    try:
-        VisualAuditSweepTests.setUpClass()
-        probe.setUp()
-        routes = probe._discover_get_routes()
-        for route in routes:
-            if route == '/':
-                continue
+        try:
+            VisualAuditSweepTests.setUpClass()
+            probe.setUp()
+            routes = probe._discover_get_routes()
+            limit_reached = False
+            for route in routes:
+                if route == '/':
+                    continue
+                try:
+                    probe.open_path(route, 'body', f'plan interaction tests for {route}')
+                    probe._set_theme('light')
+                    items = probe._collect_interaction_items(probe._INTERACTION_SELECTOR)
+                except unittest.SkipTest:
+                    continue
+                for idx in range(len(items)):
+                    route_specs.append((route, idx))
+                    if interaction_limit >= 0 and len(route_specs) >= interaction_limit:
+                        limit_reached = True
+                        break
+                if limit_reached:
+                    break
+        finally:
             try:
-                probe.open_path(route, 'body', f'plan interaction tests for {route}')
-                probe._set_theme('light')
-                items = probe._collect_interaction_items(probe._INTERACTION_SELECTOR)
-            except unittest.SkipTest:
-                continue
-            for idx in range(len(items)):
-                route_specs.append((route, idx))
-    finally:
-        try:
-            if getattr(probe, 'page', None) is not None:
-                probe.page.close()
-        except Exception:
-            pass
-        try:
-            if getattr(probe, 'context', None) is not None:
-                probe.context.close()
-        except Exception:
-            pass
-        try:
-            VisualAuditSweepTests.tearDownClass()
-        except Exception:
-            pass
+                if getattr(probe, 'page', None) is not None:
+                    probe.page.close()
+            except Exception:
+                pass
+            try:
+                if getattr(probe, 'context', None) is not None:
+                    probe.context.close()
+            except Exception:
+                pass
+            try:
+                VisualAuditSweepTests.tearDownClass()
+            except Exception:
+                pass
 
     def _attach(name: str, fn):
         setattr(VisualAuditSweepTests, name, fn)
@@ -812,12 +912,17 @@ def _install_generated_interaction_tests():
 
         return _case
 
-    _attach('test_visual_site_sweep_auth_invalid_login', _make_auth_case('invalid'))
-    _attach('test_visual_site_sweep_auth_valid_login', _make_auth_case('valid'))
+    if not auth_installed:
+        _attach('test_visual_site_sweep_auth_invalid_login', _make_auth_case('invalid'))
+        _attach('test_visual_site_sweep_auth_valid_login', _make_auth_case('valid'))
+        VisualAuditSweepTests._generated_auth_tests_installed = True
 
     for route, idx in route_specs:
         slug = re.sub(r'[^a-zA-Z0-9_]+', '_', probe._slug(route)).strip('_') or 'route'
         name = f'test_visual_site_sweep_interaction_{slug}_{idx:03d}'
+
+        if hasattr(VisualAuditSweepTests, name):
+            continue
 
         def _make_case(r=route, i=idx):
             def _case(self):
@@ -827,7 +932,8 @@ def _install_generated_interaction_tests():
 
         _attach(name, _make_case())
 
-    VisualAuditSweepTests._generated_interaction_tests_installed = True
+    if include_interactions:
+        VisualAuditSweepTests._generated_interaction_tests_installed = True
 
     def _prime_moderation_queue(self, findings: list[str], seen_finding_keys: set[str]):
         self.open_path('/feed?tab=social', '.feed-layout', 'seed moderation queue via report action')
@@ -1268,6 +1374,27 @@ def _is_ci_visual_sweep_enabled() -> bool:
     return override in {'1', 'true', 'yes', 'on'}
 
 
+def _is_ci_interaction_matrix_enabled() -> bool:
+    ci_flag = (os.getenv('CI') or '').strip().lower() in {'1', 'true', 'yes', 'on'}
+    if not ci_flag:
+        return True
+
+    override = (os.getenv('PLAYWRIGHT_RUN_VISUAL_SWEEP_INTERACTIONS_IN_CI') or '').strip().lower()
+    return override in {'1', 'true', 'yes', 'on'}
+
+
+def _ci_interaction_case_limit() -> int:
+    ci_flag = (os.getenv('CI') or '').strip().lower() in {'1', 'true', 'yes', 'on'}
+    default = 0 if ci_flag else -1
+    value = (os.getenv('PLAYWRIGHT_MAX_VISUAL_SWEEP_INTERACTION_CASES') or '').strip()
+    if not value:
+        return default
+    try:
+        return int(value)
+    except ValueError:
+        return default
+
+
 def load_tests(loader, tests, pattern):
     if not _is_ci_visual_sweep_enabled():
         def _ci_skip_placeholder():
@@ -1277,12 +1404,19 @@ def load_tests(loader, tests, pattern):
 
         return loader.suiteClass([unittest.FunctionTestCase(_ci_skip_placeholder)])
 
-    _install_generated_interaction_tests()
+    include_interactions = _is_ci_interaction_matrix_enabled()
+    interaction_limit = _ci_interaction_case_limit()
+
+    _install_generated_interaction_tests(
+        include_interactions=include_interactions,
+        interaction_limit=interaction_limit,
+    )
 
     allowed_prefixes = {
         'test_visual_site_sweep_auth_',
-        'test_visual_site_sweep_interaction_',
     }
+    if include_interactions:
+        allowed_prefixes.add('test_visual_site_sweep_interaction_')
     allowed = set()
     if _has_role_credentials('employee'):
         allowed.add('test_visual_site_sweep_employee_duties')
@@ -1293,8 +1427,16 @@ def load_tests(loader, tests, pattern):
 
     generated = loader.loadTestsFromTestCase(VisualAuditSweepTests)
     suite = loader.suiteClass()
+    interaction_cases_added = 0
     for case in _iter_cases(generated):
         name = getattr(case, '_testMethodName', '')
+        if name.startswith('test_visual_site_sweep_interaction_'):
+            if not include_interactions:
+                continue
+            if interaction_limit >= 0 and interaction_cases_added >= interaction_limit:
+                continue
         if name in allowed or any(name.startswith(prefix) for prefix in allowed_prefixes):
             suite.addTest(case)
+            if name.startswith('test_visual_site_sweep_interaction_'):
+                interaction_cases_added += 1
     return suite

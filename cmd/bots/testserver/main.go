@@ -337,6 +337,8 @@ func main() {
 		"polls.html":                    parseTemplate("poll/index.html"),
 		"badges.html":                   parseTemplate("badge/index.html"),
 		"admin_dashboard.html":          parseTemplate("admin/dashboard.html"),
+		"admin_audit.html":              parseTemplate("admin/audit.html"),
+		"admin_report.html":             template.Must(template.ParseFiles("templates/admin/report.html")),
 		"admin_users.html":              parseTemplate("admin/users.html"),
 		"moderation_queue.html":         parseTemplate("moderation/queue.html"),
 		"foia.html":                     parseTemplate("admin/foia.html"),
@@ -435,6 +437,16 @@ func main() {
 		}
 	})
 	mux.HandleFunc("POST /login", func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			http.Redirect(w, r, "/login?error=invalid", http.StatusSeeOther)
+			return
+		}
+		email := strings.TrimSpace(r.FormValue("email"))
+		password := r.FormValue("password")
+		if email == "invalid.user@usda.gov" || password == "definitely-wrong-password" || email == "" || password == "" {
+			http.Redirect(w, r, "/login?error=invalid", http.StatusSeeOther)
+			return
+		}
 		current := selectFixtureUser(w, r, "employee")
 		setRoleCookie(w, current.Role)
 		http.Redirect(w, r, "/feed", http.StatusSeeOther)
@@ -624,10 +636,16 @@ func main() {
 		http.Redirect(w, r, "/opportunities/posting-1?role=manager", http.StatusSeeOther)
 	})
 	mux.HandleFunc("GET /articles", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/articles/article-1", http.StatusSeeOther)
+		current := selectFixtureUser(w, r, "manager")
+		if err := pages["article_view.html"].ExecuteTemplate(w, "base", sampleArticle(current)); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	})
 	mux.HandleFunc("GET /news", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/news/news-1", http.StatusSeeOther)
+		current := selectFixtureUser(w, r, "manager")
+		if err := pages["news_view.html"].ExecuteTemplate(w, "base", sampleNews(current)); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	})
 	mux.HandleFunc("GET /my-posts", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/feed?tab=postings", http.StatusSeeOther)
@@ -651,16 +669,25 @@ func main() {
 		}
 	})
 	mux.HandleFunc("GET /admin/audit", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/admin/dashboard", http.StatusSeeOther)
+		current := selectFixtureUser(w, r, "admin")
+		if err := pages["admin_audit.html"].ExecuteTemplate(w, "base", sampleAdminAudit(current)); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	})
 	mux.HandleFunc("GET /admin/report", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/admin/dashboard", http.StatusSeeOther)
+		current := selectFixtureUser(w, r, "admin")
+		if err := pages["admin_report.html"].ExecuteTemplate(w, "report_base", sampleAdminReport(current)); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	})
 	mux.HandleFunc("GET /admin/spotlight", func(w http.ResponseWriter, r *http.Request) {
 		current := selectFixtureUser(w, r, "admin")
 		if err := pages["spotlight_create.html"].ExecuteTemplate(w, "base", sampleSpotlightCreate(current)); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
+	})
+	mux.HandleFunc("POST /admin/spotlight", func(w http.ResponseWriter, r *http.Request) {
+		redirectBack(w, r, "/spotlight?role=admin")
 	})
 	mux.HandleFunc("GET /admin/orgchart", func(w http.ResponseWriter, r *http.Request) {
 		current := selectFixtureUser(w, r, "admin")
@@ -743,6 +770,18 @@ func main() {
 	mux.HandleFunc("POST /feed/{id}/delete", func(w http.ResponseWriter, r *http.Request) {
 		redirectBack(w, r, "/feed")
 	})
+	mux.HandleFunc("POST /feed/drafts/{id}/publish", func(w http.ResponseWriter, r *http.Request) {
+		redirectBack(w, r, "/feed/drafts")
+	})
+	mux.HandleFunc("GET /feed/drafts/{id}/publish", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/feed/drafts", http.StatusSeeOther)
+	})
+	mux.HandleFunc("POST /feed/drafts/{id}/delete", func(w http.ResponseWriter, r *http.Request) {
+		redirectBack(w, r, "/feed/drafts")
+	})
+	mux.HandleFunc("GET /feed/drafts/{id}/delete", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/feed/drafts", http.StatusSeeOther)
+	})
 	mux.HandleFunc("POST /profile/posts/{id}/pin", func(w http.ResponseWriter, r *http.Request) {
 		redirectBack(w, r, "/profile/me")
 	})
@@ -788,6 +827,9 @@ func main() {
 	mux.HandleFunc("POST /certifications/{id}/delete", func(w http.ResponseWriter, r *http.Request) {
 		redirectBack(w, r, "/certifications")
 	})
+	mux.HandleFunc("POST /accomplishments/{id}/delete", func(w http.ResponseWriter, r *http.Request) {
+		redirectBack(w, r, "/accomplishments")
+	})
 	mux.HandleFunc("POST /notifications/preferences", func(w http.ResponseWriter, r *http.Request) {
 		redirectBack(w, r, "/notifications/preferences?saved=1")
 	})
@@ -814,6 +856,12 @@ func main() {
 	})
 	mux.HandleFunc("POST /workspaces/{id}/join", func(w http.ResponseWriter, r *http.Request) {
 		redirectBack(w, r, "/workspaces/"+r.PathValue("id"))
+	})
+	mux.HandleFunc("POST /workspaces/{id}/settings", func(w http.ResponseWriter, r *http.Request) {
+		redirectBack(w, r, "/workspaces/"+r.PathValue("id"))
+	})
+	mux.HandleFunc("GET /workspaces/{id}/settings", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/workspaces/"+r.PathValue("id"), http.StatusSeeOther)
 	})
 	mux.HandleFunc("GET /workspaces/{id}/join", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/workspaces/"+r.PathValue("id"), http.StatusSeeOther)
@@ -875,6 +923,9 @@ func main() {
 	mux.HandleFunc("POST /workspaces/{id}/members", func(w http.ResponseWriter, r *http.Request) {
 		workflowFixtures.handleWorkspaceMember(w, r)
 	})
+	mux.HandleFunc("POST /workspaces/{id}/meetings", func(w http.ResponseWriter, r *http.Request) {
+		redirectBack(w, r, "/workspaces/"+r.PathValue("id"))
+	})
 	mux.HandleFunc("POST /news/{id}/publish", func(w http.ResponseWriter, r *http.Request) {
 		redirectBack(w, r, "/news/"+r.PathValue("id"))
 	})
@@ -919,6 +970,9 @@ func main() {
 		if err := pages["accomplishment_form.html"].ExecuteTemplate(w, "base", sampleAccomplishmentForm(current)); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
+	})
+	mux.HandleFunc("POST /accomplishments/add", func(w http.ResponseWriter, r *http.Request) {
+		redirectBack(w, r, "/accomplishments")
 	})
 	mux.HandleFunc("GET /analytics/leaderboard", func(w http.ResponseWriter, r *http.Request) {
 		current := selectFixtureUser(w, r, "employee")
@@ -1198,6 +1252,29 @@ func sampleAdminUsers(current fixtureUser) adminpkg.AdminPage {
 		{ID: "dept-3", Name: "FSA"},
 	}
 	return adminpkg.AdminPage{BaseData: current.baseData(), Users: users, Departments: depts}
+}
+
+func sampleAdminAudit(current fixtureUser) adminpkg.AuditPage {
+	return adminpkg.AuditPage{
+		BaseData: current.baseData(),
+		Entries: []adminpkg.AuditEntry{
+			{ID: "audit-1", ActorName: "Sam Patel", Action: "role_change", TargetName: "Riley Carter", Details: "employee -> manager", CreatedAt: fixtureNow.Add(-2 * time.Hour)},
+			{ID: "audit-2", ActorName: "Taylor Jordan", Action: "workspace_update", TargetName: "Workforce Strategy Circle", Details: "Updated meeting cadence and join guidance", CreatedAt: fixtureNow.Add(-26 * time.Hour)},
+		},
+	}
+}
+
+func sampleAdminReport(current fixtureUser) adminpkg.ReportPage {
+	return adminpkg.ReportPage{
+		GeneratedAt:      fixtureNow,
+		HeadcountsByDept: []adminpkg.NameCount{{Name: "NRCS", Count: 86}, {Name: "Forest Service", Count: 74}, {Name: "FSA", Count: 52}},
+		HeadcountsByRole: []adminpkg.RoleCount{{Role: "employee", Count: 220}, {Role: "manager", Count: 24}, {Role: "admin", Count: 4}},
+		SkillsCoverage:   []adminpkg.NameCount{{Name: "Program Management", Count: 64}, {Name: "Analytics", Count: 48}, {Name: "GIS", Count: 31}},
+		TotalUsers:       248,
+		UsersWithSkills:  189,
+		TotalPosts:       42,
+		TotalConnections: 17,
+	}
 }
 
 func sampleSpotlightCreate(current fixtureUser) spotlightpkg.CreatePage {

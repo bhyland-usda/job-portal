@@ -972,10 +972,12 @@ func (s *fixtureState) workspacePage(current fixtureUser) workspacepkg.ViewPage 
 	})
 
 	return workspacepkg.ViewPage{
-		BaseData:  current.baseData(),
-		Workspace: pageWorkspace,
-		Members:   members,
-		Notes:     notes,
+		BaseData:           current.baseData(),
+		Workspace:          pageWorkspace,
+		Members:            members,
+		Notes:              notes,
+		IsMember:           true,
+		IsWorkspaceManager: true,
 	}
 }
 
