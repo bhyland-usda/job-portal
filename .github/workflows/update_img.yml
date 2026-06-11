@@ -1,6 +1,10 @@
 name: Build Container Image
 
 on:
+  push:
+    branches:
+      - main
+      - dev
   workflow_dispatch:
 
 permissions:
@@ -12,7 +16,42 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  regression-tests:
+    name: Python Playwright Visual Smoke Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install Python dependencies
+        run: uv sync
+
+      - name: Install Playwright Chromium
+        run: uv run playwright install --with-deps chromium
+
+      - name: Run visual smoke regression tests
+        run: uv run python -m unittest discover -s tests -p 'test_visual_smoke.py' -v
+
   build-and-push:
+    needs: regression-tests
     runs-on: ubuntu-latest
 
     steps:
@@ -22,7 +61,7 @@ jobs:
       - name: Derive image name
         id: image
         shell: bash
-        run: echo "name=ghcr.io/$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+        run: echo "name=ghcr.io/bhyland-usda/talent-market-dev" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -32,7 +71,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GH_TOKEN }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
@@ -40,5 +79,5 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ steps.image.outputs.name }}:latest
-            ${{ steps.image.outputs.name }}:${{ github.sha }}
+            ghcr.io/bhyland-usda/talent-market-dev:latest
+            ghcr.io/bhyland-usda/talent-market-dev:${{ github.sha }}
