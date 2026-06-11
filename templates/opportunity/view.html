@@ -98,7 +98,11 @@
     {{end}}
 
     {{if .Posting.MatchCount}}
-    <p class="posting-match-count"><a href="/opportunities/{{.Posting.ID}}/matches" class="title-link">{{.Posting.MatchCount}} employee{{if gt .Posting.MatchCount 1}}s{{end}} match this opportunity's skills</a></p>
+    <div class="posting-match-count">
+      <a href="/opportunities/{{.Posting.ID}}/matches" class="btn btn-secondary posting-match-link">
+        View {{.Posting.MatchCount}} matching employee{{if gt .Posting.MatchCount 1}}s{{end}}
+      </a>
+    </div>
     {{end}}
 
     {{if .Bookmarked}}

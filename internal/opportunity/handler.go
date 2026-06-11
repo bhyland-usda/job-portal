@@ -553,9 +553,12 @@ func (h *Handler) showMatches(w http.ResponseWriter, r *http.Request) {
 
 	var posting Posting
 	err := h.db.QueryRowContext(r.Context(),
-		`SELECT p.id, p.author_id, p.author_name, p.title,
+		`SELECT p.id, p.author_id,
+		        CONCAT(u.first_name, ' ', u.last_name),
+		        p.title,
 		        COALESCE(p.department, ''), p.created_at
 		 FROM postings p
+		 JOIN users u ON u.id = p.author_id
 		 WHERE p.id = $1`,
 		postingID,
 	).Scan(&posting.ID, &posting.AuthorID, &posting.AuthorName, &posting.Title, &posting.Department, &posting.CreatedAt)

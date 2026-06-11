@@ -146,6 +146,9 @@ func TestPostingMatchCountLinksToMatchesPage(t *testing.T) {
 	if !strings.Contains(html, "/opportunities/posting-1/matches") {
 		t.Fatalf("expected matches link in posting view, got:\n%s", html)
 	}
+	if !strings.Contains(html, "View 3 matching employees") {
+		t.Fatalf("expected visible matches CTA in posting view, got:\n%s", html)
+	}
 }
 
 // TestApplyHiddenWhenClosed verifies a non-author does not get an Apply control
@@ -362,7 +365,7 @@ func TestShowMatchesRendersMatchedEmployees(t *testing.T) {
 	}
 	defer db.Close()
 
-	mock.ExpectQuery(`SELECT p.id, p.author_id, p.author_name, p.title,`).
+	mock.ExpectQuery(`SELECT p.id, p.author_id,`).
 		WithArgs("posting-1").
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "author_id", "author_name", "title", "department", "created_at",

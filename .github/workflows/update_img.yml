@@ -16,8 +16,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  go-unit:
+    name: Go Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Download modules
+        run: go mod download
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test -race ./...
+
   regression-tests:
     name: Python Playwright Visual Smoke Tests
+    needs: go-unit
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -77,7 +101,13 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          platforms: linux/amd64
           push: true
+          provenance: false
+          sbom: false
           tags: |
-            ghcr.io/bhyland-usda/talent-market-dev:latest
-            ghcr.io/bhyland-usda/talent-market-dev:${{ github.sha }}
+            ${{ steps.image.outputs.name }}:latest
+            ${{ steps.image.outputs.name }}:${{ github.sha }}
+
+      - name: Verify published image can be pulled
+        run: docker pull ${{ steps.image.outputs.name }}:latest
