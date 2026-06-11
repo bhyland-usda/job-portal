@@ -109,6 +109,7 @@ func main() {
 		"admin_semantic.html":           parseTemplate("admin/semantic.html"),
 		"posting_create.html":           parseTemplate("opportunity/create.html"),
 		"posting_view.html":             parseTemplate("opportunity/view.html"),
+		"posting_matches.html":          parseTemplate("opportunity/matches.html"),
 		"posting_edit.html":             parseTemplate("opportunity/edit.html"),
 		"my_posts.html":                 parseTemplate("opportunity/my_posts.html"),
 		"posting_search.html":           parseTemplate("opportunity/search.html"),

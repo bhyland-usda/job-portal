@@ -68,6 +68,24 @@ type PostingPage struct {
 	Bookmarked bool
 }
 
+type MatchedEmployee struct {
+	ID              string
+	FirstName       string
+	LastName        string
+	Headline        string
+	AvatarURL       string
+	Department      string
+	Location        string
+	MatchedSkills   []string
+	MatchedSkillCnt int
+}
+
+type MatchesPage struct {
+	middleware.BaseData
+	Posting   Posting
+	Employees []MatchedEmployee
+}
+
 type SearchPage struct {
 	middleware.BaseData
 	Query                string
@@ -178,6 +196,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, requireAuth, requireManager
 	mux.Handle("GET /opportunities/history", requireAuth(http.HandlerFunc(h.showHistory)))
 	mux.Handle("GET /opportunities/{id}/outcome", requireAuth(http.HandlerFunc(h.showOutcome)))
 	mux.Handle("POST /opportunities/{id}/outcome", requireAuth(http.HandlerFunc(h.handleOutcome)))
+	mux.Handle("GET /opportunities/{id}/matches", requireAuth(http.HandlerFunc(h.showMatches)))
 	mux.Handle("GET /opportunities/{id}", requireAuth(http.HandlerFunc(h.showPosting)))
 	mux.Handle("GET /opportunities/{id}/edit", requireAuth(requireManager(http.HandlerFunc(h.showEdit))))
 	mux.Handle("POST /opportunities/{id}/edit", requireAuth(requireManager(http.HandlerFunc(h.handleEdit))))
@@ -527,6 +546,95 @@ func (h *Handler) showPosting(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.pages["posting_view.html"].ExecuteTemplate(w, "base", data)
+}
+
+func (h *Handler) showMatches(w http.ResponseWriter, r *http.Request) {
+	postingID := r.PathValue("id")
+
+	var posting Posting
+	err := h.db.QueryRowContext(r.Context(),
+		`SELECT p.id, p.author_id, p.author_name, p.title,
+		        COALESCE(p.department, ''), p.created_at
+		 FROM postings p
+		 WHERE p.id = $1`,
+		postingID,
+	).Scan(&posting.ID, &posting.AuthorID, &posting.AuthorName, &posting.Title, &posting.Department, &posting.CreatedAt)
+	if err == sql.ErrNoRows {
+		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		slog.Error("failed to load opportunity matches posting", "posting_id", postingID, "error", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	rows, err := h.db.QueryContext(r.Context(),
+		`SELECT u.id,
+		        u.first_name,
+		        u.last_name,
+		        COALESCE(u.headline, ''),
+		        COALESCE(u.avatar_url, ''),
+		        COALESCE(d.name, ''),
+		        COALESCE(u.location, ''),
+		        COUNT(DISTINCT LOWER(s.name)) AS matched_skill_count,
+		        STRING_AGG(DISTINCT s.name, '||' ORDER BY s.name) AS matched_skills
+		 FROM users u
+		 JOIN skills s ON s.user_id = u.id
+		 JOIN posting_skills ps ON LOWER(ps.skill_name) = LOWER(s.name)
+		 LEFT JOIN departments d ON d.id = u.department_id
+		 WHERE ps.posting_id = $1
+		 GROUP BY u.id, u.first_name, u.last_name, u.headline, u.avatar_url, d.name, u.location
+		 ORDER BY matched_skill_count DESC, u.last_name, u.first_name`,
+		postingID,
+	)
+	if err != nil {
+		slog.Error("failed to load matched employees", "posting_id", postingID, "error", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var employees []MatchedEmployee
+	for rows.Next() {
+		var employee MatchedEmployee
+		var matchedSkills string
+		if err := rows.Scan(
+			&employee.ID,
+			&employee.FirstName,
+			&employee.LastName,
+			&employee.Headline,
+			&employee.AvatarURL,
+			&employee.Department,
+			&employee.Location,
+			&employee.MatchedSkillCnt,
+			&matchedSkills,
+		); err != nil {
+			slog.Error("failed to scan matched employee", "posting_id", postingID, "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		employee.AvatarURL = middleware.NormalizeAvatarURL(employee.ID, employee.AvatarURL)
+		if matchedSkills != "" {
+			employee.MatchedSkills = strings.Split(matchedSkills, "||")
+		}
+		employees = append(employees, employee)
+	}
+	if err := rows.Err(); err != nil {
+		slog.Error("failed to iterate matched employees", "posting_id", postingID, "error", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	posting.MatchCount = len(employees)
+	data := MatchesPage{
+		BaseData:  middleware.NewBaseData(r),
+		Posting:   posting,
+		Employees: employees,
+	}
+	if err := h.pages["posting_matches.html"].ExecuteTemplate(w, "base", data); err != nil {
+		slog.Error("failed to render matched employees", "posting_id", postingID, "error", err)
+	}
 }
 
 func (h *Handler) serveAttachment(w http.ResponseWriter, r *http.Request) {

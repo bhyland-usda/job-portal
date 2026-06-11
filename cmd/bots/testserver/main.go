@@ -323,6 +323,7 @@ func main() {
 		"department_view.html":          parseTemplate("department/view.html"),
 		"workspace_view.html":           parseTemplate("workspace/view.html"),
 		"posting_view.html":             parseTemplate("opportunity/view.html"),
+		"posting_matches.html":          parseTemplate("opportunity/matches.html"),
 		"posting_search.html":           parseTemplate("opportunity/search.html"),
 		"posting_create.html":           parseTemplate("opportunity/create.html"),
 		"posting_applications.html":     parseTemplate("opportunity/applications.html"),

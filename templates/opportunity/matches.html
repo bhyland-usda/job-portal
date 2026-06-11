@@ -1,0 +1,117 @@
+{{define "title"}}Matched Employees{{end}}
+
+{{define "content"}}
+<style>
+  .match-list {
+    display: grid;
+    gap: 16px;
+  }
+  .match-card {
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .match-card-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: flex-start;
+  }
+  .match-card-link {
+    display: flex;
+    gap: 12px;
+    text-decoration: none;
+    color: inherit;
+    min-width: 0;
+  }
+  .match-avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+  .match-avatar-placeholder {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--surface-muted, #eef2f7);
+    color: var(--text-secondary, #475467);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .match-name {
+    margin: 0;
+  }
+  .match-headline,
+  .match-meta {
+    margin: 4px 0 0;
+    color: var(--text-secondary, #667085);
+  }
+  .match-skills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .match-skill {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--surface-muted, #eef2f7);
+    font-size: 13px;
+    font-weight: 600;
+  }
+</style>
+
+<div class="connections-layout">
+  <div class="profile-card">
+    <h2>Employees matching {{.Posting.Title}}</h2>
+    <p class="posting-meta">{{.Posting.MatchCount}} employee{{if ne .Posting.MatchCount 1}}s{{end}} share at least one required skill.</p>
+
+    {{if .Employees}}
+    <div class="match-list">
+      {{range .Employees}}
+      <div class="match-card">
+        <div class="match-card-header">
+          <a href="/profile/{{.ID}}" class="match-card-link">
+            {{if .AvatarURL}}
+            <img src="{{.AvatarURL}}" class="match-avatar" alt="">
+            {{else}}
+            <div class="match-avatar-placeholder">{{slice .FirstName 0 1}}{{slice .LastName 0 1}}</div>
+            {{end}}
+            <div>
+              <h3 class="match-name">{{.FirstName}} {{.LastName}}</h3>
+              {{if .Headline}}
+              <p class="match-headline">{{.Headline}}</p>
+              {{end}}
+              <p class="match-meta">
+                {{if .Department}}{{.Department}}{{else}}No department listed{{end}}{{if .Location}} · {{.Location}}{{end}} · {{.MatchedSkillCnt}} matching skill{{if ne .MatchedSkillCnt 1}}s{{end}}
+              </p>
+            </div>
+          </a>
+          <a href="/profile/{{.ID}}" class="btn btn-outline">View Profile</a>
+        </div>
+
+        {{if .MatchedSkills}}
+        <div class="match-skills">
+          {{range .MatchedSkills}}
+          <span class="match-skill">{{.}}</span>
+          {{end}}
+        </div>
+        {{end}}
+      </div>
+      {{end}}
+    </div>
+    {{else}}
+    <p class="empty-state">No employees match this opportunity's skills yet.</p>
+    {{end}}
+  </div>
+</div>
+{{end}}
+
+{{template "base" .}}

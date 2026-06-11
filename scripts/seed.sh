@@ -6,22 +6,46 @@
 #
 set -euo pipefail
 
-if command -v docker &>/dev/null && docker compose exec -T db psql -U jobportal jobportal -c "SELECT 1" >/dev/null 2>&1; then
-    PSQL_CMD="docker compose exec -T db psql -U jobportal jobportal"
-    echo "=== JobPortal Seed v2 (via Docker) ==="
-elif [ -n "${DATABASE_URL:-}" ] || command -v psql &>/dev/null; then
-    DB_URL="${DATABASE_URL:-postgres://jobportal:jobportal@localhost:5432/jobportal?sslmode=disable}"
-    PSQL_CMD="psql $DB_URL"
-    echo "=== JobPortal Seed v2 (direct) ==="
+COMPOSE_CMD="${COMPOSE_CMD:-}"
+SEED_MODE=""
+
+if [ -n "${COMPOSE_CMD}" ] && command -v docker > /dev/null 2>&1 && eval "COMPOSE_CMD exec -T db psql -U jobportal jobportal -c 'SELECT 1'" > /dev/null 2>&1; then
+  SEED_MODE="compose"  
+  echo "=== Talent Marketplace Seed v2 (via Docker Compose) ==="
+elif [ -n "${DATABASE_URL:-}" ] && command -v psql > /dev/null 2>&1; then
+  SEED_MODE="direct"
+  echo "=== Talent Marketplace Seed v2 (via DATABASE_URL) ==="
+elif command -v docker > /dev/null 2>&1 && docker compose exec -T db psql -U jobportal jobportal -c "SELECT 1" > /dev/null 2>&1; then
+  COMPOSE_CMD="docker compose"
+  SEED_MODE="compose"
+  echo "=== Talent Marketplace Seed v2 (via local Docker Compose) ==="
+elif command -v psql > /dev/null 2>&1; then
+  DATABASE_URL="postgres://jobportal:jobportal@localhost:5432/jobportal?sslmode=disable"
+  SEED_MODE="direct"
+  echo "=== Talent Marketplace Seed v2 (via localhost fallback) ==="
 else
-    echo "ERROR: No database connection available."; exit 1
+  echo -e "\e[031mERROR\e[0m: No database connection available."
+  exit 1
 fi
 
-run_sql() { $PSQL_CMD -v ON_ERROR_STOP=1 --no-psqlrc -q "$@"; }
+run_psql() {
+  if [ "$SEED_MODE" = "compose" ]; then
+    eval "$COMPOSE_CMD exec -T db psql -U jobportal jobportal" "$@"
+  else
+    psql "DATABASE_URL" "$@"
+  fi
+}
 
+run_sql() {
+  run_psql -v ON_ERROR_STOP=1 --no-psqlrc -q "$@"
+}
 echo "Connecting..."
-$PSQL_CMD -c "SELECT 1" >/dev/null 2>&1 || { echo "ERROR: cannot connect"; exit 1; }
+run_psql -c "SELECT 1" > /dev/null 2>&1 || { echo -e "\e[031mERROR\e[0m: cannot connect"; exit 1;}
 echo "Connected."
+
+echo -e "\e[036m[INFO]\e[0m SEED_MODE:$SEED_MODE"
+echo -e "\e[036m[INFO]\e[0m COMPOSE_CMD=${COMPOSE_CMD:-<unset>}"
+echo -e "\e[036m[INFO]\e[0m DATABASE_URL=${DATABASE_URL:-<unset>}"
 
 PW='$2a$10$Un0k3Q.ot8InE0gJ5j2QLOQz0yCGPAZiwbuSM.I5q3ZDf4nBj7v9O'
 
@@ -45,9 +69,10 @@ BEGIN
 
   -- Justice League
   INSERT INTO users (id,email,password_hash,first_name,last_name,headline,location,role,department_id) VALUES
+  (gen_random_uuid(),'bryan.hyland@usda.gov',pw,'Bryan','Hyland','Software Engineer','Silverdale, WA','admin',d_rd),
   (gen_random_uuid(),'clark.kent@usda.gov',pw,'Clark','Kent','IT Specialist & Team Lead | Truth, Justice, and Good Soil Policy','Washington, DC','manager',d_nrcs),
   (gen_random_uuid(),'kara.danvers@usda.gov',pw,'Kara','Danvers','Data Scientist | Stronger than your toughest dataset','Beltsville, MD','employee',d_ars),
-  (gen_random_uuid(),'bruce.wayne@usda.gov',pw,'Bruce','Wayne','Cybersecurity Program Manager | The night shift is my specialty','Washington, DC','manager',NULL),
+  (gen_random_uuid(),'bruce.wayne@usda.gov',pw,'Bruce','Wayne','Cybersecurity Program Manager | The night shift is my specialty','Washington, DC','manager',d_rd),
   (gen_random_uuid(),'diana.prince@usda.gov',pw,'Diana','Prince','Project Director & Platform Administrator | Leading with wisdom','Washington, DC','admin',d_rd),
   (gen_random_uuid(),'barry.allen@usda.gov',pw,'Barry','Allen','Software Engineer | Fastest deployments in the federal government','Fort Collins, CO','employee',d_nrcs),
   (gen_random_uuid(),'hal.jordan@usda.gov',pw,'Hal','Jordan','Remote Sensing Specialist | The view from orbit is underrated','Salt Lake City, UT','employee',d_nrcs),
@@ -57,9 +82,9 @@ BEGIN
   (gen_random_uuid(),'dinah.lance@usda.gov',pw,'Dinah','Lance','Communications Specialist | My voice carries','Washington, DC','employee',NULL),
   (gen_random_uuid(),'john.jones@usda.gov',pw,'John','Jones','Intelligence Analyst | I see what others cannot','Ames, IA','employee',d_aphis),
   (gen_random_uuid(),'shayera.hall@usda.gov',pw,'Shayera','Hall','Wildlife Biologist | Protecting species from above','Lakewood, CO','employee',d_fs),
-  (gen_random_uuid(),'zatanna.zatara@usda.gov',pw,'Zatanna','Zatara','Training Coordinator | Making complex topics disappear','Washington, DC','employee',NULL),
+  (gen_random_uuid(),'zatanna.zatara@usda.gov',pw,'Zatanna','Zatara','Training Coordinator | Making complex topics disappear','Washington, DC','employee',d_fs),
   (gen_random_uuid(),'dick.grayson@usda.gov',pw,'Dick','Grayson','IT Project Manager | Agile by nature','Raleigh, NC','employee',d_nrcs),
-  (gen_random_uuid(),'barbara.gordon@usda.gov',pw,'Barbara','Gordon','Cybersecurity Analyst | Information is power','Kansas City, MO','employee',NULL),
+  (gen_random_uuid(),'barbara.gordon@usda.gov',pw,'Barbara','Gordon','Cybersecurity Analyst | Information is power','Kansas City, MO','employee',d_fs),
   (gen_random_uuid(),'wally.west@usda.gov',pw,'Wally','West','Junior Software Developer | Even faster than Barry','Fort Collins, CO','employee',d_nrcs),
   (gen_random_uuid(),'carter.hall@usda.gov',pw,'Carter','Hall','Archaeologist | Some things are worth preserving forever','Missoula, MT','employee',d_fs),
   (gen_random_uuid(),'ray.palmer@usda.gov',pw,'Ray','Palmer','Research Physicist | The smallest details matter most','Beltsville, MD','employee',d_ars),

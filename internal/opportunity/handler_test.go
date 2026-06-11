@@ -32,6 +32,7 @@ func testPages() map[string]*template.Template {
 	}
 	return map[string]*template.Template{
 		"posting_view.html":    mk("opportunity/view.html"),
+		"posting_matches.html": mk("opportunity/matches.html"),
 		"posting_outcome.html": mk("opportunity/outcome.html"),
 		"posting_history.html": mk("opportunity/history.html"),
 		"posting_edit.html":    mk("opportunity/edit.html"),
@@ -126,6 +127,24 @@ func TestAuthorDoesNotSeeApplyButton(t *testing.T) {
 
 	if strings.Contains(html, "/opportunities/posting-1/apply") {
 		t.Errorf("author should not see an apply control, got:\n%s", html)
+	}
+}
+
+func TestPostingMatchCountLinksToMatchesPage(t *testing.T) {
+	data := PostingPage{
+		BaseData: middleware.BaseData{UserID: "viewer-1"},
+		Posting: Posting{
+			ID:         "posting-1",
+			AuthorID:   "author-9",
+			Title:      "Detail Opportunity",
+			MatchCount: 3,
+		},
+	}
+
+	html := renderView(t, data)
+
+	if !strings.Contains(html, "/opportunities/posting-1/matches") {
+		t.Fatalf("expected matches link in posting view, got:\n%s", html)
 	}
 }
 
@@ -333,6 +352,68 @@ func TestHandleOutcomeForbiddenForNonAuthor(t *testing.T) {
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("unmet expectations: %v", err)
+	}
+}
+
+func TestShowMatchesRendersMatchedEmployees(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("failed to create mock db: %v", err)
+	}
+	defer db.Close()
+
+	mock.ExpectQuery(`SELECT p.id, p.author_id, p.author_name, p.title,`).
+		WithArgs("posting-1").
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "author_id", "author_name", "title", "department", "created_at",
+		}).AddRow(
+			"posting-1", "manager-1", "Manager User", "Data Detail", "OCIO",
+			time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+		))
+
+	mock.ExpectQuery(`SELECT u.id,`).
+		WithArgs("posting-1").
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "first_name", "last_name", "headline", "avatar_url", "department",
+			"location", "matched_skill_count", "matched_skills",
+		}).
+			AddRow("user-1", "Ada", "Lovelace", "Data Engineer", "https://cdn.example/avatar.png", "OCIO", "Washington, DC", 2, "Go||SQL").
+			AddRow("user-2", "Grace", "Hopper", "Program Manager", "", "FPAC", "Kansas City, MO", 1, "Leadership"))
+
+	h := NewHandler(db, testPages())
+
+	req := httptest.NewRequest("GET", "/opportunities/posting-1/matches", nil)
+	req.SetPathValue("id", "posting-1")
+	req = req.WithContext(context.WithValue(req.Context(), middleware.UserInfoKey, middleware.UserInfo{
+		ID:        "manager-1",
+		FirstName: "Manager",
+		LastName:  "User",
+		Role:      "manager",
+	}))
+	rec := httptest.NewRecorder()
+
+	h.showMatches(rec, req)
+
+	if rec.Code != 200 {
+		t.Fatalf("expected 200, got %d; body=%s", rec.Code, rec.Body.String())
+	}
+	body := rec.Body.String()
+	for _, want := range []string{
+		"Employees matching Data Detail",
+		"Ada Lovelace",
+		"Grace Hopper",
+		"Go",
+		"SQL",
+		"Leadership",
+		"/profile/user-1",
+		"/profile/user-2",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("expected response to contain %q, got:\n%s", want, body)
+		}
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet expectations: %v", err)
 	}
 }
 

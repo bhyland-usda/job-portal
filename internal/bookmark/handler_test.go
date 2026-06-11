@@ -2,8 +2,8 @@ package bookmark
 
 import (
 	"context"
-	"os"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
